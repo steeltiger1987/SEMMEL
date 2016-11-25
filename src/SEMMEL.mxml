@@ -1,0 +1,5100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   creationComplete="init()" showStatusBar="false"
+					   width.LoginState="828" height.LoginState="548"
+					   width.MainMenu="100%" height.MainMenu="100%"
+					   width.ModulesScreen="100%" height.ModulesScreen="100%"
+					   width.State1="828" height.State1="548" maintainProjectionCenter.State1="true"
+					   stateChangeComplete="windowedapplication1_stateChangeCompleteHandler(event)">
+	<fx:Style source="SEMMEL.css"/>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<s:HTTPService id="httpAuth" url="" fault="fleventAuth(event)" method="POST" result="httpAuth_result(event)" resultFormat="text" />
+
+		<s:HTTPService id="httpReport" url="" fault="fleventReport(event)" method="POST" result="httpReport_result(event)" resultFormat="text" />
+	
+		<s:SkinnablePopUpContainer id="saving" backgroundAlpha="0.5" backgroundColor="0x000000">
+			<s:Panel title="Sync Report" horizontalCenter="0" verticalCenter="0" width="80%">
+				<s:HGroup width="100%" x="10" y="10">
+					<mx:ProgressBar enabled="true" indeterminate="false" width="98%" id="pb"
+									minimum="0" maximum="100" 
+									mode="manual"
+									label="please wait..."
+									labelPlacement="bottom"/>
+				</s:HGroup>
+			</s:Panel>
+		</s:SkinnablePopUpContainer>
+	
+		<mx:DateFormatter id="sdf" formatString="MMM,YYYY"/>
+		
+		<mx:DateFormatter id="sdfYM" formatString="MMMM, YYYY"/>
+		
+		<s:DateTimeFormatter id="sdfhm" dateTimePattern="MMM d, y h:mm a"/>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import air.net.URLMonitor;
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			
+			import com.hurlant.crypto.*;
+			import com.hurlant.crypto.hash.SHA1;
+			import com.hurlant.crypto.symmetric.*;
+			import com.hurlant.util.Base64;
+			import com.hurlant.util.Hex;
+			import com.report.env.EnvReportController;
+			import com.report.handhygiene.*;
+			import com.security.util.AESCrypto;
+			import com.semmel.*;
+			
+			import de.polygonal.ds.Graph;
+			import de.polygonal.ds.HashMap;
+			
+			import flash.events.Event;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.ArrayCollection;
+			import mx.collections.Sort;
+			import mx.collections.SortField;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.*;
+			import mx.events.FlexEvent;
+			import mx.formatters.NumberFormatter;
+			import mx.graphics.*;
+			import mx.graphics.SolidColor;
+			import mx.graphics.codec.JPEGEncoder;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.managers.PopUpManager;
+			import mx.printing.*;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.*;
+			
+			import spark.events.IndexChangeEvent;
+			
+			import views.*;
+			import views.env.*;
+			
+			//default value
+			[Bindable]
+			public var bm:Number = 75;
+			
+			//default value
+			[Bindable]
+			public var th:Number = 10;
+			
+			
+			//month
+			[Bindable]
+			public var acMonth:ArrayCollection = new ArrayCollection();
+			
+			//year
+			[Bindable]
+			public var acYear:ArrayCollection = new ArrayCollection();
+			
+			//for horizontal line
+			[Bindable] 
+			public var lineDataProvider : ArrayCollection = 
+				new ArrayCollection([{"X" : 0, "Y" : bm}, 
+					{"X" : 1, "Y" : bm}]);
+			
+			
+			public var isNetworkCheck:Boolean = false;
+			public var isReset:Boolean = false; //for quota reset
+			
+			
+			private var enText:String = "";
+			private var enUserId:String = "";
+			private var enPwd:String = "";
+			
+			
+			public var fetchXMLData:String = "";
+			public var obFilter:String = ""; //observer _ yyyyMM
+			public var deptFilter:String = ""; //filter for profession graph by ward/facility
+			
+			public var countryCode:String = "MY"; //default is malaysia
+			public var hosp_id:String = "";
+			public var hosp_name:String = "";
+			
+			public var who_safety:ArrayCollection = null;
+			public var who_safety_department:ArrayCollection = null;
+			
+			[Bindable]
+			private var monitor:URLMonitor;
+			
+			[Bindable]
+			public var yearMonthXML:XMLListCollection;
+			
+			[Bindable]
+			public var observerXML:XMLListCollection;
+			
+			
+			public var selectedYM:String = "";
+			public var selectedYMLabel:String = "";
+			public var selectedObserver:String = "";
+			
+			public var privateYM:String = "";
+			
+			public var isConnected:Boolean = false;
+			
+			public var graphComplianceByMoment:GraphComplianceByMoment = new GraphComplianceByMoment;
+			public var graphComplianceByOverall:GraphComplianceByOverall = new GraphComplianceByOverall;
+			public var graphComplianceByJob:GraphComplianceByJob = new GraphComplianceByJob;
+			public var graphDashboard:GraphDashboard = new GraphDashboard;
+			public var graphHHOByDepartment:GraphHHOByDepartment = new GraphHHOByDepartment;
+			public var graphHHOByProfession:GraphHHOByProfession = new GraphHHOByProfession;
+			public var pie:piechart = new piechart;
+			public var graphHHOByIndication:GraphHHOByIndication = new GraphHHOByIndication;
+			public var graphAverageActionByIndication:GraphAverageActionByIndication =  new GraphAverageActionByIndication;
+			public var departmentMomentsComplaince:DepartmentMomentsComplaince = new DepartmentMomentsComplaince;
+			
+			//new added - 2015-06-05 for procedure
+			public var graphProcedure:GraphProcedure = new GraphProcedure;
+			
+			//split at 2015-08-20
+			//split into separate screen for reason
+			public var graphMissedReason:GraphMissedReason = new GraphMissedReason;
+			
+			public var graphLeaderboard:LeaderboardScreen = new LeaderboardScreen;
+			
+			private var homeScreen:HomeScreen = new HomeScreen;
+			private var progressScreen:ProgressScreen = new ProgressScreen;
+			
+			//new added screen 2015-08-11
+			private var profnameScreen:ProfNameScreen = new ProfNameScreen;
+			
+			
+			//v1.1 - environmental module
+			private var envDashboard:EnvDashboard = new EnvDashboard;
+			private var envByArea:EnvByArea = new EnvByArea;
+			private var envByWardFacility:EnvByWardFacility = new EnvByWardFacility;
+			private var envByNote:EnvByNote = new EnvByNote;
+			private var envByMethod:EnvByMethod = new EnvByMethod;
+			private var envByCategory:EnvByCategory = new EnvByCategory;
+			private var envAuditByAreaWardFacility = new EnvAuditByAreaWardFacility;
+			//end environmental module
+			
+			private var nativeProcess:NativeProcess;
+			
+			private var searchResult:ArrayCollection = new ArrayCollection();
+			
+			private var timer:Timer = new Timer(5000); //each 5 seconds
+			
+			
+			public var lineStroke:Stroke = new Stroke(0xff0000,1,1);
+			//public var colorColumnRenderer:ClassFactory = new ClassFactory(ColorColumnRenderer);
+			
+			public var acDepartment:ArrayCollection = new ArrayCollection();
+			
+			public var acProfession:ArrayCollection = new ArrayCollection();
+			
+			public var acDynamicProfession:ArrayCollection = new ArrayCollection();
+			
+			//for application auto updater
+			private var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
+			
+			//to remove status bar
+			//private function removeStatusBar(event:AIREvent):void{
+				//removeChild(statusBar);
+			//}
+			
+			
+			//for BIRT report download
+			public var documentsDirectory:File = File.desktopDirectory;// active user documents directory  
+			public var fileName:String;  
+			public var fileToSave:File;  
+			public var fileStream:FileStream;  
+			public var fileData:ByteArray;
+			  
+			public var urlRequest:URLRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+			
+			//public var urlRequest:URLRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+			//http://localhost:8082/BIRT_Report_Integration/loadReport?ReportName=hospital_data.rptdesign&ReportFormat=html
+			public var urlStream:URLStream = new URLStream();
+			
+			
+			public var CURRENT_MODULE:String = ""; //HandHygiene, Environment
+			
+			
+			public function doExit():void{
+				this.close();
+			}
+			
+			//for loading dialog
+			protected function savingAlert():void
+			{
+				trace("run saving alert pop up");
+				saving.open(this, false);
+				updateSavingPosition();
+				this.addEventListener(ResizeEvent.RESIZE, updateSavingPosition);
+			}
+			protected function updateSavingPosition(event:Event=null):void
+			{
+				if (saving.isOpen)
+				{
+					saving.width = systemManager.screen.width;
+					saving.height = systemManager.screen.height;
+				}
+			}
+			//end for loading dialog
+			
+			
+			//PinkBlue - pallette
+			//http://www.degraeve.com/
+			[Bindable]
+			//mix with green/blue, navy blue
+			public var themeColor:Array = new Array(
+				new SolidColor(0x6fbdd3, 1), 
+				new SolidColor(0x8ca15c, 1), 
+				new SolidColor(0x628fc8, 1),
+				new SolidColor(0x9eb5eb, 1), 
+				new SolidColor(0xb6b6b6, 1),
+				
+				new SolidColor(0xdaac4e, 1),
+				new SolidColor(0xdfbe88, 1),
+				new SolidColor(0xc69bd5, 1),
+				new SolidColor(0xd06b7a, 1),
+				new SolidColor(0xac8dc5, 1),
+				
+				new SolidColor(0xda4c3f, 1),
+				new SolidColor(0xf19570, 1),
+				new SolidColor(0x9aa4a5, 1),
+				new SolidColor(0xc7d4a6, 1),
+				new SolidColor(0xd6d6b2, 1),
+				
+				new SolidColor(0xd8dbc8, 1),
+				new SolidColor(0xede5da, 1),
+				new SolidColor(0xc4cdc8, 1),
+				new SolidColor(0xb5d0db, 1),
+				new SolidColor(0xf0f6e8, 1)
+			);
+			
+			
+			public function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+				return item + "%"
+			}
+			
+			public function stackedFillFunctionEnv(element:ChartItem, index:Number):IFill {
+				var c:SolidColor = new SolidColor(0xe6e6e6);
+				
+				var item:ColumnSeriesItem = ColumnSeriesItem(element);
+				var col:String = ColumnSeries(item.element).yField;
+				//var profit:Number = Number(item.yValue);       
+				
+				
+				//if (profit >= 1250) {
+				//return c;
+				//} else {
+				
+				// c.color = 0x8bc441; //green
+				if(col == "ttl"){
+					c.color =  0x26a9e0; //blue
+					c.alpha = 0.2;
+				} else {
+					c.color = 0x8bc441; //green
+					c.alpha = 1.0;
+				}
+				//}
+				return c;
+			}  
+			
+			
+			public function stackedFillFunction(element:ChartItem, index:Number):IFill {
+				var c:SolidColor = new SolidColor(0xe6e6e6);
+				
+				var item:ColumnSeriesItem = ColumnSeriesItem(element);
+				var col:String = ColumnSeries(item.element).yField;
+				//var profit:Number = Number(item.yValue);       
+				
+				//if (profit >= 1250) {
+				//return c;
+				//} else {
+				
+				
+				
+				// c.color = 0x8bc441; //green
+				if(col == "opp" || col =="@opp"){
+					c.color =  0x26a9e0; //blue
+					c.alpha = 0.2;
+				} else {
+					c.color = 0x8bc441; //green
+					c.alpha = 1.0;
+				}
+				//}
+				return c;
+			}    
+			
+			public function fill3ColorFunction(element:ChartItem, index:Number):IFill {
+				var c:SolidColor = new SolidColor(0xe6e6e6);
+				
+				var item:ColumnSeriesItem = ColumnSeriesItem(element);
+				var pect:Number = Number(item.yValue);
+				//var col:String = ColumnSeries(item.element).yVa;
+				
+				
+				//70 is the benckmark
+				
+				switch(true){
+					case pect<(bm-th):
+						c.color = 0xff0000; //red
+						//rectSolidColorStroke.weight = 0;
+						//rectSolidColorStroke.color = 0xff0000;
+						break;
+					case bm>pect && (bm-th)<=pect:
+						c.color = 0xffb400; //orange
+						//rectSolidColorStroke.color = 0xffb400; 
+						//rectSolidColorStroke.weight = 0;
+						break;
+					case pect >= bm:
+						c.color = 0x05c400; //green
+						//rectSolidColorStroke.color = 0x05c400;
+						//rectSolidColorStroke.weight = 0;
+						break;
+				}
+				
+			
+				return c;
+			} 
+			
+			private function cleanLocalData():void {
+				var cleaned:String;
+				if(EncryptedLocalStore.isSupported) {
+					var va:ByteArray = EncryptedLocalStore.getItem("cleanedOnce");
+					if(va)
+					cleaned = va.readUTFBytes(va.bytesAvailable);
+				}
+				var fileslist:Array = File.applicationStorageDirectory.getDirectoryListing();
+				
+				//check if there is a DATA file on users system
+				var decryptedFilesPresent:Boolean;
+				for(var i=0;i<fileslist.length;i++) {
+					var file:File = fileslist[i];
+					if(file.extension == "data" && file.name.search('_env') == -1) {
+						decryptedFilesPresent = true;
+					}
+					
+				}
+				
+				if(!cleaned) 
+					decryptedFilesPresent = true;
+				
+				trace(decryptedFilesPresent +"");
+				
+				//IF the DATA files exist, this means this is the decrypted appdata information on the users system
+				//just delete it to remove the offline decryption of data, else offline app wont function
+				if(decryptedFilesPresent) {
+					for(var i=0;i<fileslist.length;i++) {
+						var file:File = fileslist[i];
+						if(file.extension == "shard" || file.extension == "data") {
+							file.deleteFile();
+						}
+						
+					}
+				}
+				
+				
+				if(EncryptedLocalStore.isSupported && !cleaned) {
+					var va:ByteArray = new ByteArray();
+					va.writeUTFBytes('yes');
+					EncryptedLocalStore.setItem("cleanedOnce", va);
+				}
+			}
+			
+			[Bindable]
+			private var user:String;
+			[Bindable]
+			private var pass:String;
+			
+			private function init():void{
+//				user = "demo1";
+//				pass = "5tgb1qaz";
+
+//				user = "demo@yahoo.com";
+//				pass = "1234";
+				
+				checkUpdate();
+				setApplicationVersion();
+				
+				var url:URLRequest = new URLRequest(Constants.url_check);
+				// Checks Only the Headers - Not the Full Page
+				url.method = "HEAD";
+				
+				// Create the URL Monitor and Pass it the URLRequest
+				monitor = new URLMonitor(url);
+				// Set the Interval (in ms) - 3000 = 3 Seconds
+				monitor.pollInterval = 3000;
+				// Create the Event Listener that Will Be Fired When Connection Changes
+				monitor.addEventListener(StatusEvent.STATUS,on_connection);
+				// Start the URLMonitor
+				monitor.start();
+				
+				//used to clean the application directory to behave in accordance to the architecture change		AMOL
+		    	cleanLocalData();
+
+				//load settings....
+				var file:File = File.applicationStorageDirectory.resolvePath("settings.dat");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+						trace(s.split("\n")[0]);
+						trace(s.split("\n")[1]);
+						
+						bm = Number(s.split("\n")[0]);
+						th = Number(s.split("\n")[1]);
+						
+						
+						lineDataProvider = new ArrayCollection([{"X" : 0, "Y" : bm}, 
+							{"X" : 1, "Y" : bm}]);
+						
+						
+					} catch(e:Error){
+						trace("error settings.dat " + e.toString());
+					}
+					
+				}
+				
+				//end load setting...
+				
+				
+				acMonth.addItem({"monthLabel":"Jan", "month":"1"});
+				acMonth.addItem({"monthLabel":"Feb", "month":"2"});
+				acMonth.addItem({"monthLabel":"Mar", "month":"3"});
+				acMonth.addItem({"monthLabel":"Apr", "month":"4"});
+				acMonth.addItem({"monthLabel":"May", "month":"5"});
+				acMonth.addItem({"monthLabel":"Jun", "month":"6"});
+				acMonth.addItem({"monthLabel":"Jul", "month":"7"});
+				acMonth.addItem({"monthLabel":"Aug", "month":"8"});
+				acMonth.addItem({"monthLabel":"Sep", "month":"9"});
+				acMonth.addItem({"monthLabel":"Oct", "month":"10"});
+				acMonth.addItem({"monthLabel":"Nov", "month":"11"});
+				acMonth.addItem({"monthLabel":"Dec", "month":"12"});
+				
+				
+				var currentDate:Date = new Date();
+				var currentYear:Number = currentDate.fullYear;
+				for(var yr:Number=currentYear-3;yr<currentYear+3;yr++){
+					acYear.addItem(String(yr));	
+				}
+				
+				
+				
+				//check agree license!
+				if(!File.applicationStorageDirectory.resolvePath("agree.key").exists){
+					var winAgreeLicense:LicenseWindow = new LicenseWindow();
+					winAgreeLicense.open(this, true);
+					PopUpManager.centerPopUp(winAgreeLicense);	
+				}
+				
+				
+			}
+			
+			//for application auto updater
+			private function checkUpdate():void {
+//				setApplicationVersion();
+				// we set the URL for the update.xml file 
+				appUpdater.updateURL = Constants.url_update;
+				//we set the event handlers for INITIALIZED nad ERROR
+				appUpdater.addEventListener(UpdateEvent.INITIALIZED, onUpdate);
+				appUpdater.addEventListener(ErrorEvent.ERROR, onError);
+				
+				//appUpdater.addEventListener(StatusUpdateErrorEvent.UPDATE_ERROR, onStatusUpdateError);
+				//appUpdater.addEventListener(DownloadErrorEvent.DOWNLOAD_ERROR, onDownloadError);
+				
+				
+				
+				//we can hide the dialog asking for permission for checking for a new update;
+				//if you want to see it just leave the default value (or set true).
+				appUpdater.isCheckForUpdateVisible = false;
+				//if isFileUpdateVisible is set to true, File Update, File No Update, 
+				//and File Error dialog boxes will be displayed
+				appUpdater.isFileUpdateVisible = true;
+				//if isInstallUpdateVisible is set to true, the dialog box for installing the update is visible
+				appUpdater.isInstallUpdateVisible = true;
+				//we initialize the updater
+				appUpdater.initialize();
+			}
+			
+			
+			
+			private function onUpdate(event:UpdateEvent):void {
+				//start the process of checking for a new update and to install
+				appUpdater.checkNow();
+			}
+			
+			/**
+			 * Handler function for error events triggered by the ApplicationUpdater.initialize
+			 * @param ErrorEvent 
+			 */ 
+			private function onError(event:ErrorEvent):void {
+				Alert.show(event.toString());
+			}
+			
+			/**
+			 * A simple code just to read the current version of the application 
+			 * and display it in a label. 
+			 */ 
+			private function setApplicationVersion():void {
+				var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
+				var ns:Namespace = appXML.namespace();
+				//this.appVersion = "App version:" + appXML.ns::version;
+				trace("App version: " + appXML.ns::versionNumber);
+				Constants.appVersion = appXML.ns::versionNumber;
+			}
+			
+			//end of application auto updater
+			
+			
+			protected function btnSubmit_clickHandler(event:MouseEvent):void
+			{
+				doLicenseOrLogin();
+			}
+			
+			
+			private function httpAuth_result(evt:ResultEvent):void{				
+				trace("posted data done");
+				trace("evt.result: " + evt.result.toString());
+				
+				//parse JSON here...
+				var jsonRead:Object = JSON.parse(evt.result.toString());
+				
+				//TODO: detect if got uid -> go to chart screen!
+				
+				
+				pbCheck.visible = false;
+				btnSubmit.visible = true;
+				txtLicense.visible = true;
+				
+				trace("Current State: " + this.currentState);
+				
+				if(this.currentState=="State1"){
+					
+					trace("evt auth result " + evt.result.toString());
+					trace("indexof 01: " + evt.result.toString().indexOf("01"));
+					
+					if(evt.result.toString().indexOf("-2")!=-1){
+						
+						//license expired
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("License Expired", "License Key is Expired");
+						
+					} else if(evt.result.toString().indexOf("-1")!=-1){
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("Invalid License", "License Key is Invalid");
+						
+						//delete profiles!!!!!....if got users file....
+						
+						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+							try{
+								File.applicationStorageDirectory.resolvePath("license.key").deleteFile();
+							}catch(e:Error){}
+						}
+						
+						if(File.applicationStorageDirectory.resolvePath("user.key").exists){
+							try{
+								File.applicationStorageDirectory.resolvePath("user.key").deleteFile();
+							}catch(e:Error){}
+						}
+						
+						if(File.applicationStorageDirectory.resolvePath("raw.data").exists){
+							try{
+								File.applicationStorageDirectory.resolvePath("raw.data").deleteFile();
+							}catch(e:Error){}
+						}
+						
+						if(File.applicationStorageDirectory.resolvePath("result.data").exists){
+							try{
+								File.applicationStorageDirectory.resolvePath("result.data").deleteFile();
+							}catch(e:Error){}
+						}
+						
+						if(File.applicationStorageDirectory.resolvePath("progress.data").exists){
+							try{
+								File.applicationStorageDirectory.resolvePath("progress.data").deleteFile();
+							}catch(e:Error){}
+						}
+						
+					} 
+					
+				} else if(this.currentState=="LoginState"){
+					if(evt.result.toString().indexOf("00")==-1){
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("Invalid Login", "Either User ID or Password is Invalid");
+					}
+				}
+				
+				
+				//TODO: store json file license.key
+				if(evt.result.toString().indexOf("00")!=-1 && this.currentState=="State1"){
+				
+					trace("hosp_id: " + jsonRead.hosp_id);
+					trace("save/update license.key");
+					//save license key here
+					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(enText);
+					fileStream.writeUTFBytes("\n" + jsonRead.hosp_id);
+					fileStream.close()
+					//end save license key here
+						
+					//create install key
+					/*var fileInstall:File = File.applicationDirectory.resolvePath("install");
+					var fileStreamInstall:FileStream = new FileStream();
+					fileStreamInstall.open(fileInstall, FileMode.WRITE);
+					fileStreamInstall.writeUTFBytes("1");
+					fileStreamInstall.close()*/
+					//end create install key
+						
+					
+					this.currentState = "LoginState";
+					
+					//temp cpmment ... Amol
+//					txtLicense.text = ""; //become user id
+//					
+//					txtPwd.text = "";
+					
+				} else if(evt.result.toString().indexOf("00")!=-1 && this.currentState=="LoginState"){
+				
+					trace("login success...");
+					
+					//{"uid":"1","status":"00","desp":"Success"}
+					
+					// + return mod_id value
+					//TODO: to determine more module & chart to display
+					
+					
+					var jsonRead:Object = null;
+					jsonRead = JSON.parse(evt.result.toString());
+					
+					if(EncryptedLocalStore.isSupported) {
+						var va:ByteArray = new ByteArray();
+						va.writeUTFBytes(evt.result.toString());
+						EncryptedLocalStore.setItem("hospitalDetls", va);
+					}
+					
+					trace(evt.result.toString());	
+					
+					//arrState = new ArrayCollection(jsonRead.RefState);
+					
+					
+					//store constant value
+					Constants.hospName = jsonRead.hospital;
+					
+				
+					
+					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(enUserId + "\n"); //user id 
+					fileStream.writeUTFBytes(enPwd + "\n"); //pwd
+					fileStream.writeUTFBytes(jsonRead.uid + "\n"); //user id from db
+					fileStream.writeUTFBytes(jsonRead.hospital); //hospital name display
+					fileStream.close();
+					
+					
+					
+					
+					
+					
+					
+					//start auto fetch latest data
+					
+					file = File.applicationStorageDirectory.resolvePath("license.key");
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+					trace(s.split("\n")[0]);
+					trace(s.split("\n")[1]);
+					
+					//trace("post doReprot + license Key " + s.split("\n")[0]);
+
+					
+					savingAlert(); //with network!
+					
+					
+//					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
+//						doPostReport(s);
+//					});
+					doPostReport(s);
+//					timer.start();
+					
+					
+					
+					//end auto fetch latest data
+					
+				
+					//img sponser here
+					trace("sponsor image: " + jsonRead.hosp_sponsor);
+					
+					if(isConnected){
+						if(StringUtil.trim(jsonRead.hosp_sponsor) != "")
+							initDownload(jsonRead.hosp_sponsor);
+					} else {
+						
+						trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
+						imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
+					}
+					
+					//end img sponer here
+					
+					
+					
+				}
+
+			
+			}
+			
+			//download image function
+			
+			//download file function 
+			var loadedSize:Number = 0;
+			var theAFileSize:Number= 0;
+			private var fileDownload:File;
+			private var fileDownloadTemp:File;
+			
+			private var stream:URLStream;
+			private var ioError:Boolean = false;
+			
+			private var sponImage:String = "";
+			
+			private function initDownload(strFileName:String):void{
+				
+				this.sponImage = strFileName;
+				fileStream = new FileStream;
+				
+				fileDownload = File.applicationStorageDirectory.resolvePath("asset/" + strFileName);
+				fileDownloadTemp = File.applicationStorageDirectory.resolvePath("asset/" + strFileName + ".tmp");
+				
+				
+				var header0:URLRequestHeader=null;
+				
+				var req:URLRequest = new URLRequest(Constants.url_mapi.replace("mapi","images/") + strFileName + "?rnd="+ String(Math.round(Math.random() * (9999999 - 0) + 0)));
+				
+				req.method = URLRequestMethod.POST;
+				req.contentType = "application/x-www-form-urlencoded";
+				
+				stream = new URLStream();
+				stream.addEventListener(IOErrorEvent.IO_ERROR, onIOError);
+				stream.addEventListener(ProgressEvent.PROGRESS, writeFile);
+				stream.addEventListener(Event.COMPLETE, completeDownloadFile);
+				
+				
+				stream.load(req);
+				
+				fileStream.open(fileDownloadTemp, fileDownload.exists ? FileMode.WRITE:FileMode.WRITE);
+			}
+			
+			private function completeDownloadFile(evt:Event):void {
+				fileStream.close();
+				trace("Download Complete");
+				
+				fileDownloadTemp.copyTo(fileDownload, true);
+				
+				fileDownloadTemp.deleteFile();
+				
+			}
+			
+			private function writeFile(event:ProgressEvent):void {
+				trace("Downloading... " + (((loadedSize+event.bytesLoaded)/event.bytesTotal)*100).toFixed(0)+ "%");
+				
+				// chunk of new data
+				var fileDataChunk:ByteArray = new ByteArray();
+				// read bytes from the internet using URLStream
+				stream.readBytes(fileDataChunk,0,stream.bytesAvailable);
+				// write bytes to the disk using FileStream
+				fileStream.writeBytes(fileDataChunk,0,fileDataChunk.length);
+			}
+			
+			protected function onIOError(e:IOErrorEvent):void
+			{
+				ioError = true;
+				trace(e);
+				//isLoaded = true;
+			}
+			//end download image fucntion
+			
+			
+			
+			private var myTimer:Timer = new Timer(500);
+			
+			private function doPostReport(s:String):void{
+				trace("call doPostReport after 5 seconds");
+				
+				if(this.pb.label.length>20){
+					this.pb.label = "please wait...";
+				} else {
+					this.pb.label += "...";
+				}
+				
+				trace(s.split("\n")[0] + "              ------------- SPLIT VALUE");
+				trace(Constants.getLicenseKey());
+				
+				httpReport.requestTimeout = 120; //120 seconds, 2 minutes
+				httpReport.url = Constants.url_mapi;
+				httpReport.method="POST";
+//				httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
+				httpReport.send({act:"doReport", v:"2.0", key:Constants.getLicenseKey()});
+				
+				if(gProgress==0){
+					gProgress = 10;
+				}
+				this.pb.setProgress(gProgress, 100);
+				this.pb.label = "please wait... " + String(gProgress) + "%";
+				this.pb.invalidateDisplayList();
+				
+				
+				myTimer.addEventListener(TimerEvent.TIMER, timerListener);
+				myTimer.start();
+				
+				
+			}
+			
+			var gProgress:Number = 0;
+			
+			private function timerListener (e:TimerEvent):void{
+				trace("Timer is Triggered");
+				gProgress += 5;
+				if(gProgress>=80){
+					gProgress = 80; //still here
+					
+					if(this.pb.label.length>=24){
+						this.pb.label = "please wait... " + String(gProgress) + "%";
+					} else {
+						this.pb.label += " .";
+						this.pb.invalidateDisplayList();
+					}
+					
+				} else {
+					this.pb.setProgress(gProgress, 100);
+					this.pb.label = "please wait... " + String(gProgress) + "%";
+					trace("gProgress: " + String(gProgress));
+					this.pb.invalidateDisplayList();
+				}
+				
+			}
+			
+			private function fleventAuth(e:FaultEvent):void {
+				trace("fault: " + e.toString());
+				//btnAction.enabled=true;
+				
+				
+				//pbCheck.visible = false;
+				//btnSubmit.visible = true;
+				//txtLicense.visible = true;
+				
+				
+				//Condition: Server down but network available
+				
+				if(this.currentState=="State1"){
+					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+					if(file.exists){
+						trace("found license.key");
+						this.currentState = "LoginState";
+					} else {
+					
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("ERROR", "HTTP Request Error");
+					
+					}
+				} else {
+				
+					var alertNetwork:NetworkDialog = new NetworkDialog();
+					alertNetwork.open(this, true);
+					PopUpManager.centerPopUp(alertNetwork);
+					alertNetwork.doMessage("ERROR", "HTTP Request Error");
+				
+				
+				}
+			}	
+			
+			private function fleventReport(e:FaultEvent):void {
+				trace("fault report: " + e.toString());
+				//btnAction.enabled=true;
+			}	
+			
+			
+			
+			protected function btnSync_clickHandler(event:MouseEvent):void
+			{
+				stageNum=0;
+				if(this.isConnected==false){
+					trace("no connection");
+					
+					var alertNetwork:NetworkDialog = new NetworkDialog();
+					alertNetwork.open(this, true);
+					
+					// Increase the width and height.
+					//alertNetwork.width += 100;
+					//alertNetwork.height += 100;
+					
+					// Center the pop-up in the parent container.
+					PopUpManager.centerPopUp(alertNetwork);
+					
+					alertNetwork.doMessage("Network Error", "Network Connection is Required");
+					
+					return;
+				} else {
+				
+					//data syncing...
+					
+					//start auto fetch latest data
+					
+					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+					trace(s.split("\n")[0]);
+					trace(s.split("\n")[1]);
+					
+					//trace("post doReprot + license Key " + s.split("\n")[0]);
+					
+					savingAlert(); //with network!
+					
+					
+					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
+						doPostReport(s);
+					});
+					doPostReport(s);
+					timer.start();
+					
+					//end auto fetch latest data
+					
+				
+				}
+			}
+			
+			
+			protected function btnSetting_clickHandler(event:MouseEvent):void
+			{
+				var dlgSetting:SettingsDialog = new SettingsDialog();
+				dlgSetting.open(this, true);
+				PopUpManager.centerPopUp(dlgSetting);
+				
+			}
+			
+			private var deTimer:Timer = new Timer(100);
+			
+			private var stageNum:Number = 0;
+			
+			//sync in the offline mode ..... AMOL
+			public function doStart() : void {
+				//this.addEventListener( Event.ENTER_FRAME, doLoadXMLData );
+				
+				trace("run doStart()*****************" + String(stageNum));
+				
+				if(stageNum==0){
+					trace("force set 80%");
+					this.pb.setProgress(80, 100);
+					this.pb.invalidateDisplayList();
+					this.pb.label = "please wait... 80%";
+				} else if(stageNum==1){
+					this.pb.setProgress(90, 100);
+					this.pb.invalidateDisplayList();
+					this.pb.label = "please wait... 85% decrypting data";
+				} else if(stageNum==2){
+					this.pb.setProgress(90, 100);
+					this.pb.invalidateDisplayList();
+					this.pb.label = "please wait... 90% decrypting data";
+				} else if(stageNum==3){
+					this.pb.setProgress(95, 100);
+					this.pb.invalidateDisplayList();
+					this.pb.label = "please wait... 95% analysing data";
+				} else if(stageNum==4){
+				
+					this.pb.label="Complete";
+					this.pb.setProgress(100, 100);
+					this.pb.invalidateDisplayList();
+					
+				}
+				
+				trace("deTimer addEventListener");
+				deTimer.addEventListener(TimerEvent.TIMER, timerListener);
+				function timerListener (e:TimerEvent):void{
+					trace("Timer is Triggered x");
+					deTimer.stop();
+					deTimer.removeEventListener(TimerEvent.TIMER, timerListener);
+					trace("run doLoadXMLData");
+					doLoadXMLData();
+
+				}
+				trace("deTimer.start");
+				deTimer.start();
+				
+			}
+			
+			var kdata:ByteArray = null; //key data bytearray
+			private var data:ByteArray = null;
+			var raw:String = ""; //raw data
+			var jsonRaw:Object = null;
+			
+			//for decryption
+			var pad:IPad = null;
+			var mode:ICipher = null;
+			
+			private function doLoadXMLData():void{
+				
+				var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+				
+				if(stageNum==0){
+					trace("do load xml data file storage");
+					
+					//this.pb.label = "decrypting data in memory...please wait...";
+					//trace("dec ing...");
+					
+					//Step1: load secret key first
+					var sKey:String = ""; //test: 18fd975d3f27ff11
+					
+					if(file.exists){
+						trace("license.key is exists");
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							sKey = stream.readUTFBytes(stream.bytesAvailable).toString().substr(0, 16); //legnth 16 only
+							stream.close();
+						} catch(e:Error){
+							trace(e.toString());
+						}
+				
+					}
+					
+					
+				//for v1.0.2 - more analysis data
+				var fileRaw:File = File.applicationStorageDirectory.resolvePath("raw.data");
+				
+				
+				if(fileRaw.exists){
+					trace("raw.data is exists");
+					kdata = Hex.toArray(Hex.fromString(sKey)); //plain text
+					//trace(Base64.encodeByteArray(kdata));
+					
+					//try{
+						var stream:FileStream = new FileStream()
+						stream.open(fileRaw, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
+						stream.close();
+						
+						
+						//start decrypt here
+						
+						data = Base64.decodeToByteArray(raw);
+						
+						//trace(data);
+						trace("about to decrypt");
+						
+						stageNum=1;
+						doStart();
+						return;
+					}
+				}		
+					if(stageNum==1){
+						trace("stageNum=1 mode.decrypt data");
+						
+						var pad:IPad = new PKCS5;
+						var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+						//mode = Crypto.getCipher("aes-cbc", kdata, pad);
+						
+						trace("pad: " + pad);
+						trace("kdata: " + kdata);
+						trace("mode: " + mode);
+						
+						if (mode is IVMode) {
+							var ivmode:IVMode = mode as IVMode;
+							// Just remember this is just a cast. The IV is still being set on the mode variable.
+							//MThmZDk3NWQzZjI3ZmYxMQ== //for licne key 16 char
+							
+							//WORKING!
+							//ivmode.IV = Base64.decodeToByteArray("MThmZDk3NWQzZjI3ZmYxMQ==");
+							
+							ivmode.IV = Base64.decodeToByteArray(Base64.encodeByteArray(kdata));
+							
+						}
+						pad.setBlockSize(mode.getBlockSize());
+					
+						//trace(this.data);
+						mode.decrypt(this.data);
+						
+						trace("done decrypt...json parsing");
+						stageNum=2;
+						doStart();
+						return;
+					}
+					
+					
+					if(stageNum==2){
+						raw = Hex.toString(Hex.fromArray(data));
+						//end decryypt
+						
+						
+						//start parse json here...
+						trace("json: " + raw);
+						jsonRaw = JSON.parse(raw);
+						this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+						this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+						trace("output :",this.who_safety);
+						//trace("length: " + this.who_safety.length.toString());
+						//trace("length: " + this.who_safety_department.length.toString());
+						
+						
+						//this.pb.label = "analysing data...";
+						
+						
+						doAnalyticByAction("", "");
+
+					//}catch(error:Error){
+					//	trace("load raw.data" + error.toString());
+					//}
+				//} //else {
+					//trace("file raw.data not exits");
+				//}
+				
+				stageNum=3;
+				doStart();
+				return;
+				}
+				
+				//end for v1.0.2 - more analysis data
+				
+				if(stageNum==3){
+				
+				var fileData:File = File.applicationStorageDirectory.resolvePath("result.data");
+				var enc:String = ""; //encrypted result data
+				if(fileData.exists && file.exists){
+					
+					trace("result.data is exists");
+					
+					//semmel result data - encrpyted
+					
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(fileData, FileMode.READ);
+						enc = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
+						stream.close();
+					} catch(e:Error){
+						trace(e.toString());
+					}
+					
+					var data:ByteArray = Base64.decodeToByteArray(enc);
+					
+					var pad:IPad = new PKCS5;
+					var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+					if (mode is IVMode) {
+						var ivmode:IVMode = mode as IVMode;
+						// Just remember this is just a cast. The IV is still being set on the mode variable.
+						//MThmZDk3NWQzZjI3ZmYxMQ== //for licne key 16 char
+						
+						//WORKING!
+						//ivmode.IV = Base64.decodeToByteArray("MThmZDk3NWQzZjI3ZmYxMQ==");
+						
+						ivmode.IV = Base64.decodeToByteArray(Base64.encodeByteArray(kdata));
+						
+					}
+					pad.setBlockSize(mode.getBlockSize());
+					trace("about to decrypt2");
+					//dispatchEvent(new TimerEvent("timerListener"));
+					
+					mode.decrypt(data);
+					
+					this.fetchXMLData = Hex.toString(Hex.fromArray(data));
+					//trace( "Decrypt AES: " +  this.fetchXMLData);
+					/*trace( "Decrypt AES: " +  fetchXMLData);
+					
+					
+					//later comment output .xml result file
+					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(fetchXMLData); //dec xml result data
+					fileStream.close()*/
+					//end later commetn output .xml result file
+					
+					
+					
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					
+					//viewstack1.addChild(homeScreen);
+					
+					//btnYM.visible = false;
+					
+					
+					this.maximize();
+					
+					this.lblBg.text = "SEMMEL";
+					
+					
+					this.currentState = "ModulesScreen";
+					//this.currentState = "MainMenu";
+					saving.close();
+					//return;
+					
+					//*************** REMOVE THE FETCH XML FUNCTION HERE
+					//*************** MOVE INTO DO LOAD HAND HYGINE MODULE FUNCTION
+					
+				}
+				stageNum=4;
+				doStart();
+				return;
+				}
+			
+				if(stageNum==4){
+				
+					saving.close();
+					//data sync is up to date message
+					var alertNetwork:NetworkDialog = new NetworkDialog();
+					alertNetwork.open(this, true);
+					PopUpManager.centerPopUp(alertNetwork);
+					alertNetwork.doMessage("Data Sync", "Data sync completed.");
+					//end data sync is up to date message
+					
+					return;
+				}
+				
+				
+			}
+			
+			
+			private function parseDateTime( str : String ) : Date {
+				
+				//trace("parseDateTime: " + str);
+				
+				if(str==""){
+					return null;
+				}
+				
+				var matches : Array = str.match(/(\d\d\d\d)-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/);
+				
+				var d : Date = new Date(int(matches[1]), int(matches[2]) - 1, int(matches[3]), int(matches[4]), int(matches[5]), int(matches[6]));
+				//requirement by user, force to Jumaat / Friday 
+				//d.setUTCFullYear(int(matches[1]), int(matches[2]) - 1, int(matches[3]));
+				return d;	
+			}
+			
+			//group by profession trend filter by department + date range
+			public function doAnalyticTrendByProfession(dept:String, startDate:Date, endDate:Date, privateYM:String=""):ArrayCollection{
+				
+				var obj:Object;
+				var objDate:Date;
+				
+				var hmProf:HashMap = new HashMap();
+				var acListProf:ArrayCollection = new ArrayCollection();
+				var prof:Object = new Object();
+				
+				var ac:ArrayCollection = new ArrayCollection();
+				
+				//Step1: filter the survey id first!
+				
+				var acSurveyID:ArrayCollection = new ArrayCollection();
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					objDate = parseDate(obj.end_date.toString().substr(0, 10));
+					//by date range first
+					if(startDate<=objDate && objDate<=endDate && obj.dept==dept){
+						//if(!acSurveyID.contains(obj.survey_id)){
+							//acSurveyID.addItem(obj.survey_id);
+						//}
+						if(!hmProf.hasKey(String(objDate.fullYear)+String(objDate.month))){
+							prof = new Object();
+							prof.date = objDate;
+							prof.cat= sdf.format(objDate); // Jan, 2015
+							
+							
+							
+							if(obj.prof1!=null){
+								prof["opp_" + obj.prof1] = doCalculateOppSurveyId(obj.prof1, obj.survey_id);
+								prof["cnt_" + obj.prof1] = doCalculateComplianceBySurveyIDByDepartment(obj.prof1, obj.survey_id);
+								
+								/*trace("cat: " + prof.cat);
+								trace("surveyId: " + obj.survey_id);
+								trace("prof: " + obj.prof1);
+								trace("opp: " + prof["opp_" + obj.prof1]);
+								trace("cnt: " + prof["cnt_" + obj.prof1]);*/
+								
+								if(!acListProf.contains(obj.prof1)){
+									acListProf.addItem(obj.prof1);
+								}
+								
+							}
+							
+							if(obj.prof2!=null){
+								prof["opp_" + obj.prof2] = doCalculateOppSurveyId(obj.prof2, obj.survey_id);
+								prof["cnt_" + obj.prof2] = doCalculateComplianceBySurveyIDByDepartment(obj.prof2, obj.survey_id);
+								
+								if(!acListProf.contains(obj.prof2)){
+									acListProf.addItem(obj.prof2);
+								}
+								
+							}  
+							
+							if(obj.prof3!=null){
+								prof["opp_" + obj.prof3] = doCalculateOppSurveyId(obj.prof3, obj.survey_id);
+								prof["cnt_" + obj.prof3] = doCalculateComplianceBySurveyIDByDepartment(obj.prof3, obj.survey_id);
+								
+								if(!acListProf.contains(obj.prof3)){
+									acListProf.addItem(obj.prof3);
+								}
+								
+							} 
+							if(obj.prof4!=null){
+								prof["opp_" + obj.prof4] = doCalculateOppSurveyId(obj.prof4, obj.survey_id);
+								prof["cnt_" + obj.prof4] = doCalculateComplianceBySurveyIDByDepartment(obj.prof4, obj.survey_id);
+								
+								if(!acListProf.contains(obj.prof4)){
+									acListProf.addItem(obj.prof4);
+								}
+								
+							}
+							hmProf.set(String(objDate.fullYear)+String(objDate.month), prof);
+							ac.addItem(prof);
+						} else {
+						
+
+							prof = hmProf.get(String(objDate.fullYear)+String(objDate.month));
+							if(obj.prof1!=null){
+								
+								//trace("exists hmProf: " + obj.prof1);
+								if(prof["opp_"+obj.prof1]!=null){
+									prof["opp_"+obj.prof1] += doCalculateOppSurveyId(obj.prof1, obj.survey_id);
+									prof["cnt_"+obj.prof1] += doCalculateComplianceBySurveyIDByDepartment(obj.prof1, obj.survey_id);
+								} else {
+									prof["opp_"+obj.prof1] = doCalculateOppSurveyId(obj.prof1, obj.survey_id);
+									prof["cnt_"+obj.prof1] = doCalculateComplianceBySurveyIDByDepartment(obj.prof1, obj.survey_id);
+								}
+								//trace("opp_"+obj.prof1 + ": " + prof["cnt_"+obj.prof1]);
+								
+								if(!acListProf.contains(obj.prof1)){
+									acListProf.addItem(obj.prof1);
+								}
+								
+							} 
+							
+							if(obj.prof2!=null){
+								
+								if(prof["opp_"+obj.prof2]!=null){
+									prof["opp_"+obj.prof2] += doCalculateOppSurveyId(obj.prof2, obj.survey_id);
+									prof["cnt_"+obj.prof2] += doCalculateComplianceBySurveyIDByDepartment(obj.prof2, obj.survey_id);
+								} else {
+									prof["opp_"+obj.prof2] = doCalculateOppSurveyId(obj.prof2, obj.survey_id);
+									prof["cnt_"+obj.prof2] = doCalculateComplianceBySurveyIDByDepartment(obj.prof2, obj.survey_id);
+								}
+								
+								if(!acListProf.contains(obj.prof2)){
+									acListProf.addItem(obj.prof2);
+								}
+								
+							} 
+							
+							if(obj.prof3!=null){
+								
+								if(prof["opp_"+obj.prof3]!=null){
+									prof["opp_"+obj.prof3] += doCalculateOppSurveyId(obj.prof3, obj.survey_id);
+									prof["cnt_"+obj.prof3] += doCalculateComplianceBySurveyIDByDepartment(obj.prof3, obj.survey_id);
+								} else {
+									prof["opp_"+obj.prof3] = doCalculateOppSurveyId(obj.prof3, obj.survey_id);
+									prof["cnt_"+obj.prof3] = doCalculateComplianceBySurveyIDByDepartment(obj.prof3, obj.survey_id);
+								}
+								
+								if(!acListProf.contains(obj.prof3)){
+									acListProf.addItem(obj.prof3);
+								}
+								
+							} 
+							
+							if(obj.prof4!=null){
+								
+								if(prof["opp_"+obj.prof4]!=null){
+									prof["opp_"+obj.prof4] += doCalculateOppSurveyId(obj.prof4, obj.survey_id);
+									prof["cnt_"+obj.prof4] += doCalculateComplianceBySurveyIDByDepartment(obj.prof4, obj.survey_id);
+								} else {
+									prof["opp_"+obj.prof4] = doCalculateOppSurveyId(obj.prof4, obj.survey_id);
+									prof["cnt_"+obj.prof4] = doCalculateComplianceBySurveyIDByDepartment(obj.prof4, obj.survey_id);
+								}
+								
+								if(!acListProf.contains(obj.prof4)){
+									acListProf.addItem(obj.prof4);
+								}
+								
+							}
+							
+						}
+					}
+				}
+				
+				
+				//cat:Jan,2015, opp_Consuleant:5, cnt_Consultat:3, consultnat: (3/5)*100
+				var strProf:String="";
+				
+				var selectedProf:Object = new Object();
+				
+				
+				
+				for each(var profTrend:Object in ac){
+					for(var i:Number=0;i<acListProf.length;i++){
+						strProf = acListProf.getItemAt(i).toString();
+
+						if(profTrend["opp_"+strProf]!=null){
+							profTrend[strProf] = percentageFormat((profTrend["cnt_"+strProf]/profTrend["opp_"+strProf])*100);
+							trace(strProf + " => " + profTrend.cat + ": " + profTrend[strProf]);
+						}
+					}
+				}
+				
+				
+				//display profession list
+				acDynamicProfession.removeAll(); //reset
+				for(var i:Number=0;i<acListProf.length;i++){
+					if(!acListProf.getItemAt(i).toString()==""){
+						selectedProf = new Object();
+						selectedProf.label = acListProf.getItemAt(i).toString();
+						selectedProf.selected = false;
+						acDynamicProfession.addItem(selectedProf);
+						trace("final prof list: " + selectedProf.label);
+					}
+				}
+				
+				
+				
+				/*for each(var profTrend:Object in ac){
+					for(var i:Number=0;i<acListProf.length;i++){
+						strProf = acListProf.getItemAt(i).toString();
+						//trace("cat: " + profTrend.cat);
+						//trace("pect." + strProf + ": " + profTrend[strProf]);
+					}
+				}*/
+				
+				//for each(var prof:Object in acAnalytic){
+					//prof.pect = percentageFormat((prof.cnt/overAllCnt)*100);
+					//trace(prof.cat + " = " + prof.pect);
+				//}
+				
+				return ac;
+			}
+			
+			//end group by profession trend filter by department + date range
+			
+			//group by department vs. compliance - by dept trend
+			public function doAnalyticTrendByDepartment(startDate:Date, endDate:Date):ArrayCollection{
+				
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				var hmDept:HashMap = new HashMap();
+				var dept:Object = new Object();
+				var obj:Object;
+				var objDate:Date;
+				
+				
+				
+				//for department break down
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					objDate = parseDate(obj.end_date.toString().substr(0, 10)); 
+					if(startDate<=objDate && objDate<=endDate){
+						if(!hmDept.hasKey(String(objDate.fullYear)+String(objDate.month)+obj.dept)){
+							dept = new Object();
+							dept.dept = obj.dept;
+							dept.date = objDate;
+							dept.cat = sdf.format(objDate);
+							trace("for dept: " + obj.dept + " cat: " + dept.cat);
+							dept.cnt = doCalculateComplianceBySurveyID("", obj.survey_id); //All Indication + complaince only action
+							dept.opp = doCalculateOpportunityBySurveyID(obj.survey_id); //all indication + all action
+							if(dept.cnt!=0){
+								hmDept.set(String(objDate.fullYear)+String(objDate.month)+obj.dept, dept);
+								acAnalytic.addItem(dept);
+							}
+						} else {
+							dept = hmDept.get(String(objDate.fullYear)+String(objDate.month)+obj.dept);
+							dept.cnt += doCalculateComplianceBySurveyID("", obj.survey_id);
+							dept.opp += doCalculateOpportunityBySurveyID(obj.survey_id);
+						}
+					}
+				}
+				
+				
+				trace("acAnalytic: " + String(acAnalytic.length));
+				
+				//for overall calculation
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					
+					objDate = parseDate(obj.end_date.toString().substr(0, 10)); 
+					if(startDate<=objDate && objDate<=endDate){
+						if(!hm.hasKey(String(objDate.fullYear)+String(objDate.month))){
+							dept = new Object();
+							dept.dept = "Overall"; //for hospital
+							dept.date = objDate;
+							dept.cat = sdf.format(objDate);
+							dept.cnt = doCalculateComplianceBySurveyID("", obj.survey_id, privateYM); //All Indication + complaince only action
+							dept.opp = doCalculateOpportunityBySurveyID(obj.survey_id); //all indication + all action
+							if(dept.cnt!=0){
+								hm.set(String(objDate.fullYear)+String(objDate.month), dept);
+								acAnalytic.addItem(dept);
+							}
+						} else {
+							dept = hm.get(String(objDate.fullYear)+String(objDate.month));
+							dept.cnt += doCalculateComplianceBySurveyID("", obj.survey_id, privateYM);
+							dept.opp += doCalculateOpportunityBySurveyID(obj.survey_id);
+						}
+					}
+					
+				}
+				
+				trace("acAnalytic: " + String(acAnalytic.length));
+				
+				//trendDept.cat = May-2015
+				//trendDept.dept = M&E
+				//trendDept.pect = 80
+				
+				var mySort:Sort = new Sort();
+				mySort.fields = [new SortField('date', false)];
+				acAnalytic.sort = mySort;
+				acAnalytic.refresh();
+				
+				for each(var dept:Object in acAnalytic){
+					//dept.cat is Date!
+					//trace("SortedDate: " + dept.date + " = " + dept.cnt + " / " + dept.oppbase);
+					//trace("obj dept: " + dept);
+					dept.pect = percentageFormat((dept.cnt/dept.opp)*100);
+				}
+				
+				return acAnalytic;
+			}
+			//end group by dept trend
+			
+			private function parseDate( str : String ) : Date {
+				trace("str input: " + str);
+				//var matches : Array = str.match(/(\d\d\d\d)-(\d\d)-(\d\d)/);
+				var matches : Array = str.match(/(\d\d\d\d)-(\d\d)/);
+				var d : Date = new Date();
+			
+				//d.setUTCFullYear(int(matches[1]), int(matches[2]) - 1, int(matches[3]));
+				d.setUTCFullYear(int(matches[1]), int(matches[2]) - 1, 1);
+				
+				return d;
+			}
+			
+			
+			//by moment
+			/*public function doAnalyticByDepartmentXXX(domain:String, item:String):ArrayCollection{
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var dept:Object = new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				trace("item: " + item);
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(selectedYM)!=-1){
+						
+						//if the survey match with selected profession
+						if(obj.prof1==item 
+							|| obj.prof2==item
+							|| obj.prof3==item
+							|| obj.prof4==item){
+							
+							if(!hm.hasKey(obj.dept)){
+								dept = new Object();
+								dept.cat = obj.dept;
+								dept.cnt = doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+								if(dept.cnt!=0){
+									hm.set(obj.dept, dept);
+									acAnalytic.addItem(dept);
+									overAllCnt += dept.cnt;
+								}
+							} else {
+								dept = hm.get(obj.dept);
+								dept.cnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+								overAllCnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+							}
+							
+						}
+						
+						
+					}
+				}
+				
+				for each(var dept:Object in acAnalytic){
+					
+					trace(dept.cat + " = " + dept.cnt + " / " + overAllCnt);
+					
+					dept.pect = percentageFormat((dept.cnt/overAllCnt)*100);
+					
+				}
+				return acAnalytic;
+			}*/
+			//end by moment
+
+			
+			public function doAnalyticPRByMoment(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				
+				//trace("analytic pr by moment... " + domain + ", " + item + ", " + privateYM);
+				
+				var hm:HashMap = new HashMap();
+				var moment:Object = new Object();
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				
+				// [action, objects]
+				moment.cat = "Before patient";
+				moment.cnt = 0;
+				hm.set(moment.cat, moment);
+				acAnalytic.addItem(moment);
+				
+				moment = new Object();
+				moment.cat = "Before aseptic";
+				moment.cnt = 0;
+				hm.set(moment.cat, moment);
+				acAnalytic.addItem(moment);
+				
+				moment = new Object();
+				moment.cat = "After body fluid";
+				moment.cnt = 0;
+				hm.set(moment.cat, moment);
+				acAnalytic.addItem(moment);
+				
+				moment = new Object();
+				moment.cat = "After patient";
+				moment.cnt = 0;
+				hm.set(moment.cat, moment);
+				acAnalytic.addItem(moment);
+				
+				moment = new Object();
+				moment.cat = "After patient surrounding";
+				moment.cnt = 0;
+				hm.set(moment.cat, moment);
+				acAnalytic.addItem(moment);
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				//trace("ym: " + queryYM);
+				
+				var obj:Object;
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						if(obj.reason==item){
+							//trace("match " + obj.reason + " vs " + item);
+							if(obj.indi=="1"){
+								moment = hm.get("Before patient");
+								moment.cnt += 1;
+							} else if(obj.indi=="2"){
+								moment = hm.get("Before aseptic");
+								moment.cnt += 1;
+							} else if(obj.indi=="3"){
+								moment = hm.get("After body fluid");
+								moment.cnt += 1; 
+							} else if(obj.indi=="4"){
+								moment = hm.get("After patient");
+								moment.cnt += 1;
+							} else if(obj.indi=="5"){
+								moment = hm.get("After patient surrounding");
+								moment.cnt += 1;
+							}
+						}
+					}
+				}
+				
+				return acAnalytic;
+			}
+			
+			public function doAnalyticPRByAction(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				
+				//trace("doanl by act: " + item);
+				
+				var hm:HashMap = new HashMap();
+				var action:Object = new Object();
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				
+				// [action, objects]
+				action.cat = "Hand Wash";
+				action.cnt = 0;
+				hm.set(action.cat, action);
+				acAnalytic.addItem(action);
+				
+				action = new Object();
+				action.cat = "Hand Rub";
+				action.cnt = 0;
+				hm.set(action.cat, action);
+				acAnalytic.addItem(action);
+				
+				action = new Object();
+				action.cat = "Missed";
+				action.cnt = 0;
+				hm.set(action.cat, action);
+				acAnalytic.addItem(action);
+				
+				action = new Object();
+				action.cat = "Missed with Glove";
+				action.cnt = 0;
+				hm.set(action.cat, action);
+				acAnalytic.addItem(action);
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				//trace("ym: " + queryYM);
+				
+				var obj:Object;
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						if(obj.indi==2 && obj.procedure==item){
+							if(obj.hw=="1"){
+								action = hm.get("Hand Wash");
+								action.cnt += 1;
+							} else if(obj.hr=="1"){
+								action = hm.get("Hand Rub");
+								action.cnt += 1;
+							} else if(obj.missed=="1" && obj.glove=="1"){
+								action = hm.get("Missed with Glove");
+								action.cnt += 1; 
+							} else if(obj.missed=="1"){
+								action = hm.get("Missed");
+								action.cnt += 1;
+							}
+						}
+					}
+				}
+				
+				return acAnalytic;
+			}
+			
+			public function doAnalyticPRByProfession(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				var hm:HashMap = new HashMap();
+				var prof:Object = new Object();
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				
+				for each (var obj : Object in acProfession){
+					prof = new Object();
+					prof.cat = obj.label;
+					prof.cnt = 0;
+					
+					// [profession name, objects]
+					hm.set(obj.label.toString(), prof);
+					acAnalytic.addItem(prof);
+				}
+				
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				//trace("ym: " + queryYM);
+				//ym: 20156
+				//item intravenous (iv) lines
+				
+				
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				//trace("item: " + item);
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						
+						//trace("match: " + obj.survey_id);
+						
+						//trace("obj.prof: " + obj.prof);
+						prof = hm.get(obj.prof);
+						if(prof!=null){
+							//trace("prof obj: " + prof); //why return null
+							//trace("prof.cat " + prof.cat); //dept.cat is department
+							
+							if(domain=="procedure"){
+								if(obj.procedure.toLowerCase()==item.toLowerCase()){
+									prof.cnt += 1;
+								}
+							} else if(domain=="reason"){
+								if(obj.reason.toLowerCase()==item.toLowerCase()){
+									prof.cnt += 1;
+								}
+							}
+							
+						}
+					}
+				}
+				
+				return acAnalytic;
+			}
+
+			public function doAnalyticPRByDepartment(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				
+				var hm:HashMap = new HashMap();
+				var dept:Object = new Object();
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				
+				//xmlDepartment = new XMLListCollection(xml.depts.dept);//.month;
+				for each (var obj : Object in acDepartment){
+					//trace("department: " + obj.label);
+					
+					dept = new Object();
+					dept.cat = obj.label;
+					dept.cnt = 0;
+					
+					// [department name, objects]
+					hm.set(obj.label.toString(), dept);
+					acAnalytic.addItem(dept);
+
+				}
+				
+
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				//trace("ym: " + queryYM);
+				//ym: 20156
+				//item intravenous (iv) lines
+				
+				
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				//trace("item: " + item);
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						
+						//trace("match: " + obj.survey_id);
+						
+						//if the survey match with selected profession
+						//item is = intravenous (IV) lines
+						
+						//based on all dept list down all which support all department!
+						//trace("obj.dept: " + obj.dept);
+						dept = hm.get(obj.dept);
+						if(dept!=null){
+							//trace("dept obj: " + dept); //why return null
+							//trace("dept.cat " + dept.cat); //dept.cat is department
+							
+							if(domain=="procedure"){
+								dept.cnt += doCountProcedure(item, obj.survey_id);
+							} else if(domain=="reason"){
+								dept.cnt += doCountReason(item, obj.survey_id);
+							}
+						}
+					}
+				}
+				return acAnalytic;
+			}
+			
+			public function doAnalyticByDepartment2(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var dept:Object = new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+
+				trace("item: " + item);
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					
+					
+					
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						
+						//if the survey match with selected profession
+						if(obj.prof1==item 
+							|| obj.prof2==item
+							|| obj.prof3==item
+							|| obj.prof4==item){
+					
+							trace("survey_id: " + obj.survey_id);
+							
+							if(!hm.hasKey(obj.dept)){
+								dept = new Object();
+								dept.cat = obj.dept;
+								dept.cnt = doCalculateComplianceBySurveyIDByDepartment(item, obj.survey_id);
+								
+								dept.opp = doCalculateOppSurveyId(item, obj.survey_id);
+								trace(obj.dept + " survey_id: " + obj.survey_id + " " + item + " opp: " + dept.opp + " cnt: " + dept.cnt);
+								
+								if(dept.opp!=0){ //bug fix: 2015-09-11 - for the X By Ward/Facility - its opp count is not display!
+									hm.set(obj.dept, dept);
+									acAnalytic.addItem(dept);
+									//overAllCnt += dept.cnt;
+								}
+							} else {
+								dept = hm.get(obj.dept);
+								dept.cnt += doCalculateComplianceBySurveyIDByDepartment(item, obj.survey_id);
+								
+								//overAllCnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+								dept.opp += doCalculateOppSurveyId(item, obj.survey_id);
+								trace(obj.dept +  " survey_id: " + obj.survey_id + " " + item + " opp: " + dept.opp + " cnt: " + dept.cnt);
+							}
+							
+						}
+						
+						
+					}
+				}
+				
+				for each(var dept:Object in acAnalytic){
+					
+					//trace(dept.cat + " = " + dept.cnt + " / " + overAllCnt);
+					//trace(dept.cat + " = " + dept.cnt + " / " + dept.allCnt);
+					
+					//dept.pect = percentageFormat((dept.cnt/overAllCnt)*100);
+					dept.pect = percentageFormat((dept.cnt/dept.opp)*100);
+					
+				}
+				return acAnalytic;
+			}
+			
+			public function doAnalyticByDepartment(indi:String, privateYM:String=""):ArrayCollection{
+				
+				trace("doAnalyticByDepartment indi: " + indi);
+				var queryYM:String = "";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				trace("queryYM: " + queryYM);
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var dept:Object = new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				//determine got how many prof?!
+				for(var i:Number=0;i<this.who_safety_department.length;i++){
+					obj = this.who_safety_department.getItemAt(i);
+					trace("obj.end_date: " + obj.end_date.toString() + " comp: " + obj.end_date.toString().replace("-0","").replace("-","") + " vs " + queryYM);
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+						//trace("match");
+						if(!hm.hasKey(obj.dept)){
+							dept = new Object();
+							dept.cat = obj.dept;
+							dept.cnt = doCalculateComplianceBySurveyID(indi, obj.survey_id, queryYM);
+							dept.opp = doCalculateOppSurveyId_Moment(indi, obj.survey_id);
+							if(dept.opp!=0){
+								hm.set(obj.dept, dept);
+								acAnalytic.addItem(dept);
+								//overAllCnt += dept.cnt;
+							}
+							
+						} else {
+							dept = hm.get(obj.dept);
+							dept.cnt += doCalculateComplianceBySurveyID(indi, obj.survey_id, queryYM);
+							
+							//got bug
+							//dept.opp += doCalculateOpportunityBySurveyID(obj.survey_id);
+							
+							dept.opp +=  doCalculateOppSurveyId_Moment(indi, obj.survey_id);
+						}
+					}
+				}
+				
+				for each(var dept:Object in acAnalytic){
+					
+					//trace(dept.cat + " = " + dept.cnt + " / " + overAllCnt);
+					
+					//dept.pect = percentageFormat((dept.cnt/overAllCnt)*100);
+					dept.pect = percentageFormat((dept.cnt/dept.opp)*100);
+					
+				}
+				
+				
+				//doAnalyticTrendByDepartment(parseDate("2014-09-01"), parseDate("2014-12-31"));
+				/*SortedDate: 8 = 194 / 356
+				SortedDate: 9 = 118 / 215
+				SortedDate: 10 = 97 / 182
+				SortedDate: 11 = 73 / 140*/
+				
+				//doAnalyticTrendByDepartment(parseDate("2015-01-01"), parseDate("2015-03-31"));
+				//SortedDate: 0 = 90 / 164
+				///SortedDate: 1 = 92 / 185
+				//SortedDate: 2 = 124 / 246
+				
+				return acAnalytic;
+			}
+			
+			
+			public function doAnalyticByReason(indi:String, privateYM:String=""):ArrayCollection{
+				
+				var queryYM:String = "";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var r:Object = new Object();
+				var obj:Object;
+				
+				//trace("START OF ACTUAL FUNCTION: analytic by reason indi: " + indi);
+				
+				//trace("param: " + indi + ", queryYM " + queryYM + ", privateYM: " + privateYM);
+				
+				//determine got how many Reason capture
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					//Important: have to using queryYM to compare!
+					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1
+						&& obj.indi==indi 
+						&& obj.reason!="" && obj.reason!=undefined){
+						r = hm.get(obj.reason);
+						//trace("found reason: " + obj.reason);
+						if(r!=null){
+							r.cnt += 1;
+							//trace("reason " + r.cat + ", " + r.cnt);
+						} else {
+							r = new Object();
+							r.cat = obj.reason;
+							r.cnt = 1;
+							hm.set(r.cat, r);
+							acAnalytic.addItem(r);
+							//trace("reason new added " + r.cat);
+						}
+					}
+				}
+				return acAnalytic;
+			}
+			
+			
+			//Support for Domain of Prof and Ward/Facility
+			public function doAnalyticByDomainReason(domain:String, item:String, privateYM:String=""):ArrayCollection{
+				
+				//Note: item is either for prof or ward/facility
+				
+				trace("analytics by reason, domain " + domain + " item: " + item);
+				
+				var queryYM:String = "";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var r:Object = new Object();
+				var obj:Object;
+				
+				var objCompare:Object;
+				
+				trace("Domain: " + domain);
+				
+				if(domain=="department"){
+				
+					
+					//trace(this.who_safety_department);
+					
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1
+							&& obj.dept==item){
+	
+							trace("obj.dept: " + item + " obj.survey_id: " + obj.survey_id);
+							
+							//determine got how many Reason capture
+							for(var j:Number=0;j<this.who_safety.length;j++){
+								objCompare = this.who_safety.getItemAt(j);
+								if(objCompare.survey_id==obj.survey_id 
+									&& objCompare.reason!="" && objCompare.reason!=undefined){
+									
+									trace("detect: " + obj.survey_id);
+									trace("reason: " + objCompare.reason);
+									
+									r = hm.get(objCompare.reason);
+									if(r!=null){
+										r.cnt += 1;
+									} else {
+										r = new Object();
+										r.cat = objCompare.reason;
+										r.cnt = 1;
+										hm.set(r.cat, r);
+										acAnalytic.addItem(r);
+									}
+								}
+							}
+						}
+					}
+					
+				} else {
+					//for profession domain!
+					//determine got how many Reason capture
+					for(var i:Number=0;i<this.who_safety.length;i++){
+						obj = this.who_safety.getItemAt(i);
+						//important: have to using queryYM
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1
+							&& obj.prof==item 
+							&& obj.reason!="" && obj.reason!=undefined){
+							r = hm.get(obj.reason);
+							//trace("found reason: " + obj.reason);
+							if(r!=null){
+								r.cnt += 1;
+								//trace("reason " + r.cat + ", " + r.cnt);
+							} else {
+								r = new Object();
+								r.cat = obj.reason;
+								r.cnt = 1;
+								hm.set(r.cat, r);
+								acAnalytic.addItem(r);
+								//trace("reason new added " + r.cat);
+							}
+						}
+					}
+				}
+				
+				return acAnalytic;
+			}
+			
+			
+			private function doCountProcedure(procedure:String, survey_id:String):Number{
+				var cnt:Number = 0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					
+					//trace("procedure: " + obj.procedure);
+					
+					if(obj.survey_id==survey_id && obj.procedure.toLowerCase()==procedure.toLowerCase()){
+						cnt++;
+					}
+				}
+				return cnt;
+			}
+			
+			private function doCountReason(reason:String, survey_id:String):Number{
+				var cnt:Number = 0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					
+					//trace("reason: " + obj.reason);
+					
+					if(obj.survey_id==survey_id && obj.reason.toLowerCase()==reason.toLowerCase()){
+						cnt++;
+					}
+				}
+				return cnt;
+			}
+			
+			private function doCalculateComplianceBySurveyIDByDepartment(profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id && obj.prof==profession){
+						if(obj.hr=="1" || obj.hw=="1"){
+							cnt++;
+						}
+					}
+				}
+				return cnt;
+			}
+			
+			private function doCalculateComplianceBySurveyIDByMoment(moment:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id
+						&& obj.indi == moment){
+						if(obj.hr=="1" || obj.hw=="1"){
+							cnt++;
+						}
+					}
+				}
+				
+				return cnt;
+			}
+			
+			
+			private function doCalculateComplianceBySurveyIDByAction(action:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id){
+						if(action=="1" && obj.hr=="1"){
+							cnt++;
+						} else if(action=="2" && obj.hw=="1"){
+							cnt++;
+						} else if(action=="3" && obj.missed=="1" && obj.glove=="0"){
+							cnt++;
+						} else if(action=="4" && obj.glove=="1" && obj.missed=="1"){
+							cnt++;
+						}
+					}
+				}
+				
+				return cnt;
+			}
+			
+			
+			private function doCalculateComplianceBySurveyIDByMomentProfession(moment:String, profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id
+						&& obj.prof == profession
+						&& obj.indi == moment){
+						if(obj.hr=="1" || obj.hw=="1"){
+							cnt++;
+						}
+					}
+				}
+				
+				return cnt;
+			}
+			
+			
+			private function doCalculateComplianceBySurveyIDByActionProfession(action:String, profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id
+						&& obj.prof == profession){
+						if(action=="1"){
+							if(obj.hr=="1"){
+								cnt++;
+							}
+						} else if(action=="2"){
+							if(obj.hw=="1"){
+								cnt++;
+							}
+						} else if(action=="3"){
+							if(obj.missed=="1" && obj.glove=="0"){
+								cnt++;
+							}
+						} else if(action=="4"){
+							if(obj.glove=="1" && obj.missed=="1"){
+								cnt++;
+							}
+						}
+					}
+				}
+				
+				return cnt;
+			}
+			
+			
+			
+			private function doCalculateOppSurveyId(profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id && obj.prof==profession){
+						cnt++;
+					}
+				}
+				
+				trace("cnt: " + cnt + " prof: " + profession);
+				
+				return cnt;
+			}
+			
+			
+			private function doCalculateOppSurveyId_Moment(moment:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id 
+						&& obj.indi == moment){
+						cnt++;
+					}
+				}
+				
+				return cnt;
+			}
+			
+			private function doCalculateOppSurveyId_MomentProfession(moment:String, profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id
+						&& obj.prof == profession
+						&& obj.indi == moment){
+						cnt++;
+					}
+				}
+				
+				return cnt;
+			}
+			
+			
+			private function doCalculateOppSurveyId_ProfessionAction(profession:String, survey_id:String):Number{
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id
+						&& obj.prof==profession){
+						cnt++;
+					}
+				}
+				
+				return cnt;
+			}
+			
+			private function doCalculateComplianceBySurveyID(indi:String, survey_id:String, privateYM:String=""):Number{
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				//trace("sub-calc: " + queryYM);
+				
+				var cnt:Number=0;
+				
+				var obj:Object;
+				if(indi!=""){
+					for(var i:Number=0;i<this.who_safety.length;i++){
+						obj = this.who_safety.getItemAt(i);
+						if(obj.survey_id==survey_id && 
+							obj.indi==indi && 
+							obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							if(obj.hr=="1" || obj.hw=="1"){
+								cnt++;
+							}
+						}
+					}
+				} else {
+					//for trend by department compliance
+					for(var i:Number=0;i<this.who_safety.length;i++){
+						obj = this.who_safety.getItemAt(i);
+						if(obj.survey_id==survey_id){
+							if(obj.hr=="1" || obj.hw=="1"){
+								cnt++;
+							}
+						}
+					}
+				}
+				return cnt;
+			}
+			
+			private function doCalculateOpportunityBySurveyID(survey_id:String):Number{
+				
+				
+				var cnt:Number=0;
+				
+				var obj:Object;
+				
+				//for trend by department compliance
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					if(obj.survey_id==survey_id){
+						//if(obj.hr=="1" || obj.hw=="1"){
+							cnt++;
+						//}
+					}
+				}
+				return cnt;
+			}
+			
+			//break down from Domain(ward/facility, profession) by Action
+			public function doAnalyticByDomainAction(domain:String, dataPoint:String, privateYM:String=""):ArrayCollection{
+				//domain = moment, profession, department
+				//datapoint - moment=indication|x|x, department=profession|x|x, profession=department|x|x
+				
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				var obj:Object = new Object();
+				
+				var moment:Object;
+				
+				
+				
+				if(domain=="profession"){
+					
+					//Step1: filter the survet id first!
+					var acSurveyID:ArrayCollection = new ArrayCollection();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							
+							
+							if(!hm.hasKey("1")){
+								moment = new Object();
+								moment.cat = "HR";
+								moment.cnt = doCalculateComplianceBySurveyIDByActionProfession("1", dataPoint, obj.survey_id);
+								hm.set("1", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("1");
+								moment.cnt += doCalculateComplianceBySurveyIDByActionProfession("1", dataPoint, obj.survey_id);
+							}
+							
+							
+							if(!hm.hasKey("2")){
+								moment = new Object();
+								moment.cat = "HW";
+								moment.cnt = doCalculateComplianceBySurveyIDByActionProfession("2", dataPoint, obj.survey_id);
+								hm.set("2", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("2");
+								moment.cnt += doCalculateComplianceBySurveyIDByActionProfession("2", dataPoint, obj.survey_id);
+							}
+							
+							if(!hm.hasKey("3")){
+								moment = new Object();
+								moment.cat = "Missed";
+								moment.cnt = doCalculateComplianceBySurveyIDByActionProfession("3", dataPoint, obj.survey_id);
+								hm.set("3", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("3");
+								moment.cnt += doCalculateComplianceBySurveyIDByActionProfession("3", dataPoint, obj.survey_id);
+							}
+							
+							if(!hm.hasKey("4")){
+								moment = new Object();
+								moment.cat = "M.Glove";
+								moment.cnt = doCalculateComplianceBySurveyIDByActionProfession("4", dataPoint, obj.survey_id);
+								hm.set("4", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("4");
+								moment.cnt += doCalculateComplianceBySurveyIDByActionProfession("4", dataPoint, obj.survey_id);
+							}
+							
+						}
+					}
+					
+				} else if(domain=="department"){
+					
+					//Step1: filter the survey id first!
+					
+					var acSurveyID:ArrayCollection = new ArrayCollection();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1
+							&& obj.dept==dataPoint){
+							
+							if(!hm.hasKey("1")){
+								moment = new Object();
+								moment.cat = "HR";
+								moment.cnt = doCalculateComplianceBySurveyIDByAction("1", obj.survey_id);
+								hm.set("1", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("1");
+								moment.cnt += doCalculateComplianceBySurveyIDByAction("1", obj.survey_id);
+							}
+							
+							
+							if(!hm.hasKey("2")){
+								moment = new Object();
+								moment.cat = "HW";
+								moment.cnt = doCalculateComplianceBySurveyIDByAction("2", obj.survey_id);
+								hm.set("2", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("2");
+								moment.cnt += doCalculateComplianceBySurveyIDByAction("2", obj.survey_id);
+							}
+							
+							if(!hm.hasKey("3")){
+								moment = new Object();
+								moment.cat = "Missed";
+								moment.cnt = doCalculateComplianceBySurveyIDByAction("3", obj.survey_id);
+								hm.set("3", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("3");
+								moment.cnt += doCalculateComplianceBySurveyIDByAction("3", obj.survey_id);
+							}
+							
+							if(!hm.hasKey("4")){
+								moment = new Object();
+								moment.cat = "M.Glove";
+								moment.cnt = doCalculateComplianceBySurveyIDByAction("4", obj.survey_id);
+								hm.set("4", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("4");
+								moment.cnt += doCalculateComplianceBySurveyIDByAction("4", obj.survey_id);
+							}
+							
+							
+						}	
+					}
+					
+					
+					
+				}
+				
+				//TODO: cal pect
+				var actionCnt=0;
+				for each(var moment:Object in acAnalytic){
+					//if(domain=="profession"){
+						actionCnt += moment.cnt;
+					//} else {
+						//moment.pect = percentageFormat((moment.cnt/moment.allCnt)*100);
+					//}
+				}
+				
+				if(actionCnt>0){
+					for each(var moment:Object in acAnalytic){
+						//if(domain=="profession"){
+							moment.pect = percentageFormat((moment.cnt/actionCnt)*100);
+						//}
+					}
+				}
+				
+				
+				return acAnalytic;
+			}
+			
+			
+			public function doAnalyticByMoment(domain:String, dataPoint:String, privateYM:String=""):ArrayCollection{
+				//domain = moment, profession, department
+				//datapoint - moment=indication|x|x, department=profession|x|x, profession=department|x|x
+				
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				trace("queryYM: " + queryYM);
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				var obj:Object = new Object();
+				
+				var moment:Object;
+				
+				if(domain=="profession"){
+				
+					//Step1: filter the survet id first!
+					var acSurveyID:ArrayCollection = new ArrayCollection();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1 
+							&& (obj.prof1==dataPoint || obj.prof2==dataPoint
+								|| obj.prof3==dataPoint || obj.prof4==dataPoint)){
+							
+							
+							if(!hm.hasKey("1")){
+								moment = new Object();
+								moment.cat = "Before patient";
+								moment.cnt = doCalculateComplianceBySurveyIDByMomentProfession("1", dataPoint, obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_MomentProfession("1", dataPoint, obj.survey_id);
+								hm.set("1", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("1");
+								moment.cnt += doCalculateComplianceBySurveyIDByMomentProfession("1", dataPoint, obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_MomentProfession("1", dataPoint, obj.survey_id);
+							}
+							
+							
+							if(!hm.hasKey("2")){
+								moment = new Object();
+								moment.cat = "Before aseptic";
+								moment.cnt = doCalculateComplianceBySurveyIDByMomentProfession("2", dataPoint, obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_MomentProfession("2", dataPoint, obj.survey_id);
+								hm.set("2", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("2");
+								moment.cnt += doCalculateComplianceBySurveyIDByMomentProfession("2", dataPoint, obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_MomentProfession("2", dataPoint, obj.survey_id);
+							}
+							
+							if(!hm.hasKey("3")){
+								moment = new Object();
+								moment.cat = "After body fluid";
+								moment.cnt = doCalculateComplianceBySurveyIDByMomentProfession("3", dataPoint, obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_MomentProfession("3", dataPoint, obj.survey_id);
+								hm.set("3", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("3");
+								moment.cnt += doCalculateComplianceBySurveyIDByMomentProfession("3", dataPoint, obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_MomentProfession("3", dataPoint, obj.survey_id);
+							}
+							
+							if(!hm.hasKey("4")){
+								moment = new Object();
+								moment.cat = "After patient";
+								moment.cnt = doCalculateComplianceBySurveyIDByMomentProfession("4", dataPoint, obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_MomentProfession("4", dataPoint, obj.survey_id);
+								hm.set("4", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("4");
+								moment.cnt += doCalculateComplianceBySurveyIDByMomentProfession("4", dataPoint, obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_MomentProfession("4", dataPoint, obj.survey_id);
+							}
+							
+							if(!hm.hasKey("5")){
+								moment = new Object();
+								moment.cat = "After patient surrounding";
+								moment.cnt = doCalculateComplianceBySurveyIDByMomentProfession("5", dataPoint, obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_MomentProfession("5", dataPoint, obj.survey_id);
+								hm.set("5", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("5");
+								moment.cnt += doCalculateComplianceBySurveyIDByMomentProfession("5", dataPoint, obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_MomentProfession("5", dataPoint, obj.survey_id);
+							}
+							
+							
+						}
+					}
+					
+				} else if(domain=="department"){
+				
+					//Step1: filter the survey id first!
+					
+					var acSurveyID:ArrayCollection = new ArrayCollection();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);
+						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1 
+							&& obj.dept==dataPoint){
+							
+							if(!hm.hasKey("1")){
+								moment = new Object();
+								moment.cat = "Before patient";
+								moment.cnt = doCalculateComplianceBySurveyIDByMoment("1", obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_Moment("1", obj.survey_id);
+								hm.set("1", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("1");
+								moment.cnt += doCalculateComplianceBySurveyIDByMoment("1", obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_Moment("1", obj.survey_id);
+							}
+							
+							
+							if(!hm.hasKey("2")){
+								moment = new Object();
+								moment.cat = "Before aseptic";
+								moment.cnt = doCalculateComplianceBySurveyIDByMoment("2", obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_Moment("2", obj.survey_id);
+								hm.set("2", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("2");
+								moment.cnt += doCalculateComplianceBySurveyIDByMoment("2", obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_Moment("2", obj.survey_id);
+							}
+							
+							if(!hm.hasKey("3")){
+								moment = new Object();
+								moment.cat = "After body fluid";
+								moment.cnt = doCalculateComplianceBySurveyIDByMoment("3", obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_Moment("3", obj.survey_id);
+								hm.set("3", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("3");
+								moment.cnt += doCalculateComplianceBySurveyIDByMoment("3", obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_Moment("3", obj.survey_id);
+							}
+							
+							if(!hm.hasKey("4")){
+								moment = new Object();
+								moment.cat = "After patient";
+								moment.cnt = doCalculateComplianceBySurveyIDByMoment("4", obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_Moment("4", obj.survey_id);
+								hm.set("4", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("4");
+								moment.cnt += doCalculateComplianceBySurveyIDByMoment("4", obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_Moment("4", obj.survey_id);
+							}
+							
+							if(!hm.hasKey("5")){
+								moment = new Object();
+								moment.cat = "After patient surrounding";
+								moment.cnt = doCalculateComplianceBySurveyIDByMoment("5", obj.survey_id);
+								moment.opp = doCalculateOppSurveyId_Moment("5", obj.survey_id);
+								hm.set("5", moment);
+								acAnalytic.addItem(moment);
+							} else {
+								moment = hm.get("5");
+								moment.cnt += doCalculateComplianceBySurveyIDByMoment("5", obj.survey_id);
+								moment.opp += doCalculateOppSurveyId_Moment("5", obj.survey_id);
+							}
+							
+						}	
+					}
+					
+					
+					
+				}
+				
+				//TODO: cal pect
+				for each(var moment:Object in acAnalytic){
+					moment.pect = percentageFormat((moment.cnt/moment.opp)*100);
+				}
+				
+				
+				return acAnalytic;
+			}
+			
+			//public function doAnalyticByProfessional(domain:String, dataPoint:String, date:String):ArrayCollection{
+			public function doAnalyticByProfessional(domain:String, dataPoint:String, privateYM:String=""):ArrayCollection{
+				//domain = moment, profession, department
+				//datapoint - moment=indication|x|x, department=profession|x|x, profession=department|x|x
+				
+				
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				trace("doAnalyticByProfessional " + domain + ", " + dataPoint);
+				trace("queryYM: " + queryYM);
+				
+				//derive from indi, from moment, from action, from prof, from dept
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var prof:Object=new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				if(domain=="moment"){
+					//determine got how many prof?!
+					for(var i:Number=0;i<this.who_safety.length;i++){
+						obj = this.who_safety.getItemAt(i);
+						if(obj.indi==dataPoint && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							/*if(!prof.hasOwnProperty(obj.prof)){
+								prof[obj.prof] = obj.prof;
+								trace("Prof: " + obj.prof);
+							}*/
+							
+							
+							if(obj.hr=="1" || obj.hw=="1"){
+								if(!hm.hasKey(obj.prof)){
+									prof = new Object();
+									prof.cat = obj.prof;
+									prof.cnt = 1;
+									prof.opp = 1;
+									hm.set(obj.prof, prof);
+									acAnalytic.addItem(prof);
+									//trace("New Prof: " + prof.cat);
+									overAllCnt ++;
+								} else {
+									prof = hm.get(obj.prof);
+									prof.cnt++;
+									prof.opp++;
+									overAllCnt ++;
+									//trace("Update Prof: " + prof.cat + ", " + prof.cnt);
+								}
+								
+							} else {
+							
+								if(!hm.hasKey(obj.prof)){
+									prof = new Object();
+									prof.cat = obj.prof;
+									prof.cnt = 0;
+									prof.opp = 1;
+									hm.set(obj.prof, prof);
+									acAnalytic.addItem(prof);
+								} else {
+									prof = hm.get(obj.prof);
+									prof.opp++;
+								}
+							
+							}
+
+						}
+					}
+					
+					for each(var prof:Object in acAnalytic){
+						//prof.pect = percentageFormat((prof.cnt/overAllCnt)*100);
+						prof.pect = percentageFormat((prof.cnt/prof.opp)*100);
+						//trace(prof.cat + " = " + prof.pect);
+					}
+				
+				} else if(domain=="department"){
+				
+					
+					var acSurveyID:ArrayCollection = new ArrayCollection();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);						
+						if(obj.dept==dataPoint && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							if(!acSurveyID.contains(obj.survey_id)){
+								acSurveyID.addItem(obj.survey_id);
+							}
+						}
+					}
+					
+					trace("start doing iterate...");
+					//for loop hash map
+					trace("Sz: " + String(acSurveyID.length));
+					for each(var surveyID:Object in acSurveyID){
+						trace("surveyID " + surveyID);
+						for(var i:Number=0;i<this.who_safety.length;i++){
+							obj = this.who_safety.getItemAt(i);
+							if(obj.survey_id==surveyID && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+								if(obj.hr=="1" || obj.hw=="1"){
+									if(!hm.hasKey(obj.prof)){
+										prof = new Object();
+										prof.cat = obj.prof;
+										prof.cnt = 1;
+										prof.opp = 1;
+										hm.set(obj.prof, prof);
+										acAnalytic.addItem(prof);
+										trace("New Prof: " + prof.cat);
+										overAllCnt ++;
+									} else {
+										prof = hm.get(obj.prof);
+										prof.cnt++;
+										prof.opp++;
+										overAllCnt ++;
+										trace("Update Prof: " + prof.cat + ", " + prof.cnt);
+									}						
+								} else {
+									if(!hm.hasKey(obj.prof)){
+										prof = new Object();
+										prof.cat = obj.prof;
+										prof.cnt = 0;
+										prof.opp = 1;
+										hm.set(obj.prof, prof);
+										acAnalytic.addItem(prof);
+										trace("New Prof: " + prof.cat);
+										overAllCnt ++;
+									} else {
+										prof = hm.get(obj.prof);
+										prof.opp++;
+										overAllCnt ++;
+										trace("Update Prof: " + prof.cat + ", " + prof.cnt);
+									}
+								}
+							}
+						}
+					}
+					
+					for each(var prof:Object in acAnalytic){
+						//prof.pect = percentageFormat((prof.cnt/overAllCnt)*100);
+						prof.pect = percentageFormat((prof.cnt/prof.opp)*100);
+						trace(prof.cat + " = " + prof.pect);
+					}
+				}
+				
+				return acAnalytic;
+			} 
+			
+			
+			
+			
+			private function percentageFormat(value:Number):Number
+				
+			{
+				
+				// Initialize the NumberFormatter Object
+				
+				var fmt:NumberFormatter = new NumberFormatter();
+				
+				var formattedString:String;
+				
+				// Set some of the options available
+				
+				fmt.precision = 2;
+				fmt.useThousandsSeparator = false;
+				
+				// Format our value and return a formatted string
+				
+				formattedString = fmt.format(value);
+				
+				return Number(formattedString);
+				// Do something with our newly formatted string
+				
+				//someobject.sometextfield.text = formattedString;
+				
+			}
+
+			
+			public function doAnalyticByAction(indi:String, privateYM:String=""):ArrayCollection{
+				
+				//trace("YM: " + selectedYM); //20152
+				var queryYM:String="";
+				if(privateYM==""){
+					queryYM = selectedYM;
+				} else {
+					queryYM = privateYM;
+				}
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				
+				var obj:Object;
+				var catHR:Object = new Object();
+				catHR.cat = "HR";
+				catHR.cnt = 0;
+				
+				var catHW:Object = new Object();
+				catHW.cat = "HW";
+				catHW.cnt = 0;
+				var catMissed:Object = new Object();
+				catMissed.cat = "Missed";
+				catMissed.cnt = 0;
+				var catGlove:Object = new Object();
+				catGlove.cat = "M.Glove";
+				catGlove.cnt = 0;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				for(var i:Number=0;i<this.who_safety.length;i++){
+					obj = this.who_safety.getItemAt(i);
+					//if(obj.indi==indi && obj.end_date.toString().indexOf("2015-02")!=-1){ //after body fluid
+					if(obj.indi==indi && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){ //after body fluid
+						if(obj.hr=="1"){
+							catHR.cnt++;
+							overAllCnt++;
+						}
+						if(obj.hw=="1"){
+							catHW.cnt++;
+							overAllCnt++;
+						}
+						if(obj.missed=="1" && obj.glove=="1"){
+							//"glove":"0","missed":"0"
+							//trace("detect M.G +1");
+							catGlove.cnt++;
+							overAllCnt++;
+						} else if(obj.missed=="1" && obj.glove=="0"){
+							catMissed.cnt++;
+							overAllCnt++;
+						}
+					}
+					//trace(obj.indi);
+					//trace(obj.end_date);
+					//hr/hw/missed/gloved
+				}
+
+				acAnalytic.addItem(catHR);
+				acAnalytic.addItem(catHW);
+				acAnalytic.addItem(catMissed);
+				acAnalytic.addItem(catGlove);
+				
+				trace("filtred: " + acAnalytic.length.toString());
+				
+				for each(var act:Object in acAnalytic){
+					act.pect = percentageFormat((act.cnt/overAllCnt)*100);
+					trace(act.cat + " = " + act.pect);
+				}
+				
+				return acAnalytic;
+			}
+			
+			
+			
+			
+			private var acDownload:ArrayCollection = new ArrayCollection();
+			private var intDownload:Number = 0;
+			private var intTotal:Number = 0;
+			private var hhc:HandHygieneController = new HandHygieneController();
+			
+			private var erc:EnvReportController = new EnvReportController();
+			
+			
+			
+			private function doCompleteSyncHandHygiene():void{
+				
+				this.lblBg.text = "SEMMEL";
+				this.currentState = "MainMenu";
+				
+				saving.close();
+				
+				
+				this.btnYM.visible = true;
+				this.btnSync.visible = false;
+				
+				viewstack1.visible=true;
+				viewstack1.removeAll();
+				//viewstack1.addChild(homeScreen);
+				viewstack1.addChild(graphDashboard);
+				this.maximize();
+				this.lblBg.text = "SEMMEL";
+				//this.currentState = "MainMenu"; //for hand hygiene
+				
+				var acReport:ArrayCollection = new ArrayCollection();
+				acReport.addItem("Home");
+				acReport.addItem("Adherence Dashboard");
+				acReport.addItem("Opportunity vs. Adherence by Ward/Facility");
+				acReport.addItem("Opportunity vs. Adherence by Profession");
+				acReport.addItem("Opportunity vs. Adherence by Moments");
+				acReport.addItem("Average Action by Moments");
+				acReport.addItem("Ward/Facility Compliance Summary");
+				acReport.addItem("Progress Report");
+				acReport.addItem("Profession Name Compliance Summary");
+				acReport.addItem("Aseptic Procedure");
+				acReport.addItem("Missed with Reason");
+				acReport.addItem("Leaderboard");
+				acReport.addItem("Ward Facility");
+				acReport.addItem("Quarter Report By Moment");
+				acReport.addItem("Quarter Report for Overall");
+				acReport.addItem("Quarter Report By Job Category");
+				
+				btnReport.dataProvider = acReport;
+				btnReport.selectedIndex=1;
+				//btnReport.visible = true;
+				
+				//fetch configure, xml. update reporrt!!!!
+
+				//try{
+					
+//					var file:File = File.applicationStorageDirectory.resolvePath("result.data");
+					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+					if(file.exists){
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+//						this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(stream.readUTFBytes(stream.bytesAvailable).toString(), Constants.getLicenseKey().substring(0,16)) + "</report>";		
+						this.fetchXMLData = stream.readUTFBytes(stream.bytesAvailable).toString();						
+						trace("result.data " + this.fetchXMLData);
+					}
+					
+					
+					var xml:XML = new XML(this.fetchXMLData);
+					this.yearMonthXML = new XMLListCollection(xml.months.month);//.month;
+					var sort:Sort = new Sort();
+					sort.compareFunction = monthSort;
+					this.yearMonthXML.sort = sort;
+					this.yearMonthXML.refresh();
+					
+					
+					//btnYM.dataProvider = this.yearMonthXML;
+					//this.observerXML = new XMLListCollection(xml.observers.observer);//.observer;
+					
+					
+					//add country code by alfred - 2015-07-20
+					if(xml.hospital.@hosp_country!=undefined){
+						this.countryCode = xml.hospital.@hosp_country;
+					}
+					trace("Country Code: " + this.countryCode);
+					
+					
+					//store progress config separate file
+					//<?xml version=\"1.0\" encoding=\"utf-8\"?>
+					var sbProgress:String = "<reports>";
+					sbProgress += "<profprogress>" + new XMLListCollection(xml.profprogress.profp).toString() + "</profprogress>";
+					sbProgress += "<deptprogress>" + new XMLListCollection(xml.deptprogress.deptp).toString() + "</deptprogress>";
+					
+					//added 2015-08-10 for observer performance report
+					sbProgress += "<obperf>" + new XMLListCollection(xml.obperf.perf).toString() + "</obperf>";
+					//added 2015-08-11 for profession name adherence report
+					sbProgress += "<profnamerpt>" + new XMLListCollection(xml.profnameadh.profname).toString() + "</profnamerpt>";
+					
+					sbProgress += "</reports>";
+					
+					trace("****************PROGRESS DATA****************");
+					trace(new XMLListCollection(xml.profnameadh.profname).toString());
+					
+					trace("ORIGINAL: " + sbProgress);
+					
+					var s:String = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + sbProgress;
+					Constants.progressData = s;
+					
+//					var progressFile = File.applicationStorageDirectory.resolvePath("progress.data");
+//					var progressFileStream:FileStream = new FileStream();
+//					progressFileStream.open(progressFile, FileMode.WRITE);
+					
+					
+					//do encrypt data
+//					kdata = Hex.toArray(Hex.fromString(Constants.getLicenseKey().substring(0,16))); //plain text
+//					var pad:IPad = new PKCS5;
+//					var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+//					
+//					var data:ByteArray = Hex.toArray(Hex.fromString(sbProgress));
+//					pad.setBlockSize(mode.getBlockSize());
+//					mode.encrypt(data);
+					//end encrypt data
+					
+//					progressFileStream.writeUTFBytes(Base64.encodeByteArray(data)); //enc xml result data
+//					progressFileStream.close();
+					//end do encrypt data
+					
+					btnYM.selectedIndex = 0;
+					
+					try{
+						this.selectedYM = this.btnYM.selectedItem.@value;
+						this.selectedYMLabel = this.btnYM.selectedItem.@label;
+					}catch(e:Error){
+						trace("e selectedYM: " + e.toString());
+					}
+					
+					trace("selectedYM: " + this.selectedYM);
+					
+					
+					
+					this.doUpdateReport();
+					
+					
+					//laod the department listing...
+					var xmlDepartment:XMLListCollection = new XMLListCollection(xml.depts.dept);
+					
+					for each (var node : XML in xmlDepartment){
+						var obj:Object = new Object();
+						obj.label = node.@label;
+						trace("display department label: " + obj.label);
+						obj.selected = false;
+						if(obj.label!="All"){
+							acDepartment.addItem(obj);
+							trace("acDepartment: " + obj.label);
+						}
+					}
+					
+					//load the profession lising
+					var xmlProfession:XMLListCollection = new XMLListCollection(xml.profprogress.profp);
+					for each(var node:XML in xmlProfession){
+						var obj:Object = new Object();
+						obj.label = node.@prof;
+						if(obj.label!="All"){
+							acProfession.addItem(obj);
+							trace("acProfession: " + obj.label);
+						}
+					}
+					
+
+					
+				//}catch(e:Error){
+				//	trace(e.toString());
+				//}
+				
+				
+				//for auto color bar in 3 state red, green, orange
+				//colorColumnRenderer.properties = { benchmark: this.bm, threshold:this.th };
+				
+				
+				
+				//trace("last collected date: " + parseDateTime(new XML(this.fetchXMLData).lastSync.@date).toString());
+				if(new XML(this.fetchXMLData).lastSync.@date!=""){
+					
+					lblLastCollectedDate.visible = true;
+					lblLastCollectedDate.text = "Last Collected Date: " + sdfhm.format(parseDateTime(new XML(this.fetchXMLData).lastSync.@date));
+					
+				}
+				//end load xml, update report
+				
+				
+			}
+			
+			private function monthSort(a:Object, b:Object, fields:Array = null):int {
+				var ayear:Number = Number(a.@value.substr(0,4));
+				var amonth:Number = Number(a.@value.substr(4,2));
+				
+				var byear:Number = Number(b.@value.substr(0,4));
+				var bmonth:Number = Number(b.@value.substr(4,2));
+				
+				if(ayear < byear) {
+					return 1;
+				} else if((ayear == byear) && (amonth < bmonth)) {
+					return 1;
+				} else if((ayear == byear) && (amonth == bmonth)) {
+					return 0;
+				} else if((ayear == byear) && (amonth > bmonth)) {
+					return -1;
+				}  else if((ayear > byear)) {
+					return -1;
+				}
+				return 0;
+			}
+			
+			private function doCompleteSyncEnv():void{
+				
+				this.lblBg.text = "SEMMEL";
+				this.currentState = "ModulesScreen";
+				
+				saving.close();
+				
+				
+				viewstack1.visible=true;
+				viewstack1.removeAll();
+				viewstack1.addChild(envDashboard);
+				this.maximize();
+				this.lblBg.text = "SEMMEL";
+				this.currentState = "MainMenu"; //for hand hygiene
+				
+				var acReportEnv:ArrayCollection = new ArrayCollection();
+				acReportEnv.addItem(Constants.SCREEN_HOME);
+				acReportEnv.addItem(Constants.SCREEN_ENV_DASHBOARD);
+				acReportEnv.addItem(Constants.SCREEN_ENV_AREA);
+				acReportEnv.addItem(Constants.SCREEN_ENV_WARDFACILITY);
+				acReportEnv.addItem(Constants.SCREEN_ENV_NOTE);
+				acReportEnv.addItem(Constants.SCREEN_ENV_METHOD);
+				acReportEnv.addItem(Constants.SCREEN_ENV_CATEGORY);
+				acReportEnv.addItem(Constants.SCREEN_ENV_AUDIT);
+				
+				btnReport.dataProvider = acReportEnv;
+				btnReport.selectedIndex=1;
+				
+				var acYMXML:XML = new XML("<?xml version=\"1.0\" encoding=\"UTF-8\"?><report><months>" + xmlYM + "</months></report>");
+				
+				btnYM.visible = true;
+				this.yearMonthXML = new XMLListCollection(acYMXML.months.month);
+				var sort:Sort = new Sort();
+				sort.compareFunction = monthSort;
+				this.yearMonthXML.sort = sort;
+				this.yearMonthXML.refresh();
+				
+				btnYM.selectedIndex=0; //select 1st item
+				
+				try {
+					this.selectedYM = btnYM.selectedItem.@value;
+					trace("sel ym: " + this.selectedYM);
+				}catch(e:Error){
+					trace(e.toString());
+				}
+				//var xml:XML = new XML(this.fetchXMLData);
+				//this.yearMonthXML = new XMLListCollection(xml.months.month);//.month;
+				
+				
+				
+				/* Graph for ENv listing
+				
+				- complinace by area + by trend
+				- complaince by department + by trend
+				- overall compliance
+				- overlal complinace by trend
+				- deficiency by label
+				- observatoion method - compliance by method,
+				- complaicne by category, trend by category
+				- audit by area + department
+				[table | Area | [Jan|Feb|Mar]]
+				- audit by depart
+				[table | Area | [Jan|Feb|Mar]]
+				
+				
+				*/
+				
+			}
+			
+			private function doDoneHH(event:Event){
+				hhc.removeEventListener(HandHygieneController.DOWNLOADED_EVENT, doDoneHH);
+				intDownload++;//download next file
+				if(intDownload<=acDownloadFile.length-1){
+					this.pb.setProgress(((intDownload/intTotal)*100), 100);
+					this.pb.label = "Downloading... " + String(intDownload) + " of " + String(intTotal) + " (" + String(((intDownload/intTotal)*100).toFixed(0)) + "%)";
+					
+					hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDoneHH);
+					hhc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
+				} else {
+					this.pb.setProgress(100, 100);
+					this.pb.label = "Completed";
+					
+					doCompleteSyncHandHygiene();
+					
+				}
+			}
+			
+			private function doDoneEnv(event:Event){
+				erc.removeEventListener(EnvReportController.DOWNLOADED_EVENT, doDoneEnv);
+				intDownload++;//download next file
+				if(intDownload<=acDownloadFile.length-1){
+					this.pb.setProgress(((intDownload/intTotal)*100), 100);
+					this.pb.label = "Downloading... " + String(intDownload) + " of " + String(intTotal) + " (" + String(((intDownload/intTotal)*100).toFixed(0)) + "%)";
+					
+					erc.addEventListener(EnvReportController.DOWNLOADED_EVENT, doDoneEnv);
+					erc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
+				} else {
+					this.pb.setProgress(100, 100);
+					this.pb.label = "Completed";
+					
+					doCompleteSyncEnv();
+					
+				}
+			}
+			
+			
+			private function doCompleteSync():void{
+				
+				this.maximize();
+				
+				this.lblBg.text = "SEMMEL";
+				this.currentState = "ModulesScreen";
+				
+				this.lblHospital.text = Constants.hospName;
+				
+				saving.close();
+				var alertNetwork:NetworkDialog = new NetworkDialog();
+				alertNetwork.open(this, true);
+				PopUpManager.centerPopUp(alertNetwork);
+				alertNetwork.doMessage("Data Sync", "Data sync completed.");
+				
+				//viewstack1.visible=true;
+				//viewstack1.removeAll();
+				
+				
+				trace(File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath);
+				imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath;
+				
+			}
+			
+			private function doDone(event:Event){
+				hhc.removeEventListener(HandHygieneController.DOWNLOADED_EVENT, doDone);
+				intDownload++;//download next file
+				if(intDownload<=acDownload.length-1){
+					this.pb.setProgress(((intDownload/intTotal)*100), 100);
+					this.pb.label = "Downloading... " + String(intDownload) + " of " + String(intTotal) + " (" + String(((intDownload/intTotal)*100).toFixed(0)) + "%)";
+					
+					hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDone);
+					hhc.initDownload(acDownload.getItemAt(intDownload).toString());
+				} else {
+					this.pb.setProgress(100, 100);
+					this.pb.label = "Completed";
+					
+					doCompleteSync();
+					
+				}
+			}
+			
+			
+			private var startMonth:int = 6;
+			private var startYear:int = 2012;
+			private var currentMonth:int = 7;
+			private var currentYear:int = 2015;
+			
+			private function customSort(a:Object, b:Object, fields:Array = null):int {
+				if((a.split('-')[0] < b.split('-')[0])) {
+					return -1;
+				} else if((a.split('-')[0] == b.split('-')[0]) && (a.split('-')[1] < b.split('-')[1])) {
+					return -1;
+				} else if((a.split('-')[0] == b.split('-')[0]) && (a.split('-')[1] == b.split('-')[1])) {
+					return 0;
+				} else if((a.split('-')[0] == b.split('-')[0]) && (a.split('-')[1] > b.split('-')[1])) {
+					return 1;
+				}  else if((a.split('-')[0] > b.split('-')[0])) {
+					return 1;
+				}
+				return 0;
+			}
+			
+			private function httpReport_result(evt:ResultEvent):void{				
+				//trace("report posted data done");
+				//trace("need aes decrypt here...");
+				
+				//this.pb.setProgress(10, 100);
+				
+				//decryp key
+				// 18fd975d3f27ff11
+
+				//03 - ready for download server - print out => ready_download
+				trace("httpReport_result new: " + evt.result.toString());
+				if(evt.result.toString().indexOf("ready_download")!=-1){
+					//initDownload();
+					
+					acDownload.removeAll();
+					
+					trace("trigger download files...");
+					
+					trace("get enc file + crc32 by month break listing...");
+					
+					var jsonFiles:String = evt.result.toString().split("|")[1];
+					
+					var rawData = evt.result.toString().split("|")[2];
+					trace("raw data: "+ rawData);
+					
+					//all the progress data month, prof/dept data configs data
+					var resultData = evt.result.toString().split("|")[3];
+					trace("result data: " + resultData);
+					
+					this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(resultData, Constants.getLicenseKey().substring(0,16)) + "</report>";						
+					trace("result.data " + this.fetchXMLData);
+
+					//decode recieved data and store the decoded data
+//					var fileStream:FileStream = new FileStream(); 
+//					var file:File = File.applicationStorageDirectory.resolvePath("raw.data");
+//					fileStream.open(file, FileMode.WRITE);
+//					fileStream.writeUTFBytes(rawData); //enc xml raw data [json]
+//					fileStream.close();
+					
+					var rawjsonStr:String = AESCrypto.decrypt(rawData, Constants.getLicenseKey().substring(0,16));
+					jsonRaw = JSON.parse( rawjsonStr );
+					this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+					this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+					
+					
+					//GENERATE THE LIST OF FILES TO BE SYNCED -.SHARD
+					var shardList:ArrayCollection = new ArrayCollection();
+					
+					//get the startmonth and year from the rawdata 
+					var unique_dates:ArrayCollection = new ArrayCollection();
+					
+					var unique:Object = {};
+					var value:String;
+					var array:Array = who_safety.source;
+					var result:Array = [];
+					var i:int = 0;
+					var n:int = array.length;
+					for (i; i < n; i++)
+					{
+						value = array[i].end_date;
+						if (!unique[value])
+						{
+							unique[value] = true;
+							
+							result.push(value);
+						}
+						
+					}
+					
+					unique_dates = new ArrayCollection(result);
+					
+					var sort:Sort = new Sort();
+					sort.compareFunction = customSort;
+					unique_dates.sort = sort;
+					unique_dates.source.reverse();
+					unique_dates.refresh();
+					
+//					for(var k:int=0;k<unique_dates.length;k++) {
+//						trace(unique_dates[k]);
+//					}
+					
+					var newDate:Date = new Date();
+
+					if(unique_dates.length > 0) {
+						trace("\n"+unique_dates[0]);
+						startMonth = int(unique_dates[0].split('-')[1]);
+						startYear = int(unique_dates[0].split('-')[0]);
+					} else {
+						startMonth = newDate.month + 1;
+						startYear = newDate.fullYear;
+					}
+					
+					//get the current month and year
+					currentMonth = newDate.month + 1;
+					currentYear = newDate.fullYear;
+					trace(currentMonth + "    -------    " + currentYear);
+					
+//					shardList.addItem("report_16_201610.shard");
+					//generate the filenames for the months that fall in between start month/year and current moth/year
+					//determine the year/month format eg. 20167 (July 2016)
+					var yearDiff:int = int(currentYear) - int(startYear);
+					var toadd:Boolean;
+					for(var i:int=0;i <= yearDiff;i++) {
+						var year:int = int(startYear) + i;
+						for(var j:int=1;j<=12;j++) {
+							toadd = false;
+							if(yearDiff == 0) {
+								if(j >= int(startMonth) && j <= int(currentMonth)) {
+									toadd = true;
+								}
+							} else {
+								if((i == 0 && j >= int(startMonth)) || (i == yearDiff && j <= int(currentMonth))) {
+									toadd = true;
+								} else if(i > 0 && i < yearDiff) {
+									toadd = true;
+								}
+							}
+							
+							if(toadd) {
+								shardList.addItem('report_' + Constants.getHospitalId() + '_' + year + j + '.shard');
+								shardList.addItem('rawdata_' + Constants.getHospitalId() + '_' + year + j + '.shard');
+							}
+						}
+					}
+					
+					
+					for(var k:int=0;k<acDownload.length;k++) {
+						trace(acDownload[k]);
+					}
+					
+					
+					
+					trace("try out skali :"+ AESCrypto.decrypt(rawData, Constants.getLicenseKey().substring(0,16)));	
+					
+					var fileStream:FileStream = new FileStream(); 
+					var file:File = File.applicationStorageDirectory.resolvePath("raw.json");
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(rawjsonStr); //decoded json data
+					fileStream.close();
+					
+//					file = File.applicationStorageDirectory.resolvePath("result.data");
+//					fileStream.open(file, FileMode.WRITE);
+//					fileStream.writeUTFBytes(resultData); //enc xml result data
+//					fileStream.close();
+					
+					file = File.applicationStorageDirectory.resolvePath("result.xml");
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(fetchXMLData); //decoded xml result data
+					fileStream.close();
+					
+					//reading json into array
+					//trace("json only: "+ evt.result.toString().substring(15));
+					trace("json file list: " + jsonFiles);
+					//var hhFileObject:Array = JSON.parse(evt.result.toString().substring(15)) as Array;
+					var hhFileObject:Array = JSON.parse(jsonFiles) as Array;
+					
+					trace("len: " + hhFileObject.length.toString());
+					var obj:Object = null;
+					
+					this.pb.setProgress(0, 100);
+					this.pb.label = "Downloading...";
+					
+					var file:File = null;
+					// AMOL
+					
+					var latestReport:String = 'report_' + Constants.getHospitalId() + '_' + currentYear + currentMonth + '.shard';
+					var latestRawData:String = 'rawdata_' + Constants.getHospitalId() + '_' + currentYear + currentMonth + '.shard';
+					
+					for(var i:int=0;i<shardList.length;i++){
+						file = File.applicationStorageDirectory.resolvePath(shardList[i]);
+						//TODO: file check if exists
+						trace("check fn: " + shardList[i]);
+						var toUpdate:Boolean;
+						
+						if(file.exists) {
+							trace(file.modificationDate + "          " + file.creationDate + "         " + file.name);
+							var justName:String = file.name.split(".")[0];
+							var startIndex:int = justName.lastIndexOf("_") + 1;
+							var justDate:String = justName.substr(startIndex);
+							
+							var fileYear:Number = Number(justDate.substr(0,4));
+							var fileMonth:Number = Number(justDate.substr(4,2));
+							
+							if(fileMonth == 12) {
+								fileMonth = 0;
+								fileYear += 1;
+							}
+							
+							var fileDt:Date = new Date(fileYear, fileMonth);
+							trace(justDate + "      " + fileDt);
+							trace(ObjectUtil.dateCompare(file.modificationDate, fileDt));//if compare == -1 then add
+							
+							if(ObjectUtil.dateCompare(file.modificationDate, fileDt) == -1) {
+								toUpdate = true;
+							}
+						}
+						//trace("fn: " + obj.crc32);
+						if(!file.exists){
+							acDownload.addItem(shardList[i]);
+							trace("dl: " + shardList[i]);
+						} else if(file.exists && (file.name == latestRawData || file.name == latestReport || toUpdate)) {
+							acDownload.addItem(shardList[i]);
+							trace("re-dl: " + shardList[i]);
+						}
+						
+					}
+					
+//					for(var i:int=0;i<hhFileObject.length;i++){
+//						obj = hhFileObject[i];
+//						//filter to compare then only download...
+//						
+//						file = File.applicationStorageDirectory.resolvePath(obj.fn);
+//						//TODO: file check if exists
+//						trace("check fn: " + obj.fn);
+//						//trace("fn: " + obj.crc32);
+//						if(!file.exists){
+//							acDownload.addItem(obj.fn);
+//							trace("dl: " + obj.fn);
+//						} else if(Util.crc32Check(obj.fn)!=obj.crc32) {
+//							acDownload.addItem(obj.fn);
+//							trace("dl crc32: " + obj.fn);
+//						}
+						
+						
+						//json only: [{"crc32":"9ffed9e","fn":"report_111_20151.shard"},{"crc32":"3f83245c","fn":"report_111_20152.shard"},{"crc32":"5c672063","fn":"report_111_20153.shard"},{"crc32":"6be337f4","fn":"report_111_20154.shard"},{"crc32":"f1da68cb","fn":"report_111_20155.shard"},{"crc32":"13c76724","fn":"report_111_20156.shard"},{"crc32":"fc1c584a","fn":"report_111_20157.shard"},{"crc32":"9296f18f","fn":"report_111_20158.shard"},{"crc32":"e460c819","fn":"report_111_20149.shard"},{"crc32":"2928616a","fn":"report_111_20159.shard"},{"crc32":"83fe13c5","fn":"report_111_201410.shard"},{"crc32":"2a54f2d0","fn":"report_111_201510.shard"},{"crc32":"fa72153a","fn":"report_111_201411.shard"},{"crc32":"b0cbb5f2","fn":"report_111_201412.shard"}]
+						//len: 14
+						//fn: report_111_20151.shard
+						//fn: 9ffed9e
+
+						
+//					}
+//					acDownload.addItem("report_16_20167.shard");
+					
+					if(acDownload.length>0){
+						intTotal = acDownload.length;
+						this.pb.setProgress(0, 100);
+						this.pb.label = "Downloading... 1 of " + String(intTotal) + " (0%)";
+						hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDone);
+						hhc.initDownload(acDownload.getItemAt(intDownload).toString());
+					} else {
+					
+						doCompleteSync();
+					}
+					
+					//end reading json into array
+					
+					
+					//for temp
+					myTimer.stop();
+					timer.stop();
+					
+					
+					//TODO: parse json string into array
+					//TODO: doPost get file - 1 by 1 (download file 1/10)
+					
+				} else if(evt.result.toString()!="wait"
+					&& evt.result.toString()!="pending"){
+				
+					var allEnc:Array = evt.result.toString().split("|");
+					
+					
+					this.pb.setProgress(20, 100);
+					
+					if(evt.result.toString()=="|"){
+						
+						myTimer.stop(); //reach 80% stop!
+						timer.stop();
+						saving.close(); //loaded of data
+						
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("Data not Available", "There's no data available. Kindly sync the collected data from tablet device.");
+						
+						
+						
+					} else {
+					
+					
+						
+						this.pb.setProgress(80, 100);
+						
+						this.pb.label = "downloaded complete";
+						
+						trace("enc dec for result.data | raw.data");
+						
+						var enc:String = allEnc[0]; //StringUtil.trim(evt.result.toString());
+						
+						var file:File = File.applicationStorageDirectory.resolvePath("result.data");
+						var fileStream:FileStream = new FileStream();
+						fileStream.open(file, FileMode.WRITE);
+						fileStream.writeUTFBytes(enc); //enc xml result data
+						fileStream.close();
+						
+						var json:String = allEnc[1];
+						file = File.applicationStorageDirectory.resolvePath("raw.data");
+						fileStream.open(file, FileMode.WRITE);
+						fileStream.writeUTFBytes(json); //enc xml result data
+						fileStream.close();
+						
+						
+						//doLoadXMLData();
+					
+						timer.stop();
+						//saving.close(); //loaded of data
+						
+						
+						this.pb.setProgress(80, 100);
+						this.pb.label = "please wait... 80%";
+						
+						//doLoadXMLData();
+						
+						myTimer.stop(); //reach 80% stop!
+						
+						doStart();
+						
+						//data sync is up to date message
+						//var alertNetwork:NetworkDialog = new NetworkDialog();
+						//alertNetwork.open(this, true);
+						//PopUpManager.centerPopUp(alertNetwork);
+						//alertNetwork.doMessage("Data Sync", "Data sync completed.");
+						//end data sync is up to date message
+						
+					}
+				}
+			}
+			
+			
+			
+			
+			
+			public function doGraphSelection(s:String):void{
+			
+				trace("do graph selection: " + s);
+				
+				//TODO: graph navigation UI
+				//TODO: export screen images
+				
+				//home screen
+				if(s=="home"){
+					/*
+				//if(s==Constants.SCREEN_HOME){
+					
+					//this.lblBg.text = "SEMMEL";
+					//this.currentState = "ModulesScreen";
+					
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(homeScreen);
+					this.lblBg.text = "Home";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					homeScreen.fetchLocalXML();*/
+					btnSync.visible = false;
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					
+					this.maximize();
+					this.currentState = "ModulesScreen"; //for hand hygiene
+					
+				}
+				
+				if(s==Constants.SCREEN_HOME){
+					
+					btnSync.visible = false;
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					
+					this.maximize();
+					
+					this.lblBg.text = "SEMMEL";
+					this.currentState = "ModulesScreen";
+				}
+				
+				if(s==Constants.SCREEN_ENV_DASHBOARD){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envDashboard);
+					this.lblBg.text = Constants.SCREEN_ENV_DASHBOARD;
+					envDashboard.fetchLocalXML(); 
+					//graphDashboard.fetchLocalXML();
+				}
+				if(s==Constants.SCREEN_ENV_AREA){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envByArea);
+					this.lblBg.text = Constants.SCREEN_ENV_AREA;
+					envByArea.fetchLocalXML(); 
+				}
+				
+				if(s==Constants.SCREEN_ENV_WARDFACILITY){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envByWardFacility);
+					this.lblBg.text = Constants.SCREEN_ENV_WARDFACILITY;
+					envByWardFacility.fetchLocalXML();
+				}
+				
+				if(s==Constants.SCREEN_ENV_NOTE){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envByNote);
+					this.lblBg.text = Constants.SCREEN_ENV_NOTE;
+					envByNote.fetchLocalXML();
+				}
+				
+				if(s==Constants.SCREEN_ENV_METHOD){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envByMethod);
+					this.lblBg.text = Constants.SCREEN_ENV_METHOD;
+					envByMethod.fetchLocalXML();
+				}
+				
+				if(s==Constants.SCREEN_ENV_CATEGORY){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envByCategory);
+					this.lblBg.text = Constants.SCREEN_ENV_CATEGORY;
+					envByCategory.fetchLocalXML();
+				}
+				
+				if(s==Constants.SCREEN_ENV_AUDIT){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(envAuditByAreaWardFacility);
+					this.lblBg.text = Constants.SCREEN_ENV_AUDIT;
+					envAuditByAreaWardFacility.fetchLocalXML();
+				}
+				
+				
+				//graph 1 - Adherence Dashboard (GraphDashboard.mxml)
+				if(s=="graph1"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphDashboard);
+					this.lblBg.text = "Adherence Dashboard";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphDashboard.fetchLocalXML();
+					
+				}
+				
+				if(s=="graph2"){ //by Department
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					
+					//if data is large many column
+					//not using Department Large Anymore!
+					//if(this.lblBg.text.indexOf("Generating report")!=-1){
+						//viewstack1.addChild(graphHHOByDepartmentLarge);
+						//graphHHOByDepartmentLarge.fetchLocalXML();
+					//} else {
+						viewstack1.addChild(graphHHOByDepartment);
+						graphHHOByDepartment.fetchLocalXML();
+					//}
+					
+					
+					this.lblBg.text = "Opportunity vs. Adherence by Ward/Facility";
+					
+					//graphHHOByDepartment.fetchLocalXML();
+					
+					//this.lblAction.text = "Opportunity vs. Adherence by Profession >";
+					
+					//TODO: with quota KPI ledeng for department
+				}
+				
+				
+				if(s=="graph3"){ // by Profession
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByProfession);
+					
+					
+					
+					this.lblBg.text = "Opportunity vs. Adherence by Profession";
+					
+					graphHHOByProfession.fetchLocalXML();
+					//this.lblAction.text = "Opportunity vs. Adherence by Moments >";
+				}
+				
+				
+				if(s=="graph4"){//by Moments - TODO: fix
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByIndication);
+					this.lblBg.text = "Opportunity vs. Adherence by Moments";
+					
+					graphHHOByIndication.fetchLocalXML();
+				}
+				
+				
+				/*if(s=="graph5"){ //by Opp. vs Action
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(new GraphOpportunityVsAction);
+					this.lblBg.text = "Opportunity vs. Action";
+				}*/
+				
+				if(s=="graph5"){ //by Avg Action
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphAverageActionByIndication);
+					this.lblBg.text = "Average Action by Moments";
+					
+					graphAverageActionByIndication.fetchLocalXML();
+				}
+				
+				
+				if(s=="graph6"){ //table of complaince summary
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(departmentMomentsComplaince);
+					this.lblBg.text = "Ward/Facility Compliance Summary";
+					
+					departmentMomentsComplaince.fetchLocalXML();
+				}
+				if(s=="graph7"){ // by Profession
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(pie);
+					
+					
+					
+					this.lblBg.text = "ward facility";
+					
+					pie.fetchLocalXML();
+					//this.lblAction.text = "Opportunity vs. Adherence by Moments >";
+				}
+
+				//graph 8 - 
+				if(s=="graph8"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphComplianceByMoment);
+					this.lblBg.text = "Hand Hygine Compliance Rate by Momment";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphComplianceByMoment.fetchLocalXML();
+
+				}
+				
+				//graph 9 - 
+				if(s=="graph9"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphComplianceByOverall);
+					this.lblBg.text = "Hand Hygine Compliance Rate by Overall";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphComplianceByOverall.fetchLocalXML();
+					
+				}
+				//graph 10 - 
+				if(s=="graph10"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphComplianceByJob);
+					this.lblBg.text = "Hand Hygine Compliance Rate by Job Category";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphComplianceByJob.fetchLocalXML();
+					
+				}
+				
+				
+				//progress screen
+				if(s=="progress"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(progressScreen);
+					this.lblBg.text = "Progress Report";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					progressScreen.doLoadXMLData();
+				}
+				
+				//new added 2015-08-11 for prof name screen
+				if(s=="profname"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(profnameScreen);
+					this.lblBg.text = "Profession Name Report";
+					profnameScreen.doLoadXMLData();
+				}
+				//end added prof name screen
+				
+				//new added 2015-06-05 - procedure / reason
+				if(s=="procedure"){
+					viewstack1.visible = true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphProcedure);
+					this.lblBg.text = "Aseptic Procedure";
+					graphProcedure.fetchLocalXML();
+				}
+				
+				
+				
+				if(s=="missedreason"){
+					viewstack1.visible = true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphMissedReason);
+					this.lblBg.text = "Missed with Reason";
+					graphMissedReason.fetchLocalXML();
+				}
+				
+				if(s=="leaderboard"){
+					viewstack1.visible = true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphLeaderboard);
+					this.lblBg.text = "Leaderboard";
+					graphLeaderboard.fetchLocalXML();
+				}
+				
+			}
+			
+			
+			protected function lblAction_clickHandler(event:MouseEvent):void
+			{
+
+				// TODO Auto-generated method stub
+
+				//doSwitch here...
+				trace("do click action...");
+				
+				
+				viewstack1.visible=true;
+				viewstack1.removeAll();
+				viewstack1.addChild(new GraphHHOByProfession);
+
+
+			}
+			
+			
+			
+			
+			private function on_connection(event:StatusEvent):void {
+				if(monitor.available) {
+					//cI.source = "assets/greenLight.png";
+					//searchButton.enabled = true;
+					trace("Network Available");
+					isConnected = true;
+					
+				} else {
+					
+					//cI.source = "assets/redLight.png";
+					//searchButton.enabled = false;
+					trace("Network Not Available");
+					isConnected = false;
+				}
+				
+//				manually running in the offline mode ... not required in the production version
+//				isConnected = false;
+				
+				isNetworkCheck = true;
+				
+				if(this.currentState=="State1"){
+				
+					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+					if(file.exists){
+						trace("found license.key");
+						
+						
+						trace("is connected " + this.isConnected);
+						
+						if(this.isConnected){
+							
+							//check license expired
+							httpAuth.url = Constants.url_mapi;
+							httpAuth.method="POST";
+							
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+							trace(s.split("\n")[0]);
+							
+							enText = s.split("\n")[0];
+							
+							//A96ER33Y
+							httpAuth.send({act:"license", license:s.split("\n")[0]});
+							
+							//end check license expired
+							
+						} else {
+							
+							this.currentState = "LoginState";
+							
+							//update logo here AMOL
+//							trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
+//							imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
+						}
+					
+					} else {
+					
+						pbCheck.visible = false;
+						btnSubmit.visible = true;
+						txtLicense.visible = true;
+					
+					}
+				
+				}
+				
+			}
+			
+			
+			protected function btnYM_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				trace("do change YM");
+				
+				trace(btnYM.selectedItem.@value);
+				
+				this.selectedYM = btnYM.selectedItem.@value;
+				this.selectedYMLabel = btnYM.selectedItem.@label;
+				
+				doUpdateReport();
+				
+			}
+			
+			/*protected function btnObserver_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				trace("do change obs");	
+				trace(btnObserver.selectedItem.@value);
+				
+				this.selectedObserver = btnObserver.selectedItem.@value;
+				
+				doUpdateReport();
+				
+			}*/
+			
+			protected function btnReport_changeHandler(event:IndexChangeEvent):void
+			{
+				doUpdateReport();
+			}
+			
+			private function doUpdateReport():void {
+				btnSync.visible = false;
+				btnYM.visible = true;
+				
+				if(btnReport.selectedIndex==0){
+					doGraphSelection(Constants.SCREEN_HOME);
+					btnYM.visible = false;
+					btnSync.visible = true;
+				}
+				
+				if(this.CURRENT_MODULE == Constants.MODULE_HANDHYGIENE){
+					
+					if(btnReport.selectedIndex==1){
+						doGraphSelection("graph1");	
+					} else if(btnReport.selectedIndex==2){
+						doGraphSelection("graph2");
+					} else if(btnReport.selectedIndex==3){
+						doGraphSelection("graph3");
+					} else if(btnReport.selectedIndex==4){
+						doGraphSelection("graph4");
+					} else if(btnReport.selectedIndex==5){
+						doGraphSelection("graph5");
+					} else if(btnReport.selectedIndex==6){
+						doGraphSelection("graph6");
+					} else if(btnReport.selectedIndex==7){
+						doGraphSelection("progress");
+					} else if(btnReport.selectedIndex==8){
+						doGraphSelection("profname");
+					} else if(btnReport.selectedIndex==9){
+						doGraphSelection("procedure");
+					} else if(btnReport.selectedIndex==10){
+						doGraphSelection("missedreason");
+					} else if(btnReport.selectedIndex==11){
+						doGraphSelection("leaderboard");
+					} else if(btnReport.selectedIndex==12){
+						doGraphSelection("graph7");
+					} else if(btnReport.selectedIndex==13){
+						doGraphSelection("graph8");
+					} else if(btnReport.selectedIndex==14){
+						doGraphSelection("graph9");
+					} else if(btnReport.selectedIndex==15){
+						doGraphSelection("graph10");
+					}
+					
+				} else if(this.CURRENT_MODULE == Constants.MODULE_ENVIRONMENT) {
+					
+					if(btnReport.selectedIndex==1){
+						doGraphSelection(Constants.SCREEN_ENV_DASHBOARD);
+					} else if(btnReport.selectedIndex==2){
+						doGraphSelection(Constants.SCREEN_ENV_AREA);
+					} else if(btnReport.selectedIndex==3){
+						doGraphSelection(Constants.SCREEN_ENV_WARDFACILITY);
+					} else if(btnReport.selectedIndex==4){
+						doGraphSelection(Constants.SCREEN_ENV_NOTE);
+					} else if(btnReport.selectedIndex==5){
+						doGraphSelection(Constants.SCREEN_ENV_METHOD);
+					} else if(btnReport.selectedIndex==6){
+						doGraphSelection(Constants.SCREEN_ENV_CATEGORY);
+					} else if(btnReport.selectedIndex==7){
+						//audit area/dept for the last 12 month
+						doGraphSelection(Constants.SCREEN_ENV_AUDIT);
+					}else if(btnReport.selectedIndex==8){
+						//audit area/dept for the last 12 month
+						doGraphSelection(Constants.SCREEN_ENV_WARDFACILITY);
+					}
+				}
+			}
+			
+			
+//			private function doUpdateReport():void{
+//			
+//				if(btnReport.selectedIndex==1){
+//					doGraphSelection("graph1");	
+//				} else if(btnReport.selectedIndex==2){
+//					doGraphSelection("graph2");
+//				} else if(btnReport.selectedIndex==3){
+//					doGraphSelection("graph3");
+//				} else if(btnReport.selectedIndex==4){
+//					doGraphSelection("graph4");
+//				} else if(btnReport.selectedIndex==5){
+//					doGraphSelection("graph5");
+//				} else if(btnReport.selectedIndex==6){
+//					doGraphSelection("graph6");
+//				} else if(btnReport.selectedIndex==7){
+//					doGraphSelection("progress");
+//				} else if(btnReport.selectedIndex==8){
+//					doGraphSelection("profname");
+//				} else if(btnReport.selectedIndex==9){
+//					doGraphSelection("procedure");
+//				} else if(btnReport.selectedIndex==10){
+//					doGraphSelection("missedreason");
+//				} else if(btnReport.selectedIndex==11){
+//					doGraphSelection("leaderboard");
+//				} else if(btnReport.selectedIndex==12){
+//					doGraphSelection("graph7");
+//				}
+//			
+//			}
+			
+			public function onDownloadComplete(e:Event):void {  
+				// get the index position of the last forward slash in the file path  
+				//var startIndex:int = urlRequest.url.lastIndexOf("/") + 1;  
+				
+				// set fileName equal to url string starting after the last forward slash  
+				//fileName = urlRequest.url.substring(startIndex);  
+				
+				fileName = "MOH_Raw_Data_Report.xls";
+				
+				trace("fn: " + fileName);
+				
+				
+				
+				// create a new File object at the user Directory folder with the correct file   
+				fileToSave = documentsDirectory.resolvePath(fileName);//name  
+				
+				// create ByteArray to store data downloaded from URLLoader  
+				fileData = new ByteArray();  
+				
+				// write the data from URLLoader to ByteArray  
+				urlStream.readBytes(fileData, 0, urlStream.bytesAvailable);  
+				
+				var fx:FileReference = new FileReference();
+				fx.save(fileData,fileName);
+				
+				// create FileStream to save data to File  
+				/*fileStream = new FileStream();  
+				
+				// open file in a WRITE mode to save data to the File  
+				fileStream.open(fileToSave, FileMode.WRITE);  
+				
+				// write the data to the file  
+				fileStream.writeBytes(fileData, 0, fileData.length);  
+				
+				// close FileStream when done  
+				fileStream.close();*/
+				
+				
+				//btnPrintReport.label = "Print Report";
+				//btnPrintReport.enabled = true;
+			} 
+			
+			/*protected function btnPrintReport_clickHandler(event:MouseEvent):void
+			{
+				
+				//report download BIRT function
+				btnPrintReport.label = "wait...";
+				btnPrintReport.enabled = false;
+				trace("download report...");
+				
+				//hospital
+				//hid
+				//year
+				//month
+				//month_name
+				
+				urlRequest.method = URLRequestMethod.POST;  
+				var variables : URLVariables = new URLVariables();  
+				variables.hospital = "Raydar Hospital";  
+				variables.hid = 16;
+				variables.year = 2015;
+				variables.month = 6;
+				variables.month_name = "June";
+				
+				urlRequest.data = variables;  
+				
+				urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+				urlStream.load(urlRequest);  
+				
+					
+			}*/
+			
+			protected function btnLicense_clickHandler(event:MouseEvent):void
+			{
+				Alert.show("To install a new license your current license will be replaced, are you sure want to continue?", "License",
+					mx.controls.Alert.YES | mx.controls.Alert.NO, this, alertEventHandler);
+				
+			}
+			
+			protected function alertEventHandler(event:CloseEvent):void {
+				if(event.detail == Alert.YES) {
+					//delete license
+//					if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+//						File.applicationStorageDirectory.resolvePath("license.key").deleteFile();
+//					}
+//					
+//					if(File.applicationStorageDirectory.resolvePath("user.key").exists){
+//						File.applicationStorageDirectory.resolvePath("user.key").deleteFile();
+//					}
+//					if(File.applicationStorageDirectory.resolvePath("result.data").exists){
+//						File.applicationStorageDirectory.resolvePath("result.data").deleteFile();
+//					}
+//					if(File.applicationStorageDirectory.resolvePath("asset").exists){
+//						File.applicationStorageDirectory.resolvePath("asset").deleteDirectory(true);
+//					}
+					
+					var fileslist:Array = File.applicationStorageDirectory.getDirectoryListing();
+					
+					for(var i=0;i<fileslist.length;i++) {
+						var file:File = fileslist[i];
+						if(!file.isDirectory) {
+							file.deleteFile();
+						}
+						
+					}
+					
+					this.currentState = "State1"; //input license state
+					txtLicense.visible = true;
+					btnSubmit.visible = true;
+					
+				}
+			}
+			
+			
+			protected function btnReportManager_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				var winReports:ReportsWindow = new ReportsWindow();
+				winReports.open(this, true);
+				PopUpManager.centerPopUp(winReports);
+				
+			}
+			
+			protected function txtPwd_keyDownHandler(event:KeyboardEvent):void
+			{
+				// TODO Auto-generated method stub
+				if(event.charCode == 13){
+					doLicenseOrLogin();
+				}
+			}
+			
+			private function doLicenseOrLogin():void
+			{
+				stageNum=0; //reset
+				// TODO Auto Generated method stub
+				if(this.isConnected==false && this.currentState == "State1"){
+					trace("no connection");
+					
+					var alertNetwork:NetworkDialog = new NetworkDialog();
+					alertNetwork.open(this, true);
+					
+					// Increase the width and height.
+					//alertNetwork.width += 100;
+					//alertNetwork.height += 100;
+					
+					// Center the pop-up in the parent container.
+					PopUpManager.centerPopUp(alertNetwork);
+					
+					
+					alertNetwork.doMessage("Network Error", "Network Connection is Required");
+					
+					return;
+				}
+				
+				// TODO Auto-generated method stub
+				
+				//var sha1:SHA1 = new SHA1();
+				
+				//var key = new ByteArray();
+				//key.writeUTFBytes("A96ER33Y"); //for KPJ Selangor!
+				///
+				
+				
+				///trace(sha1.hash(key));
+				
+				//var enText:String = Base64.encodeByteArray(sha1.hash(key)); 
+				
+				//trace(enText);
+				
+				//var newKey = crypto.hash(key);
+				
+				trace("State: " + this.currentState);
+				
+				
+				if(this.currentState == "State1"){
+					
+					
+					if(StringUtil.trim(txtLicense.text)==""){
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("License", "License Key is Required");
+						return;
+					}
+					
+					
+					var src:ByteArray = Hex.toArray(Hex.fromString(StringUtil.trim(txtLicense.text)));
+					var sha1:SHA1 = new SHA1();
+					enText = Hex.fromArray(sha1.hash( src ));
+					
+					trace(enText);
+					
+					httpAuth.url = Constants.url_mapi;
+					httpAuth.method="POST";
+					
+					//A96ER33Y
+					httpAuth.send({act:"license", license:enText});
+					
+					//A96ER33Y
+					//Success
+					//httpAuth.send({act:"license", license:"18fd975d3f27ff1129b88435901c0097d8a08e73"});
+					
+				} else if(this.currentState == "LoginState") {
+					
+					
+					if(StringUtil.trim(txtLicense.text)=="" || StringUtil.trim(txtPwd.text)==""){
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						alertNetwork.doMessage("Login", "User ID and Password is Required");
+						return;
+					}
+					
+					if(this.isConnected){
+						
+						var src:ByteArray = Hex.toArray(Hex.fromString(StringUtil.trim(txtPwd.text)));
+						var sha1:SHA1 = new SHA1();
+						enPwd = Hex.fromArray(sha1.hash( src ));
+						
+						trace(enPwd);
+						
+						var srcUserId:ByteArray = Hex.toArray(Hex.fromString(StringUtil.trim(txtLicense.text)));
+						enUserId = Hex.fromArray(sha1.hash(srcUserId));
+						
+						trace(enUserId);
+						
+						httpAuth.url = Constants.url_mapi;
+						httpAuth.method="POST";
+						
+						var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+						trace(s.split("\n")[1]);
+						
+						//store licenseKey in constants
+						Constants.setLicenseKey(s.split("\n")[0]);
+						Constants.setHospitalId(s.split("\n")[1]);
+						//A96ER33Y
+						//httpAuth.send({act:"loginadmin", hosp_id:s.split("\n")[1], user_id:StringUtil.trim(txtLicense.text), pwd:enPwd});
+						httpAuth.send({act:"login", hosp_id:s.split("\n")[1], user_id:StringUtil.trim(txtLicense.text), pwd:enPwd});
+						//for admin login only!
+						
+						
+					} else {
+						
+						
+						//if not connected - check flat file
+						var file:File = File.applicationStorageDirectory.resolvePath("user.key");
+						if(!file.exists){
+							if(!this.isConnected){
+								var alertNetwork:NetworkDialog = new NetworkDialog();
+								alertNetwork.open(this, true);
+								PopUpManager.centerPopUp(alertNetwork);
+								alertNetwork.doMessage("Network Error", "Network Connection is Required");
+								return;
+							}
+						} else {
+							//offline login with flat file
+							try{
+								var stream:FileStream = new FileStream()
+								stream.open(file, FileMode.READ);
+								var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+								trace(s.split("\n")[0]);
+								trace(s.split("\n")[1]);
+								
+								var src:ByteArray = Hex.toArray(Hex.fromString(StringUtil.trim(txtLicense.text)));
+								var sha1:SHA1 = new SHA1();
+								var encUser:String = Hex.fromArray(sha1.hash( src ));
+								
+								trace("enU: " + encUser);
+								
+								src = Hex.toArray(Hex.fromString(StringUtil.trim(txtPwd.text)));
+								var encPwd:String = Hex.fromArray(sha1.hash(src));
+								
+								trace("enP: " + encPwd);
+								
+								
+								stream.close();
+								
+								
+								if(s.split("\n")[0]==encUser && s.split("\n")[1]==encPwd){
+									//login success	
+									
+									trace("login success...");
+									
+									var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+									var stream:FileStream = new FileStream()
+									stream.open(file, FileMode.READ);
+									var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+									trace(s.split("\n")[0]);
+									trace(s.split("\n")[1]);
+									Constants.setHospitalId(s.split("\n")[1]);
+									
+									//start auto fetch latest data
+									if(this.isConnected){
+										trace("post doReprot1 + license Key " + s.split("\n")[0]);
+										
+										savingAlert(); //pop loading dialog...
+										
+										httpReport.requestTimeout = 120; //120 seconds, 2 minutes
+										httpReport.url = Constants.url_mapi;
+										httpReport.method="POST";
+										httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
+										
+										
+										
+									} else {
+										//doLoadXMLData(); //load from local device
+//										savingAlert();
+										fetchLocalData();
+//										doStart(); //load xml data offline!
+									}
+									
+									//end auto fetch latest data
+									
+									
+								} else {
+									//login fail
+									var alertNetwork:NetworkDialog = new NetworkDialog();
+									alertNetwork.open(this, true);
+									PopUpManager.centerPopUp(alertNetwork);
+									alertNetwork.doMessage("Invalid Login", "Either User ID or Password is Invalid");
+								}
+								
+							}catch(e:Error){
+								trace(e.toString());
+							}							
+						}
+					}
+					//act login
+					//	hosp_id
+					//user+id - alfred
+					//pwd - 123456 - sha1
+					
+				}
+			}
+			
+			private function fetchLocalData():void {
+				var file:File = File.applicationStorageDirectory.resolvePath("raw.json");
+				if(file.exists){
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					//						this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(stream.readUTFBytes(stream.bytesAvailable).toString(), Constants.getLicenseKey().substring(0,16)) + "</report>";		
+					this.jsonRaw = JSON.parse(stream.readUTFBytes(stream.bytesAvailable).toString());						
+					trace("raw.data " + stream.readUTFBytes(stream.bytesAvailable).toString());
+				}
+				
+				this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+				this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+				
+				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+				if(file.exists){
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					//						this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(stream.readUTFBytes(stream.bytesAvailable).toString(), Constants.getLicenseKey().substring(0,16)) + "</report>";		
+					this.fetchXMLData = stream.readUTFBytes(stream.bytesAvailable).toString();						
+					trace("result.data " + this.fetchXMLData);
+				}
+				
+				var hospitalDetail:String;
+				if(EncryptedLocalStore.isSupported) {
+					var va:ByteArray = EncryptedLocalStore.getItem("hospitalDetls");
+					hospitalDetail = va.readUTFBytes(va.bytesAvailable);
+				}
+				
+				var jsonRead = JSON.parse(hospitalDetail);
+				
+				
+				trace(hospitalDetail);
+				//trace("last collected date: " + parseDate(new XML(s).lastSync.@date).toString());
+				
+				viewstack1.visible=true;
+				viewstack1.removeAll();
+				
+				this.maximize();
+				
+				this.lblBg.text = "SEMMEL";
+				
+				this.currentState = "ModulesScreen";
+				
+				
+				lblHospital.text = jsonRead.hospital;
+				if(StringUtil.trim(jsonRead.hosp_sponsor) != "") {
+					trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
+					imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
+				}
+			}
+			
+			//v1.0.14 - env module plugin
+			
+			private function doSelectHandHygieneModule():void{
+				
+				trace("SELECT HAND HYGIENE MODULE");
+				
+				this.CURRENT_MODULE = Constants.MODULE_HANDHYGIENE;
+				
+				doCompleteSyncHandHygiene();
+				/*savingAlert();
+				
+				this.pb.setProgress(50, 100);
+				//this.pb.label = "please wait... " + String(10) + "%";
+				this.pb.label = "loading data, please wait..."; //"Checking for updates...";
+				this.pb.invalidateDisplayList();
+				
+				
+				/*var hhc:HandHygieneController = new HandHygieneController();
+				hhc.doCheckUpdate(Constants.getLicenseKey());
+				hhc.addEventListener(HandHygieneController.CHECKUPDATE_EVENT, doUpdateHandHygieneComplete);*/
+				
+				
+			}
+			
+			private var acDownloadFile:ArrayCollection = new ArrayCollection();
+			
+			private function doUpdateHandHygieneComplete(evt:Event):void{
+				//evt.target to refer the EnvReportController object
+				//.returnData is the EnvReportController class property
+				
+				trace("update complete HH: " + evt.target.returnData);
+				
+				var downloadList:String = evt.target.returnData.split("|")[1];
+				//enc json
+				var rawData:String = evt.target.returnData.split("|")[2];
+				
+				if(evt.target.returnData!=""){
+					//try {
+						//var json:JSONDecoder = new JSONDecoder();
+						//var obj:Object = j.decode(evt.target.returnData);
+						
+						//note: for HH need replace "ready_download|"
+						
+						//var hhFileObject:Array = JSON.parse(evt.target.returnData.replace("ready_download|", "")) as Array;
+						var hhFileObject:Array = JSON.parse(downloadList) as Array;
+						
+						trace("len hh file: " + hhFileObject.length.toString());
+						var obj:Object = null;
+						
+						this.pb.setProgress(80, 100);
+						this.pb.label = "Checking for updates...";
+						
+						for(var i:Number=0;i<hhFileObject.length;i++){
+							obj = hhFileObject[i];
+							trace("obj: " + obj);
+							trace("crc: " + obj.crc32);
+							trace("fn: " + obj.fn);
+							
+							if(File.applicationStorageDirectory.resolvePath(obj.fn).exists){
+								if(Util.crc32Check(obj.fn)!=obj.crc32){
+									acDownloadFile.addItem(obj.fn);
+								}
+							} else {
+								acDownloadFile.addItem(obj.fn);
+							}
+							
+						}
+						
+						//check file crc32 if not match trigger file to download or not exists!
+						//						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+						//Util.crc32Check(
+						
+						//call download
+						
+						trace("file need to download hh: " + acDownloadFile.length.toString());
+						
+						intDownload=0;
+						
+						if(acDownloadFile.length>0){
+							//this.pb.setProgress(0, 100);
+							//this.pb.label = "downloading file(s) 1/" + acDownloadFile.length.toString() + "...";
+							
+							intTotalFile = acDownloadFile.length;
+							this.pb.setProgress(0, 100);
+							this.pb.label = "Downloading... 1 of " + String(intTotalFile) + " (0%)";
+							
+							hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDoneHH);
+							hhc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
+							
+							//doBatchDownload(acDownloadFile);
+						} else {
+							
+							doCompleteSyncHandHygiene();
+						}
+						
+						
+					//} catch (e:Error){
+					//	trace("json parse error: " + e.toString());
+					//}
+				}
+				
+			}
+			
+			
+			//private var acYM:ArrayCollection = new ArrayCollection();
+			private var xmlYM:String = "";
+			
+			private function doUpdateComplete(evt:Event):void{
+				//evt.target to refer the EnvReportController object
+				//.returnData is the EnvReportController class property
+				
+				trace("update complete: " + evt.target.returnData);
+				
+				xmlYM="";//reset
+				
+				if(evt.target.returnData!=""){
+					try {
+						
+						//acYM.removeAll();
+						//var json:JSONDecoder = new JSONDecoder();
+						//var obj:Object = j.decode(evt.target.returnData);
+						
+						var envFileObject:Array = JSON.parse(evt.target.returnData) as Array;
+						
+						//var acEnvFile:ArrayCollection = envFileObject as ArrayCollection;
+						trace("len: " + envFileObject.length.toString());
+						var obj:Object = null;
+						
+						this.pb.setProgress(80, 100);
+						this.pb.label = "Checking for updates...";
+						
+						//var oYM:Object;
+						
+						for(var i:Number=0;i<envFileObject.length;i++){
+							//oYM = new Object();
+							obj = envFileObject[i];
+							trace("obj: " + obj);
+							trace("crc: " + obj.crc32);
+							trace("fn: " + obj.fn);
+							trace("yyyyMM: " + obj.yyyymm);
+							
+							if(obj.yyyymm=="config"){
+								
+							} else {
+							
+								//<month label=\"October, 2015\" value=\"201510\" />
+								if(obj.yyyymm.substring(4).length==1){
+									//oYM.label = sdfYM.format(parseDate(obj.yyyymm.substring(0,4)+"-0"+obj.yyyymm.substring(4)));
+									xmlYM += "<month label=\"" + sdfYM.format(parseDate(obj.yyyymm.substring(0,4)+"-0"+obj.yyyymm.substring(4))) + "\" value=\"" + obj.yyyymm + "\" />";
+								} else {
+									//oYM.label = sdfYM.format(parseDate(obj.yyyymm.substring(0,4)+"-"+obj.yyyymm.substring(4)));
+									xmlYM += "<month label=\"" + sdfYM.format(parseDate(obj.yyyymm.substring(0,4)+"-"+obj.yyyymm.substring(4))) + "\" value=\"" + obj.yyyymm + "\" />";								
+								}
+							}
+							//trace("Format: " + oYM.label);
+							//oYM.value = obj.yyyymm;
+							
+							//acYM.addItem(oYM);
+							
+							
+							if(File.applicationStorageDirectory.resolvePath(obj.fn).exists){
+								if(Util.crc32Check(obj.fn)!=obj.crc32){
+									acDownloadFile.addItem(obj.fn);
+								}
+							} else {
+								acDownloadFile.addItem(obj.fn);
+							}
+							
+						}
+						
+						//check file crc32 if not match trigger file to download or not exists!
+						//						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+						//Util.crc32Check(
+
+						//call download
+						
+						trace("file need to download env: " + acDownloadFile.length.toString());
+						
+						intDownload=0;
+						
+						if(acDownloadFile.length>0){
+							//this.pb.setProgress(0, 100);
+							//this.pb.label = "downloading file(s) 1/" + acDownloadFile.length.toString() + "...";
+							
+							intTotalFile = acDownloadFile.length;
+							this.pb.setProgress(0, 100);
+							this.pb.label = "Downloading... 1 of " + String(intTotalFile) + " (0%)";
+							
+							erc.addEventListener(EnvReportController.DOWNLOADED_EVENT, doDoneEnv);
+							erc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
+							
+							//doBatchDownload(acDownloadFile);
+						} else {
+						
+							doCompleteSyncEnv();
+						}
+						
+						
+					} catch (e:Error){
+						trace("json parse error: " + e.toString());
+					}
+				}
+				
+			}
+			
+			private var intTotalFile:Number = 0;
+			private var intDownloadCounter:Number = 0;
+			
+			private function doBatchDownload(acDownloadFile:ArrayCollection):void{
+				var erc:EnvReportController = new EnvReportController();
+				erc.initDownload(acDownloadFile.getItemAt(intDownloadCounter).toString());
+				erc.addEventListener(EnvReportController.DOWNLOADED_EVENT, doNextDownload);
+			}
+			private function doNextDownload():void{
+				trace("complete download going to next download ...");
+				intDownloadCounter++;
+				
+				this.pb.setProgress((((intDownloadCounter+1)/intTotalFile)*100), 100);
+				this.pb.label = "downloading file(s) " + String(intDownloadCounter+1) + "/" + intTotalFile.toString() + "...";
+				trace("showing process..." + this.pb.label);
+			}
+			
+			
+			private function doSelectEnvironmentalModule():void{
+				
+				this.CURRENT_MODULE = Constants.MODULE_ENVIRONMENT;
+
+				savingAlert();
+				
+				this.pb.setProgress(50, 100);
+				//this.pb.label = "please wait... " + String(10) + "%";
+				this.pb.label = "Checking for updates...";
+				this.pb.invalidateDisplayList();
+				
+				var erc:EnvReportController = new EnvReportController();
+				erc.doCheckUpdate(Constants.getLicenseKey());
+				erc.addEventListener(EnvReportController.CHECKUPDATE_EVENT, doUpdateComplete);
+				
+				//return;
+
+			}
+			
+			//end env module plugin
+			
+			protected function windowedapplication1_stateChangeCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+//				if(this.currentState = "State1") {
+//					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
+//					if(!file.exists){
+//						if(!this.isConnected){
+//							var alertNetwork:NetworkDialog = new NetworkDialog();
+//							alertNetwork.open(this, true);
+//							PopUpManager.centerPopUp(alertNetwork);
+//							alertNetwork.doMessage("Network Error", "Network Connection is Required");
+//							return;
+//						}
+//					} else {
+//						var stream:FileStream = new FileStream()
+//						stream.open(file, FileMode.READ);
+//						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+//						trace(s.split("\n")[0]);
+//						trace(s.split("\n")[1]);
+//						user = AESCrypto.decrypt(s.split("\n")[0], Constants.getLicenseKey().substring(0,16));
+//						stream.close();
+//					}
+//				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="State1"/>
+		<s:State name="LoginState"/>
+		<s:State name="MainMenu"/>
+		<s:State name="ModulesScreen"/>
+	</s:states>
+	
+	<s:Label id="lblBg" backgroundColor="#fc5a5a" color="#FFFFFF" fontWeight="bold" text="     Login"
+			 verticalAlign="middle"
+			 y.LoginState="0" left.LoginState="0" right.LoginState="-1" height.LoginState="44"
+			 y.MainMenu="0" left.MainMenu="0" right.MainMenu="-1" height.MainMenu="44"
+			 backgroundColor.MainMenu="#FC5A5A" text.MainMenu="     SEMMEL"
+			 y.ModulesScreen="0" left.ModulesScreen="0" right.ModulesScreen="-1"
+			 height.ModulesScreen="44" text.ModulesScreen="     Main Menu"
+			 y.State1="0" left.State1="0" right.State1="-1" height.State1="44"/>
+	<s:Button id="btnReportManager" includeIn="MainMenu" y="6" right="57" width="42" height="32"
+			  blendMode="add" click="btnReportManager_clickHandler(event)"
+			  icon="@Embed('asset/images/report_30.png')"/>
+	<s:TextInput id="txtLicense" includeIn="LoginState,State1" width="192" height="34"
+				 contentBackgroundColor="#F2F2F2" keyDown="txtPwd_keyDownHandler(event)"
+				 prompt="Enter License Key" textAlign="center" text.LoginState="{user}"
+				 y.LoginState="257" horizontalCenter.LoginState="6" prompt.LoginState="User ID"
+				 tabIndex.LoginState="1"
+				 visible.State1="false" y.State1="256" horizontalCenter.State1="5"/>
+	<s:Button id="btnSubmit" includeIn="LoginState,State1" width="192" height="32" label="SUBMIT"
+			  chromeColor="#45A8A0" click="btnSubmit_clickHandler(event)" color="#FFFFFF"
+			  focusColor="#52C0B6"
+			  y.LoginState="354" horizontalCenter.LoginState="6" tabIndex.LoginState="3"
+			  visible.State1="false" y.State1="303" horizontalCenter.State1="5"/>
+	<s:TextInput id="txtPwd" includeIn="LoginState" y="299" width="192" height="34" text="{pass}"
+				 contentBackgroundColor="#F2F2F2" displayAsPassword="true" horizontalCenter="6"
+				 keyDown="txtPwd_keyDownHandler(event)" prompt="Password" tabIndex="2"
+				 textAlign="center"/>
+
+	<mx:ViewStack id="viewstack1" visible="false" x="0" y="44" width="1024" height="700"
+				  backgroundColor="#FFFFFF"
+				  width.MainMenu="100%" height.MainMenu="100%">
+		<s:NavigatorContent includeIn="MainMenu" width="100%" height="100%" label="">
+		</s:NavigatorContent>
+	</mx:ViewStack>
+	<s:Button id="btnSync" includeIn="LoginState,MainMenu" visible="false" y="6"
+			  width="137" height="34" blendMode="add" click="btnSync_clickHandler(event)"
+			  x.LoginState="354" label.LoginState="Load Latest Data"
+			  visible.MainMenu="true" y.MainMenu="6" right.MainMenu="382" width.MainMenu="42"
+			  height.MainMenu="32" icon.MainMenu="@Embed('asset/images/sync_30.png')"
+			  x.ModulesScreen="354" label.ModulesScreen="Load Latest Data"/>
+	<s:Image includeIn="LoginState,State1" y="52" width="190" height="184" smooth="true"
+			 source="@Embed('asset/images/semmel_full_logo.png')"
+			 horizontalCenter.LoginState="6"
+			 horizontalCenter.State1="6"/>
+	
+	<s:DropDownList id="btnReport" includeIn="MainMenu" y="7" right="105" width="273" height="32"
+					blendMode="add" borderVisible="true" change="btnReport_changeHandler(event)"
+					selectedIndex="0"
+					contentBackgroundColor="#FFFFFF" dropShadowVisible="true" prompt="Report...">
+	
+		<s:layout>
+			<s:VerticalLayout gap="0"
+							  horizontalAlign="contentJustify"
+							  requestedRowCount="14" />
+		</s:layout>
+		
+		<!--<mx:ArrayCollection>
+			<fx:String>Home</fx:String>
+			<fx:String>Adherence Dashboard</fx:String>
+			<fx:String>Opportunity vs. Adherence by Ward/Facility</fx:String>
+			<fx:String>Opportunity vs. Adherence by Profession</fx:String>
+			<fx:String>Opportunity vs. Adherence by Moments</fx:String>
+			<fx:String>Average Action by Moments</fx:String>
+			<fx:String>Ward/Facility Compliance Summary</fx:String>
+			<fx:String>Progress Report</fx:String>
+			<fx:String>Profession Name Compliance Summary</fx:String>
+			<fx:String>Aseptic Procedure</fx:String>
+			<fx:String>Missed with Reason</fx:String>
+			<fx:String>Leaderboard</fx:String>
+			<fx:String>Ward Facility</fx:String>
+		</mx:ArrayCollection>-->
+		
+	</s:DropDownList>
+	
+	<s:DropDownList id="btnYM" includeIn="MainMenu" visible="false" y="6" right="382" width="188"
+					height="32" blendMode="add" change="btnYM_changeHandler(event)"
+					chromeColor="#FFFFFF" contentBackgroundAlpha="1.0" dataProvider="{yearMonthXML}"
+					labelField="@label"></s:DropDownList>
+	<!--<s:DropDownList id="btnObserver" includeIn="MainMenu" y="6" width="190" height="32"
+					blendMode="add" change="btnObserver_changeHandler(event)"
+					dataProvider="{observerXML}" horizontalCenter="95" labelField="@label"
+					prompt="All Observer"></s:DropDownList>-->
+	
+		<mx:LinkButton id="btnLicense" includeIn="LoginState,ModulesScreen" right="10" bottom="10"
+				   label="Install New License" click="btnLicense_clickHandler(event)"
+				   color="#0085D1"/>
+	<s:Label includeIn="LoginState,ModulesScreen,State1" y="52" right="6" text="v {Constants.appVersion}"/>
+	<s:Button id="btnSetting" includeIn="MainMenu" y="6" right="9" width="42" height="32"
+			  click="btnSetting_clickHandler(event)"
+			  blendMode="add" icon="@Embed('asset/images/setting_30.png')"/>
+	<mx:ProgressBar id="pbCheck" includeIn="State1" y="244" width="254" label="Initializing..."
+					horizontalCenter="0" indeterminate="true"/>
+	<s:Label id="lblLastCollectedDate" includeIn="MainMenu" visible="false" y="7" right="644"
+			 width="278" height="29" color="#FFFFFF" fontWeight="bold" text="Last Collected Date:"
+			 textAlign="right" verticalAlign="middle"/>
+	<s:Button id="btnModule_HandHygiene" includeIn="ModulesScreen" y="187" width="173" height="133"
+			  label="Hand Hygiene" click="doSelectHandHygieneModule()" horizontalCenter="-100"
+			  icon="@Embed('icon48.png')" iconPlacement="top"/>
+	<s:Button id="btnModule_Environmental" includeIn="ModulesScreen" y="187" width="173" height="133"
+			  label="Environmental Hygiene" click="doSelectEnvironmentalModule()" horizontalCenter="121"
+			  icon="@Embed('icon48.png')" iconPlacement="top"/>
+	<s:Image includeIn="ModulesScreen" right="10" top="72" width="71" height="100" smooth="true"
+			 smoothingQuality="high" source="@Embed('asset/images/semmel_logo.png')"/>
+	<s:Label id="lblHospital" includeIn="ModulesScreen" left="13" right="89" top="72" height="88"
+			 fontSize="30" text="Hospital Name" verticalAlign="middle"/>
+	<s:Image id="imgSponsor" includeIn="ModulesScreen" left="94" right="93" height="226"
+			 horizontalCenter="0" scaleMode="letterbox" smooth="true" smoothingQuality="high"
+			 verticalCenter="180"/>
+	<s:Label includeIn="ModulesScreen" x="95" color="#909090" text="Brought to you by:"
+			 verticalCenter="57"/>
+</s:WindowedApplication>

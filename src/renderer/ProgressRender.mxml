@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009"
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					xmlns:mx="library://ns.adobe.com/flex/mx"
+					width="185" height="42" clipAndEnableScrolling="true">
+	<!--delete script section not required-->
+	<fx:Script>
+	<![CDATA[
+	//override public function prepare(hasBeenRecycled:Boolean):void {
+	//lblData.text = data[column.dataField]
+	//}
+		override public function set data(value:Object):void
+		{
+			//trace(value);
+			//progressBar.setProgress(70, 100);
+			if(value!=null){
+				super.data = value;
+				
+				//trace(value.@progress);
+				
+				if(Number(value.@quota)!=0){
+					progressBar.setProgress(Number(value.@progress), Number(value.@quota));
+					progressBar.label = value.@progress + "/" + value.@quota;
+					lblProgress.text = String(numForm.format((Number(value.@progress)/Number(value.@quota))*100)) + "%";
+				} else {
+					lblProgress.text = "";
+					progressBar.label = value.@progress;
+					progressBar.setProgress(0,0);
+				}
+				
+				//if(value.r==undefined || value.r==0 || value.r==0.00){
+					//trace("Ladang set to n/a");
+					//value.ladang = "n/a";
+					//super.data = value;
+			//		lblprice.text = "N/A";
+					
+				//}
+			}
+		}
+	]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:NumberFormatter id="numForm" useGrouping="false" fractionalDigits="0"/>
+	</fx:Declarations>
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="left" verticalAlign="middle" paddingLeft="7" paddingRight="7"/>
+	</s:layout>
+	<mx:ProgressBar id="progressBar" width="125" height="23" label="0/0" chromeColor="#FFD27A"
+					enabled="true" indeterminate="false" labelPlacement="center" mode="manual"/>
+	<s:Label id="lblProgress" width="40" text="100%" textAlign="right" verticalAlign="middle"/>
+</s:GridItemRenderer>

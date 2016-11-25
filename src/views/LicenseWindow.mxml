@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SkinnablePopUpContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+						   xmlns:s="library://ns.adobe.com/flex/spark"
+						   xmlns:mx="library://ns.adobe.com/flex/mx"
+						   creationComplete="init()"
+						   width="754" height="460">
+	
+	
+	<fx:Script>
+		<![CDATA[
+		
+			import mx.controls.Alert;
+			import mx.events.*;
+			
+			private function init():void{
+			
+				if(this.parentApplication.isNetworkCheck){
+					if(!this.parentApplication.isConnected){
+						Alert.show("Network is not available.");
+						btnAgree.enabled = false;
+					} else {
+						btnAgree.enabled = true;
+					}
+				}
+			}
+			
+			private function doOK(){
+				Alert.show("Confirm that you are agree to the Software License Agreement?", "Confirmation",
+					mx.controls.Alert.YES | mx.controls.Alert.NO, this, alertEventHandler);
+			}
+			
+			protected function alertEventHandler(event:CloseEvent):void {
+				if(event.detail == Alert.YES) {
+					//write agree.key file
+					var file:File = File.applicationStorageDirectory.resolvePath("agree.key");
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.close();
+					close();
+				}
+			}
+			
+			private function doExit(){
+				this.parentApplication.doExit();
+			}
+			
+			protected function btnRefresh_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				init();
+				trace("reload");
+				htmlLicense.location = "http://semmel.raydarhealth.com/license.html";
+			}
+			
+			protected function htmlLicense_completeHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				btnAgree.enabled = true;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:Panel id="pnl" x="0" y="0" width="100%" height="460" title="SEMMEL Software License Agreement">
+	
+		<s:Button id="btnAgree" y="369" right="12" width="159" height="44" label="Yes, I Agree"
+				  enabled="false" click="doOK();"/>
+		<s:Image y="-23" right="10" click="doExit();" smooth="true" smoothingQuality="high"
+				 source="@Embed('asset/images/close.png')"/>
+		<mx:HTML id="htmlLicense" left="10" right="10" top="49" bottom="66"
+				 complete="htmlLicense_completeHandler(event)"
+				 location="http://semmel.raydarhealth.com/license.html"/>
+		<s:Image id="btnRefresh" y="11" right="9" click="btnRefresh_clickHandler(event)"
+				 scaleMode="stretch" smooth="true" smoothingQuality="high"
+				 source="@Embed('asset/images/sync_30.png')"/>
+	
+	</s:Panel>
+
+</s:SkinnablePopUpContainer>

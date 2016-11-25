@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	<fx:Script>
+		<![CDATA[
+			
+			import com.hurlant.crypto.*;
+			import com.hurlant.crypto.hash.SHA1;
+			import com.hurlant.crypto.symmetric.*;
+			import com.hurlant.util.Base64;
+			import com.hurlant.util.Hex;
+			import com.security.util.*;
+			
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.*;
+			import mx.events.ResizeEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.*;
+			
+			
+			public var fetchXMLData:String = "";
+			
+			[Bindable]
+			private var xmlProfName : XMLListCollection;
+			
+			public function doLoadXMLData():void{
+				
+				trace("do load xml data...");
+				
+				var s:String = this.parentApplication.fetchXMLData;
+				if(s!=""){
+					try{
+						
+						if(this.parentApplication.selectedYM!=""){
+							
+							var ob:String = this.parentApplication.selectedYM;
+							this.xmlProfName = new XMLListCollection(new XML(s).profnameadh.(@ob==ob).profname);
+							
+							trace(xmlProfName.toString());
+						//	Alert.show(""+xmlProfName.toString());
+						}
+						
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+					}	
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:DataGrid x="8" top="56" bottom="8" width="550" dataProvider="{xmlProfName}"
+				requestedRowCount="4">
+		<s:columns>
+			<s:ArrayList>
+				<s:GridColumn dataField="@name" headerText="Profession Name" width="240"></s:GridColumn>
+				<!--<s:GridColumn dataField="@opp" headerText="Opportunity" width="100"></s:GridColumn>
+				<s:GridColumn dataField="@cnt" headerText="Compliance" width="100"></s:GridColumn>-->
+				<s:GridColumn dataField="@pect" headerText="Compliance" itemRenderer="renderer.ProgressProfNameRender"></s:GridColumn>
+			</s:ArrayList>
+		</s:columns>
+	</s:DataGrid>
+	<s:Label x="12" y="36" fontSize="12" fontWeight="bold" text="Profession Name Compliance Summary"/>
+	
+	
+</s:NavigatorContent>

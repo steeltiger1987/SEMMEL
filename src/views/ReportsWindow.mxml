@@ -1,0 +1,933 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SkinnablePopUpContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+						   xmlns:s="library://ns.adobe.com/flex/spark"
+						   xmlns:mx="library://ns.adobe.com/flex/mx"
+						   creationComplete="init();"
+						   width="502" height="430">
+	
+	<fx:Declarations>
+		<fx:XML format="e4x" id="dp2"> 
+			<root>
+				<editItem label="Export *.doc" mime="doc" /> 
+				<editItem label="Export *.ppt" mime="ppt" /> 
+				<editItem label="Export *.pdf" mime="pdf" /> 
+			</root>
+		</fx:XML>
+		
+		<fx:XML format="e4x" id="dpXls"> 
+			<root>
+				<editItem label="Export *.xls" mime="xls" /> 
+			</root>
+		</fx:XML>
+		
+	</fx:Declarations>	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.report.bi.*;
+			import com.semmel.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.*;
+			import mx.controls.Menu;
+			import mx.events.*;
+			
+			import spark.events.IndexChangeEvent;
+			
+			public var data:Object = new Object();
+			
+			
+			//var acTree:ArrayCollection = new ArrayCollection();
+			//var acChart:Array = new Array();
+			var acReport:ArrayCollection = new ArrayCollection();
+			
+			public var arrChartForTree:Array = new Array();
+			
+			public var inMemoryChart:Array = new Array();
+			
+			private var newReportName:String = "";
+			
+			private var isAllowSave:Boolean = false;
+			
+			public function init():void{
+				
+				initMenu();
+				
+				btnSave.enabled = false;
+				isAllowSave = false;
+				
+				btnMonth.dataProvider = this.parentApplication.acMonth;
+				btnYear.dataProvider = this.parentApplication.acYear;
+				
+				var currentDate:Date = new Date();
+				var currentYear:Number = currentDate.fullYear;
+				
+				btnMonth.selectedIndex = currentDate.month;
+				btnYear.selectedItem = String(currentYear);
+				
+				//if Malaysia then
+				
+				//SemmelReport.loadReportListing();
+				SemmelReport.loadReportListing();
+				
+				if(this.parentApplication.countryCode=="MY"){
+					SemmelReport.acReportsListing.addItemAt({reportTitle: "MOH Report"}, 0);
+					
+					SemmelReport.acReportsListing.addItemAt({reportTitle: "Audit Report"}, 1);
+					
+				}
+				lstReport.dataProvider = SemmelReport.acReportsListing;
+				
+				trace("report window");
+				
+				if(data.reportTitle!=undefined) {
+					btnSave.enabled = true;
+					isAllowSave = true;
+					trace("from win: " + data.reportTitle);
+					trace("from win: " + data.addReport);
+					
+					var rJSONReport:String = SemmelReport.getJSONReport(data.addReport);
+					trace("rethr getJSONReport: " + rJSONReport);
+					
+					var jsonData:Object = null;
+					if(rJSONReport!=""){
+						//jsonData = JSON.parse(SemmelReport.getJSONReport(data.addReport));
+						jsonData = JSON.parse(rJSONReport);
+						//jsonData.label = jsonData.title + " @ " + data.selectYM;
+						jsonData.label = jsonData.title;
+						jsonData.cid = data.cid;
+						
+						//add on for start/end, wards
+						//for Ward Trend
+						if(data.rptWards!=""){
+							jsonData.rptParam = data.rptParam;
+							jsonData.rptWards = data.rptWards;
+							jsonData.rptStart = data.rptStart;
+							jsonData.rptEnd = data.rptEnd;
+						}
+						//for Prof Trend
+						if(data.rptProfs!=""){
+							jsonData.rptParam = data.rptParam;
+							jsonData.rptWard = data.rptWard;
+							jsonData.rptProfs = data.rptProfs;
+							jsonData.rptStart = data.rptStart;
+							jsonData.rptEnd = data.rptEnd;
+						}
+						//end of add on for start/end, wards
+						
+					} else {
+						jsonData =new Object();
+						jsonData.cid = data.cid;
+						if(data.rptDomain!=undefined){
+							jsonData.rptDomain = data.rptDomain;
+							jsonData.rptGroupBy = data.rptGroupBy;
+							jsonData.rptParam = data.rptParam;
+						}
+						
+						jsonData.title = data.addReport;
+						jsonData.label = data.addReport;
+					}
+					
+					//var obj:Object = new Object();
+					//obj.id = jsonData.id;
+					//obj.title = jsonData.title;
+					//acChart.push(obj);
+					
+					if(data.isExist==undefined){
+					
+						trace("is new report...");
+						//arrChartForTree.push(jsonData);
+						//firstList.dataProvider = arrChartForTree;
+	
+						var arrChartForTree:Array = new Array();
+						arrChartForTree.push(jsonData); //add new into existing charts
+						firstList.dataProvider = arrChartForTree;
+						
+						inMemoryChart = arrChartForTree;
+						
+						
+						SemmelReport.loadReportListing();
+						if(SemmelReport.acReportsListing.length>0){
+							//if(this.parentApplication.countryCode=="MY"){
+								//SemmelReport.acReportsListing.addItemAt({reportTitle: "MOH Report"}, 0);
+							//}
+							//lstReport.dataProvider = SemmelReport.acReportsListing;
+							
+							var jReport:Object = new Object();
+							jReport.reportTitle = data.reportTitle;
+							acReport.addItem(jReport);
+							lstReport.dataProvider = acReport;
+							
+							SemmelReport.acReportsListing.addItem(jReport);
+							lstReport.dataProvider = SemmelReport.acReportsListing;
+							lstReport.selectedIndex = SemmelReport.acReportsListing.length-1;
+						} else {
+							
+							//if(this.parentApplication.countryCode=="MY"){
+								//SemmelReport.acReportsListing.addItemAt({reportTitle: "MOH Report"}, 0);
+							//}
+							
+							//for new report
+							var jReport:Object = new Object();
+							jReport.reportTitle = data.reportTitle;
+							//acReport.addItem(data.reportTitle);
+							acReport.addItem(jReport);
+							lstReport.dataProvider = acReport;
+							lstReport.selectedIndex = 0;
+						}
+						
+						newReportName = data.reportTitle;
+						
+						firstList.selectedIndex = 0;
+						
+						//arrChartForTree.push(mohChart);
+					}
+					if(data.isExist!=undefined){
+						if(SemmelReport.acReportsListing.length>0){
+							trace("found: " + SemmelReport.acReportsListing.length.toString());
+							
+							lstReport.dataProvider = SemmelReport.acReportsListing;
+							
+							for(var i:Number=0;i<SemmelReport.acReportsListing.length;i++){
+								if(SemmelReport.acReportsListing[i].reportTitle==data.reportTitle){
+									lstReport.selectedIndex = i;
+									
+									trace("ch len: " + SemmelReport.acReportsListing[i].charts.length.toString());
+									var arrChartForTree:Array = SemmelReport.acReportsListing[i].charts;
+									
+									arrChartForTree.push(jsonData); //add new into existing charts
+									
+									firstList.dataProvider = arrChartForTree;
+									
+									inMemoryChart = arrChartForTree;
+									
+									//firstList.selectedIndex = 0;
+									firstList.selectedIndex = arrChartForTree.length-1;
+									break;
+								}
+							}
+						}
+					}
+				} else {
+					//report manager - load report only
+					SemmelReport.loadReportListing();
+					if(SemmelReport.acReportsListing.length>0){
+						trace("found: " + SemmelReport.acReportsListing.length.toString());
+						//lstReport.dataProvider = SemmelReport.acReportsListing;
+						
+						if(this.parentApplication.countryCode=="MY"){
+							SemmelReport.acReportsListing.addItemAt({reportTitle: "MOH Report"}, 0);
+							
+							SemmelReport.acReportsListing.addItemAt({reportTitle: "Audit Report"}, 1);
+						}
+						lstReport.dataProvider = SemmelReport.acReportsListing;
+						
+					}
+				}
+				
+			}
+			
+			
+			
+			
+			
+			// Handle the OK button.
+			private function doOK():void {
+				// Check credentials (not shown) then remove pop up.
+				//close();
+				//data.reportTitle = txtReportTitle.text
+				//close(true, data);
+				
+				
+				//var ob:Object = new Object();
+				
+				//ob.cTitle = "Hellow";
+				//ob.cFilter = "2015";
+				//acChart.push(ob);
+				
+				trace("chart len: " + inMemoryChart.length.toString());
+				SemmelReport.addReport(data.reportTitle, inMemoryChart);
+				close();
+			}
+			
+			
+			
+			protected function lstReport_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				//trace(lstReport.selectedItem.reportTitle);
+				//trace(lstReport.selectedItem.charts.length);
+				
+				//when select the "MOH report"
+				//if(lstReport.selectedItem.charts==undefined){
+					//firstList.enabled = false;
+					////only appear xls
+					//firstList.dataProvider = new Array();
+					//btnSave.enabled = false;
+				//} else {
+					//when select other report (but if newly created handle differently...)
+					
+					trace("select of report title: " + lstReport.selectedItem.reportTitle);
+					//pb2.dataProvider = dp2; //for common utput format , doc, ppt, pdf...
+					if(lstReport.selectedItem.reportTitle==newReportName){
+						firstList.enabled = true;
+						firstList.dataProvider = inMemoryChart;
+						if(isAllowSave){
+							btnSave.enabled = true;
+						}
+					} else if(lstReport.selectedItem.reportTitle=="MOH Report" || lstReport.selectedItem.reportTitle=="Audit Report"){
+						firstList.enabled = false;
+						//only appear xls
+						firstList.dataProvider = new Array();
+						//pb2.dataProvider = dpXls;
+						btnSave.enabled = false;
+						
+						btnDeleteReport.enabled = false;
+						btnDeleteChart.enabled = false;
+						
+						btnExport.enabled = true;
+						
+						
+					} else {
+						var arrChartForTree:Array = lstReport.selectedItem.charts;
+						firstList.enabled = true;
+						firstList.dataProvider = arrChartForTree;
+						
+						if(isAllowSave){
+							btnSave.enabled = true;
+						}
+						
+						btnExport.enabled = true;
+						
+						btnDeleteReport.enabled = true;
+						btnDeleteChart.enabled = true;
+						
+					}
+				//}
+			}
+			
+			//private function initData():void {
+			//	Menu(pb2.popUp).selectedIndex=0;
+			//}
+			
+			//public var urlRequest:URLRequest = new URLRequest("http://raydarappnode01.cloudapp.net:5739/SEMMEL/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");  
+			
+			
+			//For Local
+			public var urlRequest:URLRequest;
+			
+			//For PROD
+			//public var urlRequest:URLRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=genReport");
+			
+			//http://localhost:8082/BIRT_Report_Integration/loadReport?ReportName=hospital_data.rptdesign&ReportFormat=html
+			public var urlStream:URLStream = new URLStream();
+			
+			//for BIRT report download
+			public var documentsDirectory:File = File.desktopDirectory;// active user documents directory  
+			public var fileName:String;  
+			public var fileToSave:File;  
+			public var fileStream:FileStream;  
+			public var fileData:ByteArray;
+			
+			public var mimetype:String = "";
+			
+			protected function pb2_itemClickHandler(event:MenuEvent):void{
+				if(event.index==0){
+					mimetype = "doc";
+				} else if(event.index==1){
+					mimetype = "ppt";
+				} else if(event.index==2){
+					mimetype = "pdf";
+				}
+			}
+			
+			/*protected function pb2_clickHandler(event:MouseEvent):void
+			{
+				
+				pb2.enabled = false;
+				pbWait.visible = true;
+				
+				// TODO Auto-generated method stub
+				
+				//data post for print report....
+				
+				var arrChartForTree:Array = lstReport.selectedItem.charts;
+				var cids:String = "";
+				trace("click print button");
+				
+				trace("print report title: " + lstReport.selectedItem.reportTitle);
+				if(lstReport.selectedItem.reportTitle=="MOH Report"
+					|| lstReport.selectedItem.reportTitle=="Audit Report"){
+					
+					urlRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+					
+					if(lstReport.selectedItem.reportTitle=="Audit Report"){
+						urlRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=batchreport&ReportName=AuditReport.rptdesign");
+					}
+					
+					//urlRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+					
+					//urlRequest.method = URLRequestMethod.POST; 
+					
+					urlRequest.method = URLRequestMethod.POST;  
+					var variables : URLVariables = new URLVariables();  
+					variables.hospital = this.parentApplication.hosp_name;  
+					variables.hid = this.parentApplication.hosp_id;
+					variables.year = String(btnYear.selectedItem);
+					variables.month = String(btnMonth.selectedItem.month);
+					variables.month_name = String(btnMonth.selectedItem.monthLabel);
+					
+					
+					
+					this.mimetype = "xls";
+					
+					variables.mimetype = "application/vnd.ms-excel";
+					
+					urlRequest.data = variables; 
+					
+					urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+					urlStream.load(urlRequest);
+					
+				} else {
+				
+				//urlRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=genReport");
+				urlRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=genReport");
+				
+				trace("Post URL: http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=genReport");
+				
+				var jsonData:Object = null;
+				var arrChartPrint:Array = new Array();
+				
+				for(var i:Number=0;i<arrChartForTree.length;i++){
+					trace(arrChartForTree[i].cid + " " + arrChartForTree[i].title);
+					
+					if(arrChartForTree[i].cid=="5"){
+						cids += "5.1,5.2" + ",";
+					} else if(arrChartForTree[i].cid=="6"){
+						cids += "6.1,6.2" + ",";
+					} else if(arrChartForTree[i].cid=="7"){
+						cids += "7.1,7.2" + ",";
+					} else if(arrChartForTree[i].cid=="8"){
+						cids += "8.1,8.2" + ",";
+					} else if(arrChartForTree[i].cid=="9"){
+						cids += "9.1,9.2" + ",";
+					} else if(arrChartForTree[i].cid=="10"){
+						cids += "10.1,10.2" + ",";
+					} else if(arrChartForTree[i].cid=="11"){
+						cids += "11.1,11.2" + ",";
+					} else if(arrChartForTree[i].cid=="12"){
+						cids += "12.1,12.2" + ",";
+					} else if(arrChartForTree[i].cid=="13"){
+						cids += "13.1,13.2" + ",";
+					} else if(arrChartForTree[i].cid=="14"){
+						cids += "14.1,14.2" + ",";
+					} else if(arrChartForTree[i].cid=="15"){
+						cids += "15.1,15.2" + ",";
+					} else if(arrChartForTree[i].cid=="16"){
+						cids += "16.1,16.2" + ",";
+					} else {
+						cids += arrChartForTree[i].cid + ",";
+					}
+					jsonData = new Object();	
+					jsonData.cid = arrChartForTree[i].cid;
+					
+					trace("arrChartForTree.cid " + arrChartForTree[i].cid);
+					
+					if(arrChartForTree[i].rptParam!=undefined){
+						
+						if(Number(arrChartForTree[i].cid)>=5 && Number(arrChartForTree[i].cid)<17){
+							jsonData = new Object();	
+							jsonData.cid = arrChartForTree[i].cid+".1";
+						}
+						
+						jsonData.rptParam = arrChartForTree[i].rptParam;
+						jsonData.rptDomain = arrChartForTree[i].rptDomain;
+						
+						arrChartPrint.push(jsonData); //only chart with param need to add in
+						
+						//add x.2 chart
+						if(Number(arrChartForTree[i].cid)>=5 && Number(arrChartForTree[i].cid)<17){
+							jsonData = new Object();	
+							jsonData.cid = arrChartForTree[i].cid+".2";
+							jsonData.rptParam = arrChartForTree[i].rptParam;
+							jsonData.rptDomain = arrChartForTree[i].rptDomain;
+							arrChartPrint.push(jsonData); //only chart with param need to add in
+						}
+						
+					}
+				}
+				
+				var jsonString:String = JSON.stringify(arrChartPrint);
+				trace("jsonString: " + jsonString);
+				
+				if(cids.length>0){
+					cids = cids.substr(0, cids.length-1);
+				}
+				
+				trace("cids: " + cids);
+				
+				urlRequest.method = URLRequestMethod.POST;  
+				var variables : URLVariables = new URLVariables();  
+				variables.hospital = this.parentApplication.hosp_name;  
+				variables.hid = this.parentApplication.hosp_id;
+				variables.year = String(btnYear.selectedItem);
+				variables.month = String(btnMonth.selectedItem.month);
+				variables.month_name = String(btnMonth.selectedItem.monthLabel);
+				variables.bm = this.parentApplication.bm;
+				variables.th = this.parentApplication.th;
+				
+				variables.cids = cids;
+				variables.param = jsonString;
+				
+				trace("cids: " + cids);
+				
+				trace("selected of : " + mimetype);
+				
+				variables.mimetype = mimetype;
+				
+				
+				urlRequest.data = variables;  
+				
+				urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+				urlStream.load(urlRequest);  
+				//public var urlRequest:URLRequest = new URLRequest("http://raydarappnode01.cloudapp.net:5739/SEMMEL/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");  
+				//public var urlRequest:URLRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+				//http://localhost:8082/BIRT_Report_Integration/loadReport?ReportName=hospital_data.rptdesign&ReportFormat=html
+				//public var urlStream:URLStream = new URLStream();
+				
+				}
+				
+			}*/
+			
+			public function onDownloadComplete(e:Event):void {  
+				// get the index position of the last forward slash in the file path  
+				//var startIndex:int = urlRequest.url.lastIndexOf("/") + 1;  
+				
+				// set fileName equal to url string starting after the last forward slash  
+				//fileName = urlRequest.url.substring(startIndex);  
+				
+				var fileName:String = "SEMMEL_Print_Report_" + String(btnYear.selectedItem) + "_" + String(btnMonth.selectedItem.monthLabel) + ".doc";
+				
+				//pb2.enabled = true;
+				btnExport.enabled = true;
+				pbWait.visible = false;
+				
+				if(mimetype=="pdf"){
+					fileName = fileName.replace(".doc", ".pdf");
+				} else if(mimetype=="ppt"){
+					fileName = fileName.replace(".doc", ".ppt");
+				} else if(mimetype=="pdf"){
+					fileName = fileName.replace(".doc", ".pdf");
+				} else if(mimetype=="xls"){
+					fileName = fileName.replace(".doc", ".xls");
+				}
+				
+				fileName = fileName.replace("SEMMEL_Print_Report", lstReport.selectedItem.reportTitle);
+				
+				trace("fn: " + fileName);
+				
+				
+				// create a new File object at the user Directory folder with the correct file   
+				fileToSave = documentsDirectory.resolvePath(fileName);//name  
+				
+				// create ByteArray to store data downloaded from URLLoader  
+				fileData = new ByteArray();  
+				
+				// write the data from URLLoader to ByteArray  
+				urlStream.readBytes(fileData, 0, urlStream.bytesAvailable);  
+				
+				var fx:FileReference = new FileReference();
+				fx.save(fileData,fileName);
+				
+			} 
+			
+			
+			protected function btnDeleteReport_clickHandler(event:MouseEvent):void
+			{
+				if(lstReport.selectedIndex!=-1){
+					Alert.show("Confirm that you want to delete the selected report?", "Delete Selected Report", Alert.YES|Alert.NO, this, alertDeleteReportClickHandler);
+				} else {
+					Alert.show("Please select an item to delete.");
+				}
+			}
+			
+			private function alertDeleteReportClickHandler(evt:CloseEvent):void {
+				if (evt.detail == Alert.YES) {
+					trace("delete selected report");
+					
+					if(lstReport.selectedIndex!=-1){
+						var ix = lstReport.selectedIndex;
+						var acReport:ArrayCollection = ArrayCollection(lstReport.dataProvider);
+						acReport.removeItemAt(ix);
+						lstReport.dataProvider = acReport;
+						//save!
+						SemmelReport.removeReport(ix, this.parentApplication.countryCode);
+						firstList.dataProvider = new Array(); //clear the tree list
+					}
+				}
+			}
+			
+			protected function btnDeleteChart_clickHandler(event:MouseEvent):void
+			{
+				if(firstList.selectedIndex!=-1){
+					Alert.show("Confirm that you want to delete the selected chart?", "Delete Selected Chart", Alert.YES|Alert.NO, this, alertClickHandler);
+				} else {
+					Alert.show("Please select an item to delete.");
+				}
+			}
+			
+			private function alertClickHandler(evt:CloseEvent):void {
+				if (evt.detail == Alert.YES) {
+					trace("delete selected chart");
+					if(lstReport.selectedIndex!=-1){
+						var ix = lstReport.selectedIndex;
+						if(firstList.selectedIndex!=-1){
+							var ixC = firstList.selectedIndex;
+							var acReport:ArrayCollection = ArrayCollection(lstReport.dataProvider);
+							var arChart:Array = acReport.getItemAt(ix).charts;
+							arChart.splice(ixC, 1);
+							firstList.dataProvider = arChart;
+							SemmelReport.removeReportsChart(ix, arChart, this.parentApplication.countryCode);
+						}
+					}
+				}
+			}
+			
+			protected function btnExport_clickHandler(e:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				//display export menu here...
+				
+					isSelected = false;
+				
+					popExportMenu.removeAllItems();
+					
+					if(lstReport.selectedItem.reportTitle=="MOH Report"
+						|| lstReport.selectedItem.reportTitle=="Audit Report"){
+						//only .xls	
+						popExportMenu.addItem(popExportXls);
+					} else {
+						//with doc, pdf, ppt
+						popExportMenu.addItem(popExportDoc);
+						popExportMenu.addItem(popExportPdf);
+						popExportMenu.addItem(popExportPpt);
+					}
+					
+					popExportMenu.display(this.stage, e.stageX, e.stageY);
+				
+			}
+			
+			
+			private function initMenu():void{
+			
+				popExportDoc.addEventListener(Event.SELECT, function(e:Event):void{
+					doExportFormat(e);
+				});
+				popExportPdf.addEventListener(Event.SELECT, function(e:Event):void{
+					doExportFormat(e);
+				});
+				popExportPpt.addEventListener(Event.SELECT, function(e:Event):void{
+					doExportFormat(e);
+				});
+				popExportXls.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doExportFormat(e);
+				});
+			
+			}
+			
+			private function doExportFormat(event:Event):void{
+				
+				if(!this.parentApplication.isConnected){
+					Alert.show("Network Connection is Required", "Network Error");
+					return;
+				}
+				
+				
+				if(isSelected==false){
+					trace("Selected export format: " + event.target.label);
+					isSelected = true;
+					
+					if(event.target.label.indexOf(".doc")!=-1){
+						this.mimetype = "doc";
+					} else if(event.target.label.indexOf(".pdf")!=-1){
+						this.mimetype = "pdf";
+					} else if(event.target.label.indexOf(".ppt")!=-1){
+						this.mimetype = "ppt";
+					}
+					
+					//print report here....	
+					
+					
+					//pb2.enabled = false;
+					btnExport.enabled = false;
+					pbWait.visible = true;
+					
+					// TODO Auto-generated method stub
+					
+					//data post for print report....
+					
+					var arrChartForTree:Array = lstReport.selectedItem.charts;
+					var cids:String = "";
+					trace("click print button");
+					
+					trace("print report title: " + lstReport.selectedItem.reportTitle);
+					if(lstReport.selectedItem.reportTitle=="MOH Report"
+						|| lstReport.selectedItem.reportTitle=="Audit Report"){
+						
+						//= new URLRequest(this.parentApplication + "BIRT_Report_Integration/loadReport?act=genReport");
+						
+						urlRequest = new URLRequest(String(Constants.url_domain) + "loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+						
+						if(lstReport.selectedItem.reportTitle=="Audit Report"){
+							//urlRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=auditreport&ReportName=AuditReport.rptdesign");
+							urlRequest = new URLRequest(String(Constants.url_domain) + "loadReport?act=auditreport&ReportName=AuditReport.rptdesign");
+						}
+						
+						//urlRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+						
+						//urlRequest.method = URLRequestMethod.POST; 
+						
+						urlRequest.method = URLRequestMethod.POST;  
+						var variables : URLVariables = new URLVariables();  
+						variables.hospital = this.parentApplication.hosp_name;  
+						variables.hid = this.parentApplication.hosp_id;
+						variables.year = String(btnYear.selectedItem);
+						variables.month = String(btnMonth.selectedItem.month);
+						variables.month_name = String(btnMonth.selectedItem.monthLabel);
+						
+						
+						
+						this.mimetype = "xls";
+						
+						variables.mimetype = "application/vnd.ms-excel";
+						
+						urlRequest.data = variables; 
+						
+						urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+						urlStream.load(urlRequest);
+						
+					} else {
+						
+						//urlRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=genReport");
+						//urlRequest = new URLRequest(String(this.parentApplication.url_domain) + "loadReport?act=genReport");
+						urlRequest = new URLRequest(String(Constants.url_domain) + "loadReport?act=genReport");
+						
+						var jsonData:Object = null;
+						var arrChartPrint:Array = new Array();
+						
+						for(var i:Number=0;i<arrChartForTree.length;i++){
+							trace(arrChartForTree[i].cid + " " + arrChartForTree[i].title);
+							
+							if(arrChartForTree[i].cid=="5"){
+								cids += "5.1,5.2" + ",";
+							} else if(arrChartForTree[i].cid=="6"){
+								cids += "6.1,6.2" + ",";
+							} else if(arrChartForTree[i].cid=="7"){
+								cids += "7.1,7.2" + ",";
+							} else if(arrChartForTree[i].cid=="8"){
+								cids += "8.1,8.2" + ",";
+							} else if(arrChartForTree[i].cid=="9"){
+								cids += "9.1,9.2" + ",";
+							} else if(arrChartForTree[i].cid=="10"){
+								cids += "10.1,10.2" + ",";
+							} else if(arrChartForTree[i].cid=="11"){
+								cids += "11.1,11.2" + ",";
+							} else if(arrChartForTree[i].cid=="12"){
+								cids += "12.1,12.2" + ",";
+							} else if(arrChartForTree[i].cid=="13"){
+								cids += "13.1,13.2" + ",";
+							} else if(arrChartForTree[i].cid=="14"){
+								cids += "14.1,14.2" + ",";
+							} else if(arrChartForTree[i].cid=="15"){
+								cids += "15.1,15.2" + ",";
+							} else if(arrChartForTree[i].cid=="16"){
+								cids += "16.1,16.2" + ",";
+							} else if(arrChartForTree[i].cid=="19"){ //new added for avg action by moment
+								cids += "19.1,19.2" + ",";
+							} else if(arrChartForTree[i].cid=="50"){ //FOR ENVIRONMENTAL
+								cids += "50.1,50.2" + ",";
+							} else if(arrChartForTree[i].cid=="51"){
+								cids += "51.1,51.2" + ",";
+							} else {
+								cids += arrChartForTree[i].cid + ",";
+							}
+							jsonData = new Object();	
+							jsonData.cid = arrChartForTree[i].cid;
+							
+							trace("arrChartForTree.cid " + arrChartForTree[i].cid);
+							
+							if(arrChartForTree[i].rptParam!=undefined){
+								
+								
+								if((Number(arrChartForTree[i].cid)>=5 
+									&& Number(arrChartForTree[i].cid)<17)
+									|| Number(arrChartForTree[i].cid)==19
+									){
+									jsonData = new Object();	
+									jsonData.cid = arrChartForTree[i].cid+".1";
+								}
+								
+								jsonData.rptParam = arrChartForTree[i].rptParam;
+								jsonData.rptDomain = arrChartForTree[i].rptDomain;
+								
+								//add on for start/end, wards
+								//for Ward Trend
+								if(Number(arrChartForTree[i].cid)==17){
+									jsonData.rptWards = arrChartForTree[i].rptWards;
+									jsonData.rptStart = this.parseToMySQLDate(arrChartForTree[i].rptStart);
+									jsonData.rptEnd = this.parseToMySQLDate(arrChartForTree[i].rptEnd);
+									trace("json wards " + jsonData.rptWards);
+									trace("json start " + jsonData.rptStart);
+									trace("json end " + jsonData.rptEnd);
+								}
+								//for Profs Trend
+								if(Number(arrChartForTree[i].cid)==18){
+									jsonData.rptWard = arrChartForTree[i].rptWard;
+									jsonData.rptProfs = arrChartForTree[i].rptProfs;
+									jsonData.rptStart = this.parseToMySQLDate(arrChartForTree[i].rptStart);
+									jsonData.rptEnd = this.parseToMySQLDate(arrChartForTree[i].rptEnd);
+									trace("json profs " + jsonData.rptProfs);
+									trace("json ward " + jsonData.rptWard);
+									trace("json start " + jsonData.rptStart);
+									trace("json end " + jsonData.rptEnd);
+								}
+								//end add o for start/end, wards
+								
+								arrChartPrint.push(jsonData); //only chart with param need to add in
+								
+								//add x.2 chart
+								if((Number(arrChartForTree[i].cid)>=5 
+									&& Number(arrChartForTree[i].cid)<17)
+									|| Number(arrChartForTree[i].cid)==19
+									){
+									jsonData = new Object();	
+									jsonData.cid = arrChartForTree[i].cid+".2";
+									jsonData.rptParam = arrChartForTree[i].rptParam;
+									jsonData.rptDomain = arrChartForTree[i].rptDomain;
+									arrChartPrint.push(jsonData); //only chart with param need to add in
+								}
+								
+							}
+						}
+						
+						var jsonString:String = JSON.stringify(arrChartPrint);
+						trace("jsonString: " + jsonString);
+						
+						if(cids.length>0){
+							cids = cids.substr(0, cids.length-1);
+						}
+						
+						trace("cids: " + cids);
+						
+						urlRequest.method = URLRequestMethod.POST;  
+						var variables : URLVariables = new URLVariables();  
+						//variables.hospital = this.parentApplication.hosp_name;
+						variables.hospital = Constants.getHospitalName();
+						
+						
+						//variables.hid = this.parentApplication.hosp_id;
+						variables.hid = Constants.getHospitalId();
+						variables.year = String(btnYear.selectedItem);
+						trace("post value hospital: " + variables.hospital);
+						trace("post value hid: " + variables.hid);
+						trace("post value year: " + variables.year);
+						variables.month = String(btnMonth.selectedItem.month);
+						variables.month_name = String(btnMonth.selectedItem.monthLabel);
+						variables.bm = this.parentApplication.bm;
+						variables.th = this.parentApplication.th;
+						
+						variables.cids = cids;
+						variables.param = jsonString;
+						
+						trace("cids: " + cids);
+						
+						trace("select: " + mimetype);
+						
+						variables.mimetype = mimetype;
+						
+						
+						urlRequest.data = variables;  
+						
+						urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+						urlStream.load(urlRequest);  
+						//public var urlRequest:URLRequest = new URLRequest("http://raydarappnode01.cloudapp.net:5739/SEMMEL/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");  
+						//public var urlRequest:URLRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
+						//http://localhost:8082/BIRT_Report_Integration/loadReport?ReportName=hospital_data.rptdesign&ReportFormat=html
+						//public var urlStream:URLStream = new URLStream();
+						
+					}
+					
+					
+				}
+				
+			}
+			
+			private var isSelected:Boolean = false;
+			private var popExportMenu = new NativeMenu();
+			private var popExportDoc = new NativeMenuItem("Document *.doc");
+			private var popExportPdf = new NativeMenuItem("PDF *.pdf");
+			private var popExportPpt = new NativeMenuItem("PowerPoint *.ppt");
+			private var popExportXls = new NativeMenuItem("Excel *.xls");
+			
+			//Note: convert from MM/DD/YYYY format to MySQL YYYY-MM-DD
+			private function parseToMySQLDate( str : String ) : String {
+				var matches : Array = str.match(/(\d\d)\/(\d\d)\/(\d\d\d\d)/);
+				//var d : Date = new Date();
+				//d.setUTCFullYear(int(matches[3]), int(matches[1]) - 1, int(matches[2]));
+				return matches[3] + "-" + matches[1] + "-" + matches[2];
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Panel id="pnl" width="100%" height="430" title="Reporting">
+	
+		<s:Button id="btnSave" x="389" y="360" width="97" label="Save" click="doOK();"/>
+		<s:Label x="10" y="25" fontWeight="bold" text="Select Report:"/>
+		
+		<!--<mx:PopUpMenuButton id="pb2" visible="false" x="5" y="366" width="123"
+							click="pb2_clickHandler(event)" creationComplete="initData();"
+							dataProvider="{dp2}" itemClick="pb2_itemClickHandler(event)"
+							labelField="@label" showRoot="false"/>-->
+		
+		<s:DropDownList id="lstReport" x="99" y="10" width="347" height="38"
+						change="lstReport_changeHandler(event)" 
+						labelField="reportTitle"
+						prompt="Please select a report...">
+		
+			<s:layout>
+				<s:VerticalLayout gap="0"
+								  horizontalAlign="contentJustify"
+								  requestedRowCount="10" />
+			</s:layout>
+		
+		</s:DropDownList>
+		<mx:Tree x="47" y="88" width="439" height="264" id="firstList"
+				 folderOpenIcon="@Embed(source='asset/images/icon_chart.png')" 
+				 folderClosedIcon="@Embed(source='asset/images/icon_chart.png')" 
+				 defaultLeafIcon="@Embed(source='asset/images/icon_chart.png')"
+				 showRoot="false"
+				 labelField="label"
+				 dragEnabled="true" 
+				 dropEnabled="true" 
+				 allowMultipleSelection="true"
+				 ></mx:Tree>
+		<s:Button id="btnDeleteChart" x="9" y="88" width="32" height="26"
+				  click="btnDeleteChart_clickHandler(event)"
+				  icon="@Embed('asset/images/trash-16.png')"/>
+		<s:Button id="btnDeleteReport" x="454" y="15" width="32" height="26"
+				  click="btnDeleteReport_clickHandler(event)"
+				  icon="@Embed('asset/images/trash-16.png')"/>
+		<s:DropDownList id="btnMonth" x="99" y="55" width="147" height="25" labelField="monthLabel"></s:DropDownList>
+		<s:Label x="10" y="61" fontWeight="bold" text="Select Month:"/>
+		<mx:ProgressBar id="pbWait" visible="false" x="109" y="363" width="143" height="16"
+						label="wait..." fontSize="11" indeterminate="true" labelPlacement="center"/>
+		<s:Label x="262" y="61" fontWeight="bold" text="Year:"/>
+		<s:DropDownList id="btnYear" x="298" y="55" width="148" height="25"></s:DropDownList>
+		<s:Image x="473" y="-23" click="close();" smooth="true"
+				 smoothingQuality="high" source="@Embed('asset/images/close.png')"/>
+		<s:Button id="btnExport" x="262" y="360" width="114" label="Export..." enabled="false"
+				  click="btnExport_clickHandler(event)"/>
+	
+	</s:Panel>
+
+</s:SkinnablePopUpContainer>

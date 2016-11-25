@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fxpProperties abbreviated="false" authoringTool="Flex Builder" compiles="true" parentProject="cfcce2dd-77b3-4091-ac4f-f171d35af2a7" projectUUID="cfcce2dd-77b3-4091-ac4f-f171d35af2a7" pureCatalystProject="false" sdkVersion="4.6.0" uuid="983958b9-415a-4433-9cb7-b3bc8c7d97ac" version="15">
+  <projects/>
+  <src/>
+  <swc>
+    <linked location="sdkPlaceHolder" path="sdkPlaceHolder" position="0" uuid="983958b9-415a-4433-9cb7-b3bc8c7d97ac"/>
+    <linked location="C:/Users/admin/Desktop/TAUFIQ/SEMMEL_Analytics/SEMMEL1/libs" path="/libs" position="1" uuid="9966474e-37db-4ede-8692-5e1a5d69bc7d"/>
+  </swc>
+  <misc/>
+  <theme/>
+  <mxmlFormattingPrefs groupAttributesByState="true" maxLineWidth="100" mxmlAlignAttributes="true" mxmlAttributeOrder="id,userLabel,includeIn,excludeFrom,visible,x,y,z,left,right,top,bottom,width,height,minWidth,minHeight,maxWidth,maxHeight,label" mxmlKeepAttributeValuesOrganized="true"/>
+</fxpProperties>

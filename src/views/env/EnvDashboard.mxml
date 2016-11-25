@@ -1,0 +1,1800 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent
+	xmlns:flexlib="flexlib.containers.*"
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" 
+					creationComplete="fetchLocalXML()"
+					width="100%" height="660" xmlns:controls="flexlib.controls.*">
+	<fx:Style>
+		@namespace tab "flexlib.controls.tabBarClasses.*";
+		tab|SuperTab{ 
+			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
+		} 
+		.SuperTabButtonStyle{
+			icon: Embed(source="../../close.png");
+			/*upSkin:   Embed("close.png"); 
+			downSkin: Embed("close.png");
+			overSkin: Embed("close.png");*/ 
+		}
+	</fx:Style>
+	<fx:Declarations>
+		
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:SeriesSlide 
+			id="slideUp" 
+			duration="1000" 
+			direction="up"/>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import com.report.bi.*;
+			import com.report.env.EnvReportController;
+			import com.semmel.*;
+			
+			import core.hash.crc32;
+			
+			import de.polygonal.ds.HashMap;
+			
+			import flash.display.NativeMenu;
+			import flash.display.NativeMenuItem;
+			
+			import flexlib.containers.SuperTabNavigator;
+			import flexlib.controls.SuperTabBar;
+			import flexlib.controls.tabBarClasses.SuperTab;
+			import flexlib.events.TabReorderEvent;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.NumericAxis;
+			import mx.charts.chartClasses.Series;
+			import mx.charts.events.ChartEvent;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.*;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.containers.Canvas;
+			import mx.containers.VBox;
+			import mx.controls.FlexNativeMenu;
+			import mx.events.MenuEvent;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			import mx.graphics.Stroke;
+			import mx.managers.PopUpManager;
+			import mx.printing.*;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.Group;
+			import spark.components.TitleWindow;
+			import spark.events.IndexChangeEvent;
+			import spark.events.PopUpEvent;
+			
+			import views.NewReportWindow;
+			import views.ReportsWindow;
+			
+			private var myMenu:FlexNativeMenu;
+			
+			private var popMenu:NativeMenu;
+			private var popMenuItem:NativeMenuItem;
+
+			[Embed(source="../../../assets/document.png")]
+			private var document_icon:Class;       
+			
+			[Embed(source="../../../assets/home.png")]
+			private var home_icon:Class;
+
+			
+			private var seriesBenchMark:Array=null;
+			
+			private var acSelectedDept:ArrayCollection = new ArrayCollection();
+			
+			//for zoom chart
+			[Bindable]
+			private var dataProvider : ArrayCollection;
+
+			private function onTheLine():void{
+			
+				this.parentApplication.lineDataProvider = new ArrayCollection([{"X" : 0, "Y" : 0}, 
+						{"X" : 1, "Y" : 0}]);
+			
+			}
+			
+			private function init(count : int = 200) : void
+			{
+				var tempCollection : ArrayCollection = new ArrayCollection();
+				
+				for (var i : int = count; i >= 1; i--)
+				{
+					tempCollection.addItem({id: i, value : (i * 10), otherValue:(i * 5)});
+				}
+				
+				dataProvider = tempCollection;
+				
+			}
+			
+			
+			[Bindable]
+			private var xmlColumnChart : Array;
+			
+			[Bindable]
+			private var xmlColumnChart3 : XMLList;
+			
+			[Bindable]
+			private var xmlDataWardFacility : XML;
+			
+			[Bindable]
+			private var xmlYearlyLineChartAdh : XMLList;
+			
+			[Bindable]
+			private var xmlColumnChart4 : Array;
+			
+			[Bindable]
+			private var xmlDatagrid : XMLListCollection;
+			
+			//Bug Fix for YTD - 20150217
+			[Bindable]
+			private var xmlDatagridYTD : XMLListCollection;
+			//end Bug Fix for YTD
+			
+			[Bindable]
+			private var xmlProfessional : XMLList;
+			
+			[Bindable]
+			public var xmlDepartment:XMLListCollection;
+			
+			private var jsonAnalytic:ArrayCollection = null;
+			
+			
+
+			private function fillFunction (item:ChartItem, index:Number):IFill
+			{
+				var csi:ColumnSeriesItem = ColumnSeriesItem(item);
+				
+				if(csi.item.cat == "Overall Adherence")
+				{
+					return new SolidColor(0xe48701);
+				} else {
+					//return new SolidColor(0xFF0000);
+					return this.parentApplication.themeColor[index];
+				}
+			}
+			
+			private function fillFunction2 (item:ChartItem, index:Number):IFill
+			{  
+				var csi:ColumnSeriesItem = ColumnSeriesItem(item);
+				
+				if(csi.item.@prof == "Overall Adherence")
+				{
+					return new SolidColor(0xe48701);
+				} else {
+					//return new SolidColor(0xFF0000);
+					return this.parentApplication.themeColor[index];
+				}
+			}
+
+			
+			private function columnSeries_labelFunc(element:ChartItem, series:Series):String {
+				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
+				var ser:ColumnSeries = ColumnSeries(series);
+				
+				//var datNum:Number = Date.parse(csi.item.@date);
+				//var tempDate:Date = new Date(datNum);
+				return "" + csi.item.percentage + "%";
+			}
+			private function columnSeries_labelFunc2(element:ChartItem, series:Series):String {
+				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
+				var ser:ColumnSeries = ColumnSeries(series);
+				
+				//var datNum:Number = Date.parse(csi.item.@date);
+				//var tempDate:Date = new Date(datNum);
+				return "" + csi.item.cnt + "%";
+			}
+			private function columnSeries_labelFunc3(element:ChartItem, series:Series):String {
+				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
+				var ser:ColumnSeries = ColumnSeries(series);
+				
+				//var datNum:Number = Date.parse(csi.item.@date);
+				//var tempDate:Date = new Date(datNum);
+				return "" + csi.item.pert + "%";
+			}
+			
+			
+			//TODO: do download progress ... file number / completed file...
+			
+			var erc:EnvReportController = new EnvReportController();
+			var n:Number = 0;
+			private function doDone(event:Event){
+				trace("prompt downloaded complete..." + event.target);
+				
+				erc.removeEventListener(EnvReportController.DOWNLOADED_EVENT, doDone);
+				
+				//var file:File = File.applicationStorageDirectory.resolvePath("config_16_env.data");
+				﻿
+				trace(Util.crc32Check("config_16_env.data")); //4aea74ab
+				trace(Util.crc32Check("report_16_env_201511.shard")); //580595a4
+				//java 580595a4
+				if(n==0){
+					n++;
+					erc.addEventListener(EnvReportController.DOWNLOADED_EVENT, doDone);
+					erc.initDownload("report_16_env_201511.shard");
+					
+					//do decrypt
+					
+					
+				}
+			}
+			
+			public function fetchLocalXML():void{
+				
+				initMenu();
+				//dec env raw .shard file
+				
+				var erc:EnvReportController = new EnvReportController();
+				//this.parentApplication.yyyymm
+				//erc.doAnalyticEnvDashboard("201512");
+				
+				//Chart #1 - compliance by area + overall 
+				chtComplianceByArea.dataProvider = erc.doAnalyticComplianceByArea(this.parentApplication.selectedYM);
+				
+				//Chart #2 - overall compliance by trend
+				lineChartAdherenceYTD.dataProvider = erc.doAnalyticOverallByTrend();
+				
+				//Chart #3 - compliance by ward/facility
+				chtComplianceByWardFacility.dataProvider = erc.doAnalyticComplianceByWardFacility(this.parentApplication.selectedYM);
+				
+				
+				//end dec env raw .shard file
+				
+				
+				//check 
+				//http://localhost:8082/SEMMEL/envapi?act=doCheck&uid=16&license=abc
+				//json: [{"crc32":"4aea74ab","fn":"config_16_env.data"},{"crc32":"580595a4","fn":"report_16_env_201511.shard"}]
+				
+				//then will download if crc = "" or not mactch!
+				
+				/*trace("env report controller");
+				n=0;
+				//erc.doFetchData();
+				erc.addEventListener(EnvReportController.DOWNLOADED_EVENT, doDone);
+				erc.initDownload("config_16_env.data");
+				
+				
+				initMenu();*/
+				
+				//colorColumnRenderer.
+				//colorColumnRenderer.threshold = 10;
+				
+
+				//this.addEventListener(TransformGestureEvent.GESTURE_SWIPE,swipeHandler);
+				
+				/*trace("fetch xml...graph dashboard...");
+				
+				trace(this.parentApplication.fetchXMLData);
+				
+				
+				if(this.parentApplication.fetchXMLData!=""){
+					try{
+						
+						init();
+						
+						var s:String = this.parentApplication.fetchXMLData;
+						//this.xmlColumnChart = new XML(s).adherence.adh;
+						var xml:XML = new XML(s);
+						//trace("cal5% " + xml.basic.(@ob=="infectioncontrol_201412").comp.@cal5);
+						//this.xmlColumnChart = [{name:"Adherence", percentage:xml.basic.comp.@cal5}];
+						
+						if(this.parentApplication.selectedYM!=""){
+						
+							//var ob:String = this.parentApplication.selectedObserver + "_" + this.parentApplication.selectedYM;
+							var ob:String = this.parentApplication.selectedYM;
+							
+							
+							//eg: "infectioncontrol_201412"
+							this.xmlColumnChart = [{name:"Adherence", percentage:xml.basic.(@ob==ob).compad.@adherence}];
+							
+						
+							this.xmlDataWardFacility = new XML(new XML(s).hhoadh.(@ob==ob));
+							//cannot convert XMLList@d720671 to XML.
+							
+							var tp:Array = new Array();
+							var sar:ScrollableAxisRenderer = new ScrollableAxisRenderer();
+							sar.axis = axisName;
+							sar.id="scrollAxis";
+							sar.placement = "bottom";
+							sar.maxVisibleColumns = 8;
+							sar.alpha = 100;
+							sar.width = columnchart3.width;
+							sar.height = 12;
+							tp.push(sar);
+							
+							columnchart3.horizontalAxisRenderers = tp;
+
+							
+							//trace("to xml string: " + new XML(s).hhoadh.(@ob==ob).toXMLString());
+							//
+							//trace("to XML() xml string: " + new XML(new XML(s).hhoadh.(@ob==ob)));
+							
+							//trace("data ward facility: " + dataWardFacility);
+							
+							
+							
+							
+							this.xmlYearlyLineChartAdh = new XML(s).ytdadh.adh;
+							lineChartAdherenceYTD.dataProvider = this.xmlYearlyLineChartAdh;
+							
+							
+							//this.xmlColumnChart4 = new XML(s).hhoprofpert.profahd;
+							
+							var xml:XML = new XML(s);
+							
+							
+							this.xmlProfessional = xml.basic.(@ob==ob).profcomplaince;
+							
+							this.xmlDatagrid = new XMLListCollection(new XML(s).avgaction.(@ob==ob).avg);
+							
+							trace("substring: " + ob.substr(0, 4));
+							
+							this.xmlDatagridYTD = new XMLListCollection(new XML(s).avgactionYTD.(@ob==ob.substr(0,4)).avg);
+							
+							
+							//for zoom chart
+							// Simulate values
+							/*var results:Array = [];
+							for (var i:int=0; i<50; i++)
+							{
+								results[i] = Math.random() * 100;
+							}
+							columnchart3.dataProvider = results;*/
+		////				}
+						
+						
+						//doPrint();
+						//doPrintPDF();
+						
+						//this.jsonAnalytic = this.parentApplication.doAnalyticByMoment("1", "2015-03");
+						
+						//for(var i:Number=0;i<this.jsonAnalytic.length;i++){
+							//var obj:Object = this.jsonAnalytic.getItemAt(i);
+							//trace(obj.cat + " = " + obj.cnt);
+						//}
+						
+						//this.chartAnalytic.dataProvider = this.jsonAnalytic;
+			
+				/*		ddlMultiSelection.dataProvider = this.parentApplication.acDepartment;
+						
+						seriesBenchMark = lineChartTrendByDept.series;
+						
+						//cmbDepartment.dataProvider = this.parentApplication.acDepartment;
+						
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+					}
+				}*/
+				
+				
+				
+			}
+			
+			private function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+				return item + "%"
+			}
+			
+			
+			 
+			
+			
+			[Bindable]
+			private var warmColorsArray:Array = new Array(
+				new SolidColor(0x1f77b4, 1)
+			);
+			
+			
+			
+			/*protected function columnchart3_mouseDownHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				lastX = event.stageX;
+				systemManager.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+				systemManager.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+			}
+			
+			protected function mouseMoveHandler(event:MouseEvent):void
+			{
+				var delta:Number = (lastX - event.stageX) / columnchart3.width * viewportMax;
+				if (hAxis.minimum + delta < 0)
+				{
+					hAxis.minimum = 0;
+					hAxis.maximum = viewportMax;
+				}
+				else if (hAxis.maximum + delta  > columnchart3.dataProvider.length - 1)
+				{
+					hAxis.maximum = columnchart3.dataProvider.length - 1;
+					hAxis.minimum = hAxis.maximum - viewportMax;
+				}
+				else
+				{
+					hAxis.minimum += delta;
+					hAxis.maximum += delta;
+				}
+				lastX = event.stageX;
+			}
+			
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				systemManager.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+				systemManager.removeEventListener(MouseEvent.MOUSE_MOVE, mouseUpHandler);
+			}*/
+			
+			
+			
+			public function myListener(e:ChartItemEvent, domain:String):void {
+				
+				if(domain==Constants.DOMAIN_ENV_AREA){
+					this.hitItem  = e.hitData.item;
+					trace("hitData: " + e.hitData.item.areaId); //area
+				
+					if(e.hitData.item.areaId!=-1){ //overall column chart
+						doPopDataPoint(e, domain);
+					}
+				} else if(domain==Constants.DOMAIN_ENV_WARDFACILITY){
+					this.hitItem  = e.hitData.item;
+					if(e.hitData.item.deptId!=-1){
+						doPopDataPoint(e, domain);
+					}
+				}
+				
+			}
+			
+			//2015-06-25 by Alfred - add to report menu function
+			private var popReportMenu = new NativeMenu();
+			private var popReport_NewReport = new NativeMenuItem("New Report...");
+			
+			private var strSelectedReport:String = "";
+			
+			private var rptDomain:String="";
+			private var rptGroupBy:String="";
+			private var rptParam:Object=null;
+			
+			//add on json report field
+			private var rptStart:String = "";
+			private var rptEnd:String = "";
+			private var rptWards:String = "";
+			private var rptProfs:String = ""; 
+			private var rptWard:String = "";
+			
+			
+			//protected function doAddToReportMenu(event:MouseEvent, report:String, domain:String="", groupBy:String="", param:String=""):void{
+			protected function doAddToReportMenu(event:MouseEvent, report:String, domain:String="", groupBy:String="", param:Object=null):void{
+				// TODO Auto-generated method stub
+				//dynamic adding...
+				//default got new report...
+				
+				rptStart = "";
+				rptEnd = "";
+				rptWards = "";
+				rptProfs = ""; 
+				rptWard = "";
+				
+				if(report==SemmelReport.EnvComplianceByArea){
+					this.rptWards = "";
+					for (var k:int = 0; k < this.parentApplication.acDepartment.length; k++)
+					{
+						if(this.parentApplication.acDepartment[k].selected){
+							////lbSelections.text += " " + acList[i].label;
+							trace("selected: " + this.parentApplication.acDepartment[k].label);
+							
+							this.rptWards += "'" + this.parentApplication.acDepartment[k].label + "',";
+							
+							//acSelectedDept.addItem(this.parentApplication.acDepartment[i]);
+						}
+					}
+					
+					trace("start: " + txtStartDate.text);
+					trace("end: " + txtEndDate.text);
+					
+					if(this.rptWards.length!=0){
+						this.rptWards = this.rptWards.substring(0, this.rptWards.length-1);
+					}
+					
+					//this.rptStart = txtStartDate.text; //05/01/2015
+					//this.rptEnd = txtEndDate.text; //08/31/2015
+					
+				}
+				
+				if(report==SemmelReport.ProfTrend){
+					this.rptProfs = "";
+					
+					for(var p:Number=0;p<this.parentApplication.acDynamicProfession.length;p++){
+						if(this.parentApplication.acDynamicProfession[p].selected){
+							trace("selected: " + this.parentApplication.acDynamicProfession[p].label);
+							this.rptProfs += "'" + this.parentApplication.acDynamicProfession[p].label + "',";
+						}
+					}
+					
+				
+
+					
+				}
+				
+				this.strSelectedReport = report;
+				
+				this.rptDomain = domain;
+				this.rptGroupBy = groupBy;
+				this.rptParam = param;
+				
+				trace("domain: " + domain + " groupby: " + groupBy + " param: " + param);
+				
+				isPopReport = false;
+				
+				trace("remove all item");
+				trace("add report '" + report + "'");
+				popReportMenu.removeAllItems();
+				
+				
+				popReportMenu.addItem(popReport_NewReport);
+				trace("create new report");
+				//TODO: if got report created list down here...
+				
+				//load available reports....
+				
+				try{
+					SemmelReport.loadReportListing();
+					var mList:ArrayCollection = SemmelReport.acReportsListing; 
+					if(mList.length>0){
+						for(var i:Number=0;i<mList.length;i++){
+							var itm:Object = mList.getItemAt(i); 
+							trace(itm.reportTitle);
+							
+							trace("dynamic menu label...");
+							var mnuReport:NativeMenuItem = new NativeMenuItem(itm.reportTitle);
+							
+							//mnuReport.addEventListener(Event.SELECT, function(e:Event):void{
+									//showNewReportDialog();
+									//trace("dynamic add menu: " + itm.id);
+									//showReportsWindow(itm.id);	
+									//showReportsWindow(e);
+							//});
+							//for add to new report
+							
+							mnuReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+								showReportsWindow(e);
+							});
+							
+							popReportMenu.addItem(mnuReport);
+						}
+						//for(var obj:Object in mList){
+						//	trace("report menu list: " + obj.reportTitle);
+						//}	
+					}	
+					
+				}catch(error:Error){
+					trace("Error list report: " + error.toString());
+				}
+				
+				
+				
+				
+				popReportMenu.display(this.stage, event.stageX, event.stageY);
+				trace("display menu...");
+			}
+			
+			
+			private function showReportsWindow(event:Event):void {
+				//trace("pop report window id: " + reportTitle);
+				
+				//trace("event: " + e.contextMenuOwner.label);
+				//trace("event: " + e.contextMenuOwner.text);
+				
+				var menuItem:NativeMenuItem = event.target as NativeMenuItem; 
+				trace(menuItem.label + " has been selected"); 
+				
+				if(!isPopReport){
+					isPopReport = true;
+					var winReports:ReportsWindow = new ReportsWindow();
+					winReports.open(this, true);
+					var obj:Object = new Object();
+					
+					trace("domain: " + rptDomain + " groupby: " + rptGroupBy + " param: " + rptParam);
+					trace("s report: " + this.strSelectedReport);
+					
+					obj.reportTitle = menuItem.label;
+					
+					obj.rptDomain = rptDomain;
+					obj.rptGroupBy = rptGroupBy;
+					obj.rptParam = rptParam;
+					
+					//add on for start/end, wards
+					if(this.rptWards!=""){
+						obj.rptWards = rptWards;
+						obj.rptStart = rptStart;
+						obj.rptEnd = rptEnd;
+					}
+					//add on for start/end, ward, profs
+					if(this.rptProfs!=""){
+						obj.rptWard = rptWard;
+						obj.rptProfs = rptProfs;
+						obj.rptStart = rptStart;
+						obj.rptEnd = rptEnd;
+					}
+					
+					obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+					
+					trace("return CID: " + obj.cid);
+					
+					obj.addReport = this.strSelectedReport;
+					obj.isExist = "1";
+					obj.selectYM = this.parentApplication.selectedYMLabel;
+					winReports.data = obj;
+					PopUpManager.centerPopUp(winReports);
+				}
+			}
+			
+			
+			private function showNewReportDialog():void {
+				if(!isPopReport){
+					isPopReport = true;
+					var winNewReport:NewReportWindow = new NewReportWindow();
+					winNewReport.open(this, true);
+					winNewReport.addEventListener('close', newReport_closeHandler);
+					PopUpManager.centerPopUp(winNewReport);
+				}
+			}
+			// Handle the close event from the SkinnablePopUpContainer.
+			protected function newReport_closeHandler(event:PopUpEvent):void {
+				// If commit is false, do data is returned.
+				if (!event.commit)
+					return;
+				
+				// Write the returned String to the TextArea control.
+				//myTA.text = event.data as String;
+				//trace(event.data as String);
+				trace(event.data.reportTitle as String);
+				trace(this.strSelectedReport);
+				
+				var winReports:ReportsWindow = new ReportsWindow();
+				winReports.open(this, true);
+				//winReports.addEventListener('close', newReport_closeHandler);
+				var obj:Object = new Object();
+				obj.reportTitle = event.data.reportTitle as String;
+				
+				obj.rptDomain = rptDomain;
+				obj.rptGroupBy = rptGroupBy;
+				obj.rptParam = rptParam;
+				
+				//add on for start/end, wards
+				if(this.rptWards!=""){
+					obj.rptWards = rptWards;
+					obj.rptStart = rptStart;
+					obj.rptEnd = rptEnd;
+				}
+				
+				obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+				obj.addReport = this.strSelectedReport;
+				obj.selectYM = this.parentApplication.selectedYMLabel;
+				winReports.data = obj;
+				
+				PopUpManager.centerPopUp(winReports);
+				
+				//pop.addReport = this.strSelectedReport;
+			} 
+			
+			private var isPopReport:Boolean = false;
+			
+			//end by alfred 2015-06-25 dynamic add to report function
+
+			private var popUpMenu = new NativeMenu();
+			private var popUpMenuItemByArea = new NativeMenuItem(Constants.FILTER_MENU_ENV_AREA);
+			private var popUpMenuItemByWardFacility = new NativeMenuItem(Constants.FILTER_MENU_ENV_WARDFACILITY);
+			private var popUpMenuItemByMethod = new NativeMenuItem(Constants.FILTER_MENU_ENV_METHOD);
+			private var popUpMenuItemByCategory = new NativeMenuItem(Constants.FILTER_MENU_ENV_CATEGORY);
+			private var popUpMenuItemByItem = new NativeMenuItem(Constants.FILTER_MENU_ENV_ITEM);
+			private var popUpMenuItemByNote = new NativeMenuItem(Constants.FILTER_MENU_ENV_NOTE);
+			
+			private var hitItem:Object = null; //hit of column chart item (eg: cat, @name)
+			private var domain:String = ""; //object domain of profession, department, moment
+			
+			private function initMenu():void{
+				popUpMenuItemByArea.addEventListener(Event.SELECT, function(e:Event):void{
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				popUpMenuItemByWardFacility.addEventListener(Event.SELECT, function(e:Event):void{
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				popUpMenuItemByMethod.addEventListener(Event.SELECT, function(e:Event):void{
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				popUpMenuItemByCategory.addEventListener(Event.SELECT, function(e:Event):void{
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				popUpMenuItemByItem.addEventListener(Event.SELECT, function(e:Event):void{
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				popUpMenuItemByNote.addEventListener(Event.SELECT, function(e:Event):void{ 
+						doAnalysisByDataPoint(e, hitItem, domain);
+					});
+				
+				//for add to new report
+				popReport_NewReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+					showNewReportDialog();
+				});
+				//end for add to new report
+				
+				
+			}
+			
+			var isSelected:Boolean = false;
+			
+			private function doAnalysisByDataPoint(event:Event, hitItem:Object, domain:String):void{
+				if(isSelected==false){
+					//trace("Selected command: " + hitItem.area + " / domain " + domain + " / " + event.target.label);
+					isSelected = true;
+					
+					if(domain==Constants.DOMAIN_ENV_AREA){
+						addTab(hitItem.area + " " + event.target.label, hitItem, event.target.label, nav);
+					} else if(domain==Constants.DOMAIN_ENV_WARDFACILITY){
+						trace("domain: " + Constants.DOMAIN_ENV_WARDFACILITY + " " + hitItem.dept);
+						addTab(hitItem.dept + " " + event.target.label, hitItem, event.target.label, nav);
+					}
+					
+					nav.selectedIndex = nav.getChildren().length-1;
+					
+				}
+				//mx.controls.Alert.show("i");
+			}
+			
+			private function doDynamicMenu(obj:Object):void{
+
+				popUpMenu.removeAllItems();
+				if(this.domain==Constants.DOMAIN_ENV_AREA){
+					popUpMenu.addItem(popUpMenuItemByWardFacility);
+					popUpMenu.addItem(popUpMenuItemByMethod);
+					popUpMenu.addItem(popUpMenuItemByCategory);
+					popUpMenu.addItem(popUpMenuItemByItem);
+					popUpMenu.addItem(popUpMenuItemByNote);
+				} else if(this.domain==Constants.DOMAIN_ENV_WARDFACILITY){
+					popUpMenu.addItem(popUpMenuItemByArea);
+					popUpMenu.addItem(popUpMenuItemByMethod);
+					popUpMenu.addItem(popUpMenuItemByCategory);
+					popUpMenu.addItem(popUpMenuItemByItem);
+					popUpMenu.addItem(popUpMenuItemByNote);
+				}
+				
+				isSelected = false;
+				
+			}
+			
+			private function doPopDataPoint(e:ChartItemEvent, domain:String):void {
+				
+				this.domain = domain;
+				
+				doDynamicMenu(null);
+				popUpMenu.display(this.stage, e.stageX, e.stageY);
+				
+			}
+			
+			//function doAddTab():void{
+				//addTab("New Graph", nav);	
+			//}
+			
+			private function doChangeMonthTab(event:IndexChangeEvent, ca:ColumnChart, caComp:ColumnChart, domain:String, groupBy:String, item:String, tabLabel:VBox):void
+			{
+				// TODO Auto-generated method stub
+				trace("do change YM " + domain + " : " + groupBy + " : " + item);
+				//trace(btnYM.selectedItem.@value);
+				trace("item select: " + event.target.selectedItem.@value);
+				
+				tabLabel.label = tabLabel.label.substr(0,tabLabel.label.indexOf("@")) + "@ " + event.target.selectedItem.@label; 
+				
+				doRefreshLocalTabData(domain, ca, caComp, groupBy, item, event.target.selectedItem.@value);
+
+			}
+			
+			
+			private function doRefreshLocalTabData(domain:String, ca:ColumnChart, caComp:ColumnChart, groupBy:String, item:String, privateYM:String):void{
+			
+				if(domain=="moment"){
+					
+					if(groupBy=="By Action"){
+						
+						if(item=="Before patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("1", privateYM);
+						} else if(item=="Before aseptic"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("2", privateYM);
+						} else if(item=="After body fluid"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("3", privateYM);
+						} else if(item=="After patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("4", privateYM);
+						} else if(item=="After patient surrounding"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5", privateYM);
+						}
+						
+					} else if(groupBy=="By Professional"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1", privateYM);
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "2", privateYM);
+						} else if(item=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "3", privateYM);
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "4", privateYM);
+						}  else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5", privateYM);
+						}
+					} else if(groupBy=="By Ward/Facility"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1", privateYM);
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2",privateYM);
+						} else if(item=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3", privateYM);
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4", privateYM);
+						}  else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5", privateYM);
+						}
+					} else if(groupBy=="By Reason"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("1", privateYM);
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("2", privateYM);
+						} else if(item=="After body fluid"){
+							trace("do analytic by reason");
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("3", privateYM);
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("4", privateYM);
+						} else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("5", privateYM);
+						}
+					}
+				} else if(domain=="department"){
+					
+					//show the quota progress
+					/*var strProgress:String = "";
+					try{
+						var s:String = this.parentApplication.fetchXMLData;
+						var xml:XML = new XML(s);
+						var xmlDatagridWardFacility:XMLListCollection = new XMLListCollection(new XML(s).deptprogress.deptp);
+						
+						for each (var node : XML in xmlDatagridWardFacility){
+							if(item == node.@dept){
+								strProgress = "Department Quota Progress: " + node.@progress + "/" + node.@quota;
+								break;
+							}
+						}
+						lblProgress.text = strProgress;
+					}catch(e:Error){
+						trace(e.toString());
+					}*/
+					//end show the quota progress
+					
+					
+					if(groupBy=="By Professional"){
+						//TODO: report correction
+						trace("Department '" + item + "' By Profession");
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, item, privateYM);
+						
+						//list down all surcey id
+						//then group the profe vs hr+hw
+					} else if(groupBy=="By Moment"){
+						trace("Department " + item + " By Moment");
+						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item, privateYM); //by Moment
+						
+					} else if(groupBy=="By Action"){
+						trace("Department " + item + " By Action");
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item, privateYM); //by profession
+					} else if(groupBy=="By Reason"){
+						trace("Department " + item + " By Reason");
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item, privateYM) //by reason						
+					}
+					
+					
+					
+				} else if(domain=="profession"){
+					
+					
+					//show the quota progress
+					/*var strProgress:String = "";
+					try{
+						var s:String = this.parentApplication.fetchXMLData;
+						var xml:XML = new XML(s);
+						var xmlDatagridProfession:XMLListCollection = new XMLListCollection(new XML(s).profprogress.profp);
+						
+						for each (var node : XML in xmlDatagridProfession){
+							if(item == node.@prof){
+								strProgress = "Profession Quota Progress: " + node.@progress + "/" + node.@quota;
+								break;
+							}
+						}
+						lblProgress.text = strProgress;
+					}catch(e:Error){
+						trace(e.toString());
+					}*/
+					//end show the quota progress
+	
+					if(groupBy=="By Ward/Facility"){
+						trace("Profession " + item + " By Ward/Facility");
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment2(this.domain, item, privateYM);
+					} else if(groupBy=="By Moment"){
+						trace("Profession " + item + " By Moment");
+						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item, privateYM); //by Profession
+					} else if(groupBy=="By Action"){
+						trace("Profession " + item + " By Action");
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item, privateYM); //by profession
+					} else if(groupBy=="By Reason") {
+						trace("Profession " + item + " By Reason");
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item, privateYM) //by reason
+					}
+				}
+				caComp.dataProvider = ca.dataProvider;
+			}
+			
+			
+			
+			private function addTab(lbl:String, item:Object, groupBy:String, navigator:SuperTabNavigator, 
+									contentString:String=null, icon:Class=null):void
+			{
+				if (lbl == "")
+					lbl = "Graph";
+				
+				var curNum:Number = nav.numChildren + 1;
+				
+				var child:VBox = new VBox();
+				
+				child.setStyle("closable", true);
+				
+				child.label = lbl + " @ " + this.parentApplication.selectedYMLabel;
+				//add to report using var "lbl" as "Before Patient"
+				//add to report using "groupBy" as "By Ward/Facility"
+				
+				//var reportType:String = "";
+				//trace("item: " + item);
+				//trace("groupBy: " + groupBy);
+				
+				//define the group by category
+				var categoryField:String = "";
+				if(groupBy==Constants.FILTER_MENU_ENV_AREA){
+					categoryField = "area";
+				} else if(groupBy==Constants.FILTER_MENU_ENV_WARDFACILITY){
+					categoryField = "dept";
+				} else if(groupBy==Constants.FILTER_MENU_ENV_METHOD){
+					categoryField = "methodName";
+				} else if(groupBy==Constants.FILTER_MENU_ENV_CATEGORY){
+					categoryField = "category";
+				} else if(groupBy==Constants.FILTER_MENU_ENV_ITEM){
+					categoryField = "item";
+				} else if(groupBy==Constants.FILTER_MENU_ENV_NOTE){
+					categoryField = "note";
+				}
+				//end define the group by category
+				
+				
+				if (icon)
+				{
+					child.icon = icon;
+				}
+				else
+				{
+					child.icon = document_icon;
+				}
+				
+				var headerGroup:Group = new Group();
+				headerGroup.percentWidth=100;
+				
+				var label:Label = new Label();
+				label.text = contentString == null ? lbl : contentString; //for the new tab label
+				label.setStyle("fontWeight", "bold");
+				label.x=10;
+				label.y=10;
+				
+				
+				var ca:ColumnChart = new ColumnChart(); //1st chart column
+				var caComp:ColumnChart = new ColumnChart(); //2nd chart column
+				
+				var iSelect:Number = -1;
+				
+				var dlstMonth:DropDownList = new DropDownList();
+				dlstMonth.width = 180;
+				dlstMonth.right = 40;
+				dlstMonth.y = 5;
+				dlstMonth.dataProvider = this.parentApplication.yearMonthXML;
+				dlstMonth.labelField="@label";
+				dlstMonth.prompt = "Year/Month...";
+				//dlstMonth.selectedIndex = 0;
+				//dlstMonth.addEventListener(IndexChangeEvent.CHANGE, function(event:IndexChangeEvent):void{doChangeMonthTab(event, ca, caComp, domain, groupBy, item, child)}); //child is the TAB BAR label VBox object
+				
+				
+				//new add to report function by alfred 2015-06-27
+				var imgAddReport:Image = new Image();
+				imgAddReport.source = "asset/images/report_up.png";
+				//asset/images/report_up.png
+				imgAddReport.smooth = true;
+				imgAddReport.right = 10;
+				imgAddReport.y = 5;
+				imgAddReport.addEventListener(MouseEvent.CLICK, function(event:MouseEvent):void{doAddToReportMenu(event, lbl, domain, groupBy, item)});
+				//end new add to report function by alfred
+				
+				//trace("...y/m tracing...");
+				//dlstMonth.selectedItem = this.parentApplication.selectedYM;
+				
+				for each (var node : XML in this.parentApplication.yearMonthXML){
+					trace("compare: " + node.@value + " vs " + this.parentApplication.selectedYM);
+					iSelect++;
+					if(node.@value==this.parentApplication.selectedYM){
+						dlstMonth.selectedIndex = iSelect;
+						break;
+					}
+				}
+					//trace(node.@label);
+					//trace(node.@value);
+					//for each (var subnode : XML in node.alt_form) {
+						//if (subnode.@name != null) {
+							//trace(subnode.@name + " is my list SUB item name");
+						//}
+					//}
+				//}
+				
+				//t1.addEventListener(MouseEvent.CLICK, function(me:MouseEvent):void{ gotoImage(me, 1)});
+				
+				
+				//change="btnYM_changeHandler(event)"
+				
+				
+				
+				var lblProgress:Label = new Label();
+				//lblProgress.text = "Quota Progress:";
+				lblProgress.y=10;
+				lblProgress.right=280;
+				
+				/*
+				<s:Button y="10" right="130" label="Button"/>
+				<s:Button x="10" y="10" label="Button"/>
+				<s:DropDownList y="10" right="10"></s:DropDownList>
+				*/
+				
+				headerGroup.addElement(label);
+				headerGroup.addElement(dlstMonth);
+				headerGroup.addElement(imgAddReport);
+				headerGroup.addElement(lblProgress);
+				
+				//child.addChild(label);
+				child.addChild(headerGroup);
+				
+				var bc:BorderContainer = new BorderContainer();
+				bc.percentHeight=100;
+				bc.percentWidth=100;
+				
+				ca.seriesFilters=[]; //no shadow
+				ca.showDataTips = true;
+				//type="stacked"
+				//ca.type="stacked";
+				ca.type="overlaid";
+				
+				var cAxis:CategoryAxis = new CategoryAxis();
+				cAxis.categoryField=categoryField;
+				ca.horizontalAxis = cAxis;
+				
+
+				var cs:ColumnSeries = new ColumnSeries(); //for "cnt" => complaince count
+				//fill function
+				cs.fillFunction=this.parentApplication.stackedFillFunctionEnv;
+				cs.setStyle("fontSize", 20);
+				cs.setStyle("labelAlign", "top");
+				cs.setStyle("labelPosition", "outside");
+				//cs.fillFunction = fillFunction;
+				cs.displayName = categoryField;
+				cs.yField = "cnt";
+				cs.setStyle("showDataEffect", slideUp);
+				// showDataEffect="slideUp" 
+				
+				var csOpp:ColumnSeries = new ColumnSeries(); //for "opp" => opportunity count
+				//fill function
+				csOpp.fillFunction=this.parentApplication.stackedFillFunctionEnv;
+				csOpp.setStyle("fontSize", 20);
+				csOpp.setStyle("labelAlign", "top");
+				csOpp.setStyle("labelPosition", "outside");
+				//cs.fillFunction = fillFunction;
+				csOpp.displayName = categoryField;
+				csOpp.yField = "ttl";
+				
+				var seriesArray:Array = new Array();
+				
+				//if(groupBy!="By Action"){
+					seriesArray.push(csOpp); //opportunity column
+				//}
+				
+				seriesArray.push(cs); //complaince column
+				
+				ca.series = seriesArray;
+
+				//if(groupBy!="By Action"){
+					ca.y=10;
+					ca.left=10;
+					ca.right=10;
+					ca.height=260
+				/*} else {
+					ca.percentWidth=100;
+					ca.percentHeight=100;
+				}*/
+				
+				
+				caComp.seriesFilters=[]; //no shadow
+				var cAxisComp:CategoryAxis = new CategoryAxis();
+				cAxisComp.categoryField = categoryField;
+				caComp.horizontalAxis = cAxisComp;
+				
+				//<mx:verticalAxis>
+					//<mx:LinearAxis id="vAxis2"
+								//   minimum="0"
+								//   maximum="100"
+								 //  labelFunction="linearAxis_labelFunc" />
+				//</mx:verticalAxis>
+				var lAxisComp:LinearAxis = new LinearAxis();
+				lAxisComp.minimum=0;
+				lAxisComp.maximum=100;
+				lAxisComp.labelFunction=linearAxis_labelFunc;
+				
+				caComp.verticalAxis=lAxisComp;
+				
+				var csComp:ColumnSeries = new ColumnSeries();
+				csComp.setStyle("fontSize", 20);
+				csComp.setStyle("labelAlign", "top");
+				csComp.setStyle("labelPosition", "outside");
+				csComp.fillFunction = fillFunction;
+				csComp.displayName = categoryField;
+				csComp.yField = "pect";
+				var seriesArrayComp:Array = new Array();
+				
+				
+				
+				//if(groupBy!="By Action"){
+					//add benchmark line
+					var lineSeries:LineSeries = new LineSeries();
+					lineSeries.yField="Y";
+					lineSeries.xField="X";
+					lineSeries.setStyle("lineStroke", this.parentApplication.lineStroke);
+					lineSeries.dataProvider = this.parentApplication.lineDataProvider;
+					var xAxis:LinearAxis = new LinearAxis();
+					xAxis.maximum=1;
+					lineSeries.horizontalAxis = xAxis;
+					seriesArrayComp.push(lineSeries);
+					//end add benchmark line
+					
+					//csComp.setStyle("itemRenderer", this.parentApplication.colorColumnRenderer);
+					csComp.fillFunction=this.parentApplication.fill3ColorFunction;
+				//}
+				
+				
+				
+				
+				seriesArrayComp.push(csComp);
+				caComp.series = seriesArrayComp;
+				//caComp.percentWidth=100;
+				//caComp.y = systemManager.screen.height/2;
+				//trace("Y NEW caComp Chart " + String(systemManager.screen.height/2));
+				
+				caComp.y=270;
+				caComp.left=10;
+				caComp.right=10;
+				caComp.height=260;
+				
+				/*<mx:ColumnChart id="chartAnalytic" x="89" y="20" width="456" height="241" dataProvider="{jsonAnalytic}">
+					
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat"/>
+					</mx:horizontalAxis>		
+					<mx:series>
+						<mx:ColumnSeries fontSize="16" 
+										 fillFunction="{fillFunction}"
+										 fills="{this.parentApplication.themeColor}" displayName="cat" yField="cnt" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+					</mx:series>
+					
+				</mx:ColumnChart>*/
+				
+				trace("domain: " + domain);
+				var erc:EnvReportController = new EnvReportController();
+				if(domain==Constants.DOMAIN_ENV_AREA){
+					if(groupBy==Constants.FILTER_MENU_ENV_WARDFACILITY){
+						ca.dataProvider = erc.doAnalyticComplianceByWardFacility(this.parentApplication.selectedYM, domain, hitItem.areaId);  
+					} else if(groupBy==Constants.FILTER_MENU_ENV_METHOD){
+						ca.dataProvider = erc.doAnalyticComplianceByMethod(this.parentApplication.selectedYM, domain, hitItem.areaId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_CATEGORY){
+						ca.dataProvider = erc.doAnalyticComplianceByCategory(this.parentApplication.selectedYM, domain, hitItem.areaId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_ITEM){
+						ca.dataProvider = erc.doAnalyticComplianceByItem(this.parentApplication.selectedYM, domain, hitItem.areaId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_NOTE){
+						ca.dataProvider = erc.doAnalyticComplianceByDeficiencyNote(this.parentApplication.selectedYM, domain, hitItem.areaId);
+					}
+				} else if(domain==Constants.DOMAIN_ENV_WARDFACILITY){
+					trace("addTab domain env ward facility");
+					
+					this.parentApplication.selectedYM = "201512"; //FOR TESTING...
+					
+					if(groupBy==Constants.FILTER_MENU_ENV_AREA){
+						trace("filter by area");
+						trace("domain: " + domain + ", " + hitItem.deptId);
+						ca.dataProvider = erc.doAnalyticComplianceByArea(this.parentApplication.selectedYM, domain, hitItem.deptId);  
+					} else if(groupBy==Constants.FILTER_MENU_ENV_METHOD){
+						ca.dataProvider = erc.doAnalyticComplianceByMethod(this.parentApplication.selectedYM, domain, hitItem.deptId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_CATEGORY){
+						ca.dataProvider = erc.doAnalyticComplianceByCategory(this.parentApplication.selectedYM, domain, hitItem.deptId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_ITEM){
+						ca.dataProvider = erc.doAnalyticComplianceByItem(this.parentApplication.selectedYM, domain, hitItem.deptId);
+					} else if(groupBy==Constants.FILTER_MENU_ENV_NOTE){
+						ca.dataProvider = erc.doAnalyticComplianceByDeficiencyNote(this.parentApplication.selectedYM, domain, hitItem.deptId);
+					}
+				}
+				
+				if(domain=="moment"){
+				
+					if(groupBy=="By Action"){
+					
+						if(item=="Before patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("1");
+						} else if(item=="Before aseptic"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("2");
+						} else if(item=="After body fluid"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("3");
+						} else if(item=="After patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("4");
+						} else if(item=="After patient surrounding"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5");
+						}
+						
+					} else if(groupBy=="By Professional"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1");
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "2");
+						} else if(item=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "3");
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "4");
+						}  else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5");
+						}
+					} else if(groupBy=="By Ward/Facility"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2");
+						} else if(item=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3");
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4");
+						}  else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5");
+						}
+					} else if(groupBy=="By Reason"){ //NEW ADDED! new group by reason menu filter from menu
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("1");
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("2");
+						} else if(item=="After body fluid"){
+							trace("after body fluid...doAnalyticByReason.3");
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("3");
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("4");
+						} else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("5");
+						}
+					}
+				
+				} else if(domain=="department"){
+					
+					//show the quota progress
+					var strProgress:String = "";
+					try{
+						var s:String = this.parentApplication.fetchXMLData;
+						var xml:XML = new XML(s);
+						var xmlDatagridWardFacility:XMLListCollection = new XMLListCollection(new XML(s).deptprogress.deptp);
+						
+						for each (var node : XML in xmlDatagridWardFacility){
+							if(item == node.@dept){
+								strProgress = "Department Quota Progress: " + node.@progress + "/" + node.@quota;
+								break;
+							}
+						}
+						lblProgress.text = strProgress;
+					}catch(e:Error){
+						trace(e.toString());
+					}
+					//end show the quota progress
+					
+					
+					
+					if(groupBy=="By Professional"){
+						//TODO: report correction
+						trace("Department '" + item + "' By Profession");
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, item);
+						
+						//list down all surcey id
+						//then group the profe vs hr+hw
+					} else if(groupBy=="By Moment"){
+						trace("Department " + item + " By Moment");
+						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item) //by Moment
+					
+					} else if(groupBy=="By Action"){
+						trace("Department " + item + " By Action");
+						
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
+					
+					} else if(groupBy=="By Reason"){
+					
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item) //by reason
+					
+					}  
+					
+					
+					
+				} else if(domain=="profession"){
+					
+					
+					//show the quota progress
+					var strProgress:String = "";
+					try{
+						var s:String = this.parentApplication.fetchXMLData;
+						var xml:XML = new XML(s);
+						var xmlDatagridProfession:XMLListCollection = new XMLListCollection(new XML(s).profprogress.profp);
+						
+						for each (var node : XML in xmlDatagridProfession){
+							if(item == node.@prof){
+								strProgress = "Profession Quota Progress: " + node.@progress + "/" + node.@quota;
+								break;
+							}
+						}
+						lblProgress.text = strProgress;
+					}catch(e:Error){
+						trace(e.toString());
+					}
+					//end show the quota progress
+					
+					
+					
+					//Group By
+					if(groupBy=="By Ward/Facility"){
+						trace("Profession " + item + " By Ward/Facility");
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment2(this.domain, item);
+					} else if(groupBy=="By Moment"){
+						trace("Profession " + item + " By Moment");
+						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item) //by Profession
+					} else if(groupBy=="By Action"){
+					
+						trace("Profession " + item + " By Action");
+						
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
+					} else if(groupBy=="By Reason"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item) //by reason
+					}
+				}
+				
+				bc.addElement(ca); //For Opporunity (optional) vs Cnt (compliance) chart
+				//if(groupBy!="By Action"){				
+					
+					if(groupBy!="By Reason"){
+						//for compliance rate chart, if reason then no need for compliance rate
+						caComp.dataProvider = ca.dataProvider;
+						bc.addElement(caComp);
+					}
+					
+				//}
+				child.addChild(bc);
+				
+				navigator.addChild(child);
+			}
+			
+			/*private function addTab(lbl:String, navigator:SuperTabNavigator, 
+									contentString:String=null, icon:Class=null):void
+			{
+				if (lbl == "")
+					lbl = "Graph";
+				var curNum:Number = nav.numChildren + 1;
+				var child:VBox = new VBox();
+				child.setStyle("closable", true);
+				child.label = lbl;
+				if (icon) {
+					child.icon = icon;
+				} else {
+					child.icon = document_icon;
+				}
+				var label:Label = new Label();
+				label.text = contentString == null ? "Content for: " + lbl : contentString;
+				
+				child.addChild(label);
+				
+				navigator.addChild(nav);
+			}*/
+			
+			
+			
+			
+			
+			
+			
+			private function initTabs():void
+			{
+				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+			}
+			
+			//end of v1.2 - support more data analytics
+			
+			
+			
+			private function doDateSelection():void{
+				if(txtStartDate.text!="" && txtEndDate.text!=""){
+					//lineChartTrendByDept.dataProvider = this.parentApplication.doAnalyticTrendByDepartment(parseDate(txtStartDate.text), parseDate(txtEndDate.text));
+					
+					
+					var deptTrendData:ArrayCollection = this.parentApplication.doAnalyticTrendByDepartment(parseDate(txtStartDate.text), parseDate(txtEndDate.text));
+					
+					
+					//struture
+					//[cat:"Jan,2015", "dept:"]
+					var ac:ArrayCollection = new ArrayCollection();
+					var obj:Object = new Object();
+					var hmCat:HashMap = new HashMap();
+					
+					for each (var dept:Object in deptTrendData){
+						if(!hmCat.hasKey(dept.cat)){
+							obj = new Object();
+							obj["cat"] = dept.cat;
+							trace("cat: " + dept.cat);
+							obj[dept.dept] = dept.pect;
+							hmCat.set(dept.cat, obj);
+							ac.addItem(obj);
+						} else {
+							obj = hmCat.get(dept.cat);
+							if(obj[dept.dept]==null){
+								obj[dept.dept] = dept.pect;
+								trace(dept.dept + ": " + obj[dept.dept]);
+							} else {
+								obj[dept.dept] += dept.pect;
+								trace(dept.dept + ": " + obj[dept.dept]);
+							}
+						}
+					}
+					
+
+					//var depts:Array=new Array("Overall", "NEONATAL UNIT", "ICU", "DIALYSIS UNIT", "1ST FLOOR", "DELIVERY SUITE");
+					
+					var series:Array = new Array();
+					//series = seriesBenchMark;
+					
+					//add benchmark series
+					var lineSeries:LineSeries = new LineSeries();
+					lineSeries.yField="Y";
+					lineSeries.xField="X";
+					lineSeries.setStyle("lineStroke", this.parentApplication.lineStroke);
+					lineSeries.dataProvider = this.parentApplication.lineDataProvider;
+					
+					var xAxis:LinearAxis = new LinearAxis();
+					xAxis.maximum=1;
+					lineSeries.horizontalAxis = xAxis;
+					
+					series.push(lineSeries);
+					
+					var ls:LineSeries=new LineSeries();
+					ls.yField="Overall";
+					ls.xField="cat";
+					ls.displayName="Overall";
+					series.push(ls);
+					
+					for each (var sDept:Object in acSelectedDept){
+						trace("selected: " + sDept.label);
+						
+						ls=new LineSeries();
+						ls.yField=sDept.label
+						ls.xField="cat";
+						ls.displayName=sDept.label;
+						
+						//ls.itemRenderer="mx.charts.renderers.CircleItemRenderer";
+						ls.setStyle("itemRenderer", new ClassFactory(mx.charts.renderers.CircleItemRenderer));
+						
+						series.push(ls);
+						
+						//acSelectedDept.addItem(this.parentApplication.acDepartment[i]);	
+					}
+					
+					
+					
+					lineChartTrendByDept.series=series;
+					lineChartTrendByDept.dataProvider = ac;
+					
+					
+					
+					//for each (var obj:Object in acSelectedDept){
+						//trace("show selected: " + obj.label);
+						//obj.label = node.@label;
+						//obj.selected = false;
+						//acDepartment.addItem(obj);
+					//}
+					
+				}
+			}
+			
+			private function parseDate( str : String ) : Date {
+				var matches : Array = str.match(/(\d\d)\/(\d\d)\/(\d\d\d\d)/);
+				var d : Date = new Date();
+				d.setUTCFullYear(int(matches[3]), int(matches[1]) - 1, int(matches[2]));
+				return d;
+			}
+			
+			
+			
+			public function getSelectionLabel():void{
+				//lbSelections.text = "";
+				ddlMultiSelection.labelDisplay.text = "Multi Selection";
+				
+				
+				acSelectedDept.removeAll();
+				
+				for (var i:int = 0; i < this.parentApplication.acDepartment.length; i++)
+				{
+					if(this.parentApplication.acDepartment[i].selected){
+						////lbSelections.text += " " + acList[i].label;
+						//trace("selected: " + this.parentApplication.acDepartment[i].label);
+						
+						acSelectedDept.addItem(this.parentApplication.acDepartment[i]);
+					}
+				}
+				
+				
+				
+				var series:Array = new Array();
+				//series = seriesBenchMark;
+				
+				//add benchmark series
+				var lineSeries:LineSeries = new LineSeries();
+				lineSeries.yField="Y";
+				lineSeries.xField="X";
+				lineSeries.setStyle("lineStroke", this.parentApplication.lineStroke);
+				lineSeries.dataProvider = this.parentApplication.lineDataProvider;
+				
+				var xAxis:LinearAxis = new LinearAxis();
+				xAxis.maximum=1;
+				lineSeries.horizontalAxis = xAxis;
+				
+				series.push(lineSeries);
+				
+				var ls:LineSeries=new LineSeries();
+				ls.yField="Overall";
+				ls.xField="cat";
+				ls.displayName="Overall";
+				series.push(ls);
+				
+				for each (var sDept:Object in acSelectedDept){
+					trace("selected: " + sDept.label);
+					
+					ls=new LineSeries();
+					ls.yField=sDept.label
+					ls.xField="cat";
+					ls.displayName=sDept.label;
+					
+					ls.setStyle("itemRenderer", new ClassFactory(mx.charts.renderers.CircleItemRenderer));
+					ls.setStyle("radius", 5);
+					
+					series.push(ls);
+					
+					//acSelectedDept.addItem(this.parentApplication.acDepartment[i]);	
+				}
+				
+				
+				
+				lineChartTrendByDept.series=series;
+				
+				
+				
+				//var xml:XML = new XML(s);
+				//this.xmlDepartment = new XMLListCollection(xml.depts.dept);//.month;
+				
+			}
+			
+			protected function cmbDepartment_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+			
+			
+			
+		]]>
+	</fx:Script>	
+	
+	
+	
+	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
+							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
+							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
+							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
+		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
+
+			
+			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
+		
+				<mx:ColumnChart id="chtComplianceByArea" y="10" left="551" right="10" height="289"
+								itemClick="myListener(event, 'area')"
+								seriesFilters="[]" showDataTips="false">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis3"
+									   minimum="0"
+									   maximum="100"
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="area"/>
+					</mx:horizontalAxis>
+					<mx:series>
+						
+						<!--for benchmark line-->
+						<mx:LineSeries yField="Y" xField="X"
+									   lineStroke="{this.parentApplication.lineStroke}"
+									   dataProvider="{this.parentApplication.lineDataProvider}">
+							<mx:horizontalAxis>
+								<mx:LinearAxis maximum="1"/>
+							</mx:horizontalAxis>
+						</mx:LineSeries>
+						<!--end for benchmark line-->
+						
+						<!-- itemRenderer="{this.parentApplication.colorColumnRenderer}"-->
+						<mx:ColumnSeries fontSize="16" 
+										 fillFunction="{this.parentApplication.fill3ColorFunction}"
+										 fills="{this.parentApplication.themeColor}" 
+										 displayName="area" yField="pect" labelAlign="top" 
+										 labelPosition="outside" showDataEffect="slideUp" />
+						
+					</mx:series>
+				</mx:ColumnChart>
+				
+				<mx:ColumnChart id="chtComplianceByWardFacility" y="326" left="551" right="10" height="288"
+								itemClick="myListener(event, Constants.DOMAIN_ENV_WARDFACILITY)"
+								seriesFilters="[]" showDataTips="false">
+					
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis4"
+									   minimum="0"
+									   maximum="100"
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="dept"/>
+					</mx:horizontalAxis>
+					
+					<mx:series>
+						
+						<!--for benchmark line-->
+						<mx:LineSeries yField="Y" xField="X"
+									   lineStroke="{this.parentApplication.lineStroke}"
+									   dataProvider="{this.parentApplication.lineDataProvider}">
+							<mx:horizontalAxis>
+								<mx:LinearAxis maximum="1"/>
+							</mx:horizontalAxis>
+						</mx:LineSeries>
+						<!--end for benchmark line-->
+						
+						<mx:ColumnSeries xField="dept" yField="pect" labelPosition="outside" 
+										 fontSize="16" showDataEffect="slideUp"
+										 fillFunction="{this.parentApplication.fill3ColorFunction}" />
+
+					</mx:series>
+					
+					<!--<mx:horizontalAxisRenderers>
+						<comp:ScrollableAxisRenderer axis="{axisName}" id="scrollAxis" tickPlacement="none"   placement="bottom"
+													 labelGap="3"  maxVisibleColumns="6"  scrollBarThemeColor="blue" />
+					</mx:horizontalAxisRenderers>-->
+					
+				</mx:ColumnChart>
+				
+				
+				<s:Label x="590" y="3" fontSize="13" fontWeight="bold" text="Compliance By Area"/>
+				<s:Label x="591" y="307" fontSize="13" fontWeight="bold" text="Compliance By Ward/Facility"/>
+				<!--<s:DataGrid id="dataGridYTD" x="25" y="482" width="518" height="135" chromeColor="#D7D7D7"
+							dataProvider="{xmlDatagridYTD}"
+							fontSize="10" horizontalScrollPolicy="auto"
+							verticalScrollPolicy="auto">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="@indi" headerText="Moments" width="180" />
+							<s:GridColumn dataField="@hr" headerText="HR" itemRenderer="renderer.GridNumber" width="70" />
+							<s:GridColumn dataField="@hw" headerText="HW" itemRenderer="renderer.GridNumber" width="70" />
+							<s:GridColumn dataField="@miss" headerText="Missed" itemRenderer="renderer.GridNumber" width="60"/>
+							<s:GridColumn dataField="@glove" headerText="M.Glove" itemRenderer="renderer.GridNumber" width="60"/>
+							<s:GridColumn dataField="@ttl" headerText="Total" itemRenderer="renderer.GridNumber" width="60"/>				
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>-->
+				<mx:LineChart id="lineChartAdherenceYTD"
+							  seriesFilters="[]"
+							  x="19" y="12" width="524" height="282">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxisYTD"
+									   minimum="0" 
+									   maximum="100"
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="ym" />
+					</mx:horizontalAxis>
+					<mx:series>
+						
+						<!--for benchmark line-->
+						<mx:LineSeries yField="Y" xField="X"
+									   lineStroke="{new Stroke(0xff0000,1,1)}"
+									   dataProvider="{this.parentApplication.lineDataProvider}">
+							<mx:horizontalAxis>
+								<mx:LinearAxis maximum="1"/>
+							</mx:horizontalAxis>
+						</mx:LineSeries>
+						<!--end for benchmark line-->
+						<mx:LineSeries itemRenderer="mx.charts.renderers.CircleItemRenderer"
+									   radius="5" yField="pect" />
+					</mx:series>
+				</mx:LineChart>
+				
+				<s:Label x="58" y="4" text="Compliance MTD" fontSize="13" fontWeight="bold"/>
+				<s:Label x="9" y="307" width="236" height="34" fontSize="13" fontWeight="bold"
+						 text="Overall Compliance By Trend"/>
+				
+				<mx:LineChart id="lineChartTrendByDept"
+							  seriesFilters="[]"
+							  showDataTips="true"
+							  x="10" y="350" width="544" height="258">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxisYTD0"
+									   minimum="0" 
+									   maximum="100"
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat" />
+					</mx:horizontalAxis>
+					<mx:series>
+						
+						<!--for benchmark line-->
+						<mx:LineSeries yField="Y" xField="X"
+									   lineStroke="{this.parentApplication.lineStroke}"
+									   dataProvider="{this.parentApplication.lineDataProvider}">
+							<mx:horizontalAxis>
+								<mx:LinearAxis maximum="1"/>
+							</mx:horizontalAxis>
+						</mx:LineSeries>
+						<!--end for benchmark line-->
+						
+						
+						<!--<mx:LineSeries itemRenderer="mx.charts.renderers.CircleItemRenderer"
+									   radius="5" yField="pect" />-->
+					</mx:series>
+				</mx:LineChart>
+				<mx:DateField id="txtStartDate" x="268" y="302" width="114" showToday="false" change="doDateSelection()"/>
+				<mx:DateField id="txtEndDate" x="419" y="302" width="107" showToday="true" change="doDateSelection()"/>
+				<s:Label x="238" y="308" text="Start:"/>
+				<s:Label x="390" y="309" text="End:"/>
+				
+				<s:DropDownList id="ddlMultiSelection" x="332" y="328" width="192"
+								close="getSelectionLabel()"
+								itemRenderer="renderer.MutiSelectItemRenderer" labelField="@label"/>
+				<s:Label x="250" y="333" text="Filter by Area:"/>
+				<s:Image id="btnAddReport_Area" y="-2" right="10"
+						 click="doAddToReportMenu(event, SemmelReport.EnvComplianceByArea)" smooth="true"
+						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
+				<s:Image id="btnAddReport_WardFacility" y="310" right="10" click="doAddToReportMenu(event, SemmelReport.EnvComplianceByWardFacility)"
+						 smooth="true" smoothingQuality="high"
+						 source="@Embed('asset/images/report_up.png')"/>
+				<s:Image id="btnAddReport_MTD" left="524" click="doAddToReportMenu(event, SemmelReport.EnvOverallCompliance)"
+						 smooth="true" smoothingQuality="high"
+						 source="@Embed('asset/images/report_up.png')"/>
+				<s:Image id="btnAddReport_MTD_ByTrend" y="305" left="530"
+						 click="doAddToReportMenu(event, SemmelReport.EnvOverallComplianceByTrend)" smooth="true"
+						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
+				
+				<!-- Horizontal Chart -->
+
+			</s:BorderContainer>
+		</s:NavigatorContent>
+	</flexlib:SuperTabNavigator>		
+		
+</s:NavigatorContent>

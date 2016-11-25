@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		chromeColor="#DDDDDD" 
+		creationComplete="init()" xmlns:views="views.*">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<s:RadioButtonGroup id="exportOptionGrp" change="exportOptionGrp_changeHandler(event)" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.DataGridDataExporter;
+			import com.FileUtils;
+			import com.security.util.AESCrypto;
+			import com.semmel.Constants;
+			
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.PieSeries;
+			import mx.charts.series.items.PieSeriesItem;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.utils.ArrayUtil;
+			
+			import spark.events.PopUpEvent;
+			
+			//public var myCallout:CalloutFilter = new CalloutFilter();
+			
+			private var loader : URLLoader = new URLLoader();
+			
+			private var obFilter:String = "";
+			
+			[Bindable]
+			private var xmlDatagrid : XMLListCollection;
+			
+			private function onOrientationChange( event:StageOrientationEvent ):void 
+			{ 
+				//trace("The orientation was " + event.beforeOrientation + " and is now " + event.afterOrientation );
+				init();
+				//ta.text += "before " + event.beforeOrientation + " now is " + event.afterOrientation;
+				
+			}
+			
+			private var filePath:File;
+			private function init():void{
+				
+				fetchLocalXML();
+			}
+			
+			public function fetchLocalXML():void{
+				//var applicationStorageDirectoryPath:File = File.applicationStorageDirectory;
+				//var nativePathToApplicationStorageDirectory:String = applicationStorageDirectoryPath.nativePath.toString();
+				//nativePathToApplicationStorageDirectory += "/data/" + "result.xml";
+				//trace(nativePathToApplicationStorageDirectory);
+				//var file:File = new File(nativePathToApplicationStorageDirectory);
+				
+				if(this.parentApplication.fetchXMLData!=""){
+					try{
+						
+						var raw:String = "";
+						var s:String = "";
+						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+						if(file.exists){
+							try{
+								var stream:FileStream = new FileStream()
+								stream.open(file, FileMode.READ);
+								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+								stream.close();
+								
+								
+								//start decrypt here
+								//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
+								//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
+								//doDecrypt
+								
+								
+								s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+								trace("dec: " + s);
+								
+							}catch(e:Error){
+								trace("e: " + e.toString());
+							}
+						}
+						
+						var xml:XML = new XML(s);
+						
+						//var oooFilter:String = "infectioncontrol_20146";
+						
+						if(this.parentApplication.selectedYM!=""){
+							
+							//var ob:String = this.parentApplication.selectedObserver + "_" + this.parentApplication.selectedYM;
+							var ob:String = this.parentApplication.selectedYM;
+							
+						
+							//this.xmlDatagrid = new XMLListCollection(xml.deptComp.(@ob==this.obFilter).deptc);
+							this.xmlDatagrid = new XMLListCollection(xml.deptComp.(@ob==ob).deptc);
+							dataGrid.dataProvider = this.xmlDatagrid;
+	
+							//XML Output Summary Total
+							//<summ_total hw1="33" hr1="121" miss1="54" hw2="24" hr2="6" miss2="0" hw3="50" hr3="9" miss3="4" hw4="19" hr4="48" miss4="34" hw5="22" hr5="59" miss5="88" totalhwhr="391" totalmiss="90"/>
+							
+							lblHw1.text = xml.deptComp.(@ob==ob).summ_total.@hw1;
+							lblHr1.text = xml.deptComp.(@ob==ob).summ_total.@hr1;
+							lblMiss1.text = xml.deptComp.(@ob==ob).summ_total.@miss1;
+							lblMissWithGlove1.text = xml.deptComp.(@ob==ob).summ_total.@misswithglove1;
+							
+							lblHw2.text = xml.deptComp.(@ob==ob).summ_total.@hw2;
+							lblHr2.text = xml.deptComp.(@ob==ob).summ_total.@hr2;
+							lblMiss2.text = xml.deptComp.(@ob==ob).summ_total.@miss2;
+							lblMissWithGlove2.text = xml.deptComp.(@ob==ob).summ_total.@misswithglove2;
+							
+							lblHw3.text = xml.deptComp.(@ob==ob).summ_total.@hw3;
+							lblHr3.text = xml.deptComp.(@ob==ob).summ_total.@hr3;
+							lblMiss3.text = xml.deptComp.(@ob==ob).summ_total.@miss3;
+							lblMissWithGlove3.text = xml.deptComp.(@ob==ob).summ_total.@misswithglove3;
+							
+							lblHw4.text = xml.deptComp.(@ob==ob).summ_total.@hw4;
+							lblHr4.text = xml.deptComp.(@ob==ob).summ_total.@hr4;
+							lblMiss4.text = xml.deptComp.(@ob==ob).summ_total.@miss4;
+							lblMissWithGlove4.text = xml.deptComp.(@ob==ob).summ_total.@misswithglove4;
+							
+							lblHw5.text = xml.deptComp.(@ob==ob).summ_total.@hw5;
+							lblHr5.text = xml.deptComp.(@ob==ob).summ_total.@hr5;
+							lblMiss5.text = xml.deptComp.(@ob==ob).summ_total.@miss5;
+							lblMissWithGlove5.text = xml.deptComp.(@ob==ob).summ_total.@misswithglove5;
+							
+							lblTotalHwHr.text =  xml.deptComp.(@ob==ob).summ_total.@totalhwhr;
+							lblTotalM.text = xml.deptComp.(@ob==ob).summ_total.@totalmiss;
+							lblTotalMWithGlove.text = xml.deptComp.(@ob==ob).summ_total.@totalmisswithglove;
+							
+							lblTotalComply.text = xml.deptComp.(@ob==ob).summ_total.@totalcomply;
+							lblTotalNonComply.text =xml.deptComp.(@ob==ob).summ_total.@totalnoncomply;
+							// totalhwhr="9" totalmiss="3" totalcomply="75.00" totalnoncomply="25.00"/>
+							
+							//XML Output for complaince calculation
+							// <compliance hwhr1pect="74.04" miss1="25.96" hwhr2pect="100.00" miss2=".00" hwhr3pect="93.65" miss3="6.35" hwhr4pect="66.34" miss4="33.66" hwhr5pect="47.93" miss5="52.07"/>
+							//Complaince
+							lblHwHr1.text = xml.deptComp.(@ob==ob).compliance.@hwhr1pect;
+							lblMissPect1.text = xml.deptComp.(@ob==ob).compliance.@miss1;
+							
+							lblHwHr2.text = xml.deptComp.(@ob==ob).compliance.@hwhr2pect;
+							lblMissPect2.text = xml.deptComp.(@ob==ob).compliance.@miss2;
+							
+							lblHwHr3.text = xml.deptComp.(@ob==ob).compliance.@hwhr3pect;
+							lblMissPect3.text = xml.deptComp.(@ob==ob).compliance.@miss3;
+							
+							lblHwHr4.text = xml.deptComp.(@ob==ob).compliance.@hwhr4pect;
+							lblMissPect4.text = xml.deptComp.(@ob==ob).compliance.@miss4;
+							
+							lblHwHr5.text = xml.deptComp.(@ob==ob).compliance.@hwhr5pect;
+							lblMissPect5.text = xml.deptComp.(@ob==ob).compliance.@miss5;
+							//lblMissPect2
+							//End Complaince
+							
+						}
+						
+							/*a1.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a1;
+							indi1.text = "Indic1 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi1;
+							cal1.text = xml.optional.(@ob==this.obFilter).comp.@ratio1 + " %";
+							
+							a2.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a2;
+							indi2.text = "Indic2 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi2;
+							cal2.text = xml.optional.(@ob==this.obFilter).comp.@ratio2 + " %";
+							
+							a3.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a3;
+							indi3.text = "Indic3 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi3;
+							cal3.text = xml.optional.(@ob==this.obFilter).comp.@ratio3 + " %";
+							
+							a4.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a4;
+							indi4.text = "Indic4 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi4;
+							cal4.text = xml.optional.(@ob==this.obFilter).comp.@ratio4 + " %";
+							
+							a5.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a5;
+							indi5.text = "Indic5 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi5;
+							cal5.text = xml.optional.(@ob==this.obFilter).comp.@ratio5 + " %";*/
+							
+						
+						
+					  
+						
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+						//ta.text += error.toString();
+					}
+					
+					if(profCompliance)
+					profCompliance.fetchLocalXML();
+				}
+			}
+			
+			private function onComplete(evt : Event)  :void
+			{
+				this.loader.removeEventListener(Event.COMPLETE, onComplete);
+				this.xmlDatagrid = new XMLListCollection(new XML(this.loader.data).optional.dg);
+				//acDg = new ArrayCollection(this.loader.data).basic.dg);
+				
+				
+				//acDg = xmlDatagrid as ArrayCollection;
+				
+				
+			   dataGrid.dataProvider = this.xmlDatagrid;
+				//dataGrid.dataProvider = acDg;
+			}
+			
+			
+			/*protected function clickHandler(event:MouseEvent):void {
+				myCallout.addEventListener('close', closeHandler);
+				myCallout.open(btnFilter, true);
+			}
+			protected function closeHandler(event:PopUpEvent):void {
+				if (!event.commit)
+					return;
+				
+				trace(String(event.data));
+				myCallout.removeEventListener('close', closeHandler);
+				this.obFilter = String(event.data);
+				fetchLocalXML();
+			} */  
+			
+			private function onBrowseFolder(evt:Event):void {
+				filePath.removeEventListener(Event.SELECT, onBrowseFolder);
+				
+				var topheader:String = ",Before touching a patient,,,,Before cleaning/aseptic procedure,,,,After body fluid exposure risk,,,,After touching patient,,,,After touching patient surroundings,,,,Total,,,Percentage(%)\n";
+				
+				var wardBottomResult:String = "";
+				
+				wardBottomResult += "Total," + lblHw1.text + "," + lblHr1.text + "," + lblMiss1.text + "," + lblMissWithGlove1.text + "," + lblHw2.text + "," + lblHr2.text + "," + lblMiss2.text + "," + lblMissWithGlove2.text + "," + lblHw3.text + "," + lblHr3.text + "," + lblMiss3.text + "," + lblMissWithGlove3.text + "," + lblHw4.text + "," + lblHr4.text + "," + lblMiss4.text + "," + lblMissWithGlove4.text + "," + lblHw5.text + "," + lblHr5.text + "," + lblMiss5.text + "," + lblMissWithGlove5.text + "," + lblTotalHwHr.text + "," + lblTotalM.text + "," + lblTotalMWithGlove.text + "," + lblTotalComply.text + "," + lblTotalNonComply.text + "\n"; 
+				wardBottomResult += "Compliance(%)," + lblHwHr1.text + ",," + lblMissPect1.text + ",," + lblHwHr2.text + ",," + lblMissPect2.text + ",," + lblHwHr3.text + ",," + lblMissPect3.text + ",," + lblHwHr4.text + ",," + lblMissPect4.text + ",," + lblHwHr5.text + ",," + lblMissPect5.text + ",,";
+				
+				var profBottomResult:String = "";
+				
+				profBottomResult += "Total," + profCompliance.lblHw1.text + "," + profCompliance.lblHr1.text + "," + profCompliance.lblMiss1.text + "," + profCompliance.lblMissWithGlove1.text + "," + profCompliance.lblHw2.text + "," + profCompliance.lblHr2.text + "," + profCompliance.lblMiss2.text + "," + profCompliance.lblMissWithGlove2.text + "," + profCompliance.lblHw3.text + "," + profCompliance.lblHr3.text + "," + profCompliance.lblMiss3.text + "," + profCompliance.lblMissWithGlove3.text + "," + profCompliance.lblHw4.text + "," + profCompliance.lblHr4.text + "," + profCompliance.lblMiss4.text + "," + profCompliance.lblMissWithGlove4.text + "," + profCompliance.lblHw5.text + "," + profCompliance.lblHr5.text + "," + profCompliance.lblMiss5.text + "," + profCompliance.lblMissWithGlove5.text + "," + profCompliance.lblTotalHwHr.text + "," + profCompliance.lblTotalM.text + "," + profCompliance.lblTotalMWithGlove.text + "," + profCompliance.lblTotalComply.text + "," + profCompliance.lblTotalNonComply.text + "\n"; 
+				profBottomResult += "Compliance(%)," + profCompliance.lblHwHr1.text + ",," + profCompliance.lblMissPect1.text + ",," + profCompliance.lblHwHr2.text + ",," + profCompliance.lblMissPect2.text + ",," + profCompliance.lblHwHr3.text + ",," + profCompliance.lblMissPect3.text + ",," + profCompliance.lblHwHr4.text + ",," + profCompliance.lblMissPect4.text + ",," + profCompliance.lblHwHr5.text + ",," + profCompliance.lblMissPect5.text + ",,";
+				
+				if(exportOptionGrp.selectedValue.toString() == 'ward')
+					FileUtils.saveCSV(filePath, topheader + DataGridDataExporter.exportCSV(selectedGrid,",")+"\n\n\n"+wardBottomResult);
+				else
+					FileUtils.saveCSV(filePath, topheader + DataGridDataExporter.exportCSV(selectedGrid,",")+"\n\n\n"+profBottomResult);
+				Alert.show("Compliance Summary successfully Exported.");
+			}
+			
+			[Bindable]
+			public var acDg:ArrayCollection = new ArrayCollection();
+			
+			
+			protected function button2_clickHandler(event:MouseEvent):void
+			{
+				//ask user for location to save
+				filePath = File.desktopDirectory.resolvePath(filename);
+				filePath.addEventListener(Event.SELECT, onBrowseFolder);
+				filePath.browseForSave("Select Destination");
+//				FileUtils.saveCSV(filename, DataGridDataExporter.exportCSV(selectedGrid,","));
+//				Alert.show("Compliance Summary successfully Exported.");
+			}
+			
+			private var selectedGrid:DataGrid;
+			private var filename:String;
+			protected function exportOptionGrp_changeHandler(event:Event):void
+			{
+				if(exportOptionGrp.selectedValue.toString() == 'ward') {
+					selectedGrid = dataGrid;
+					filename = "WardComplianceSummary_"+this.parentApplication.selectedYMLabel+".csv";
+				} else {
+					selectedGrid = profCompliance.dataGrid;
+					filename = "ProfessionalComplianceSummary_"+this.parentApplication.selectedYMLabel+".csv";
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<!--<s:actionContent>
+		<s:Button label="Filter..." id="btnFilter" click="clickHandler(event);"/>
+	</s:actionContent>-->
+	<!--<s:layout>
+		<s:VerticalLayout />
+	</s:layout>-->
+	<s:Scroller width="100%" height="100%" >
+		<s:Group width="100%" height="100%">
+			<s:HGroup width="100%" horizontalAlign="center" verticalAlign="middle" y="5">
+				<s:RadioButton label="Ward wise Compliance Report" group="{exportOptionGrp}" value="ward"/>
+				<s:RadioButton label="Profession wise Compliance Report" group="{exportOptionGrp}" value="profession"/>
+				<s:Button label="Export as CSV" click="button2_clickHandler(event)" enabled="{exportOptionGrp.selection}"/>
+			</s:HGroup>
+	
+	<s:BorderContainer id="pnl" x="0" y="30" width="100%" height="100%" borderColor="#FFFFFF">
+	
+	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}"
+				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto">
+		<s:columns>
+			<s:ArrayList>
+				
+				<s:GridColumn dataField="@dept" headerText="Ward/Facility" itemRenderer="renderer.GridNumber" width="170" />
+				<s:GridColumn dataField="@hw1" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@hr1" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@miss1" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@mglove1" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				
+				<s:GridColumn dataField="@hw2" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@hr2" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@miss2" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@mglove2" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				
+				<s:GridColumn dataField="@hw3" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@hr3" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@miss3" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@mglove3" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				
+				<s:GridColumn dataField="@hw4" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@hr4" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@miss4" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@mglove4" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				
+				<s:GridColumn dataField="@hw5" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@hr5" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@miss5" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@mglove5" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				
+				<!--<deptc dept="A&E" hw1="0" hr1="15" miss1="10" hw2="7" hr2="0" miss2="0" hw3="11" 
+				hr3="0" miss3="0" hw4="0" hr4="7" miss4="5" hw5="1" hr5="14" miss5="7"
+				totalhwhr="106" totalmiss="22" comply="82.81" noncomply="17.19"/>
+				
+				Hand Wash +   Hand Rub	Missed	Comply	Non comply
+				-->
+				
+				<s:GridColumn dataField="@totalhwhr" headerText="HW+HR" itemRenderer="renderer.GridNumber" width="65" />
+				<s:GridColumn dataField="@totalmiss" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@totalmisswithglove" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="@comply" headerText="COMPLY" itemRenderer="renderer.GridNumber" width="65" />
+				<s:GridColumn dataField="@noncomply" headerText="NON-COMPLY" itemRenderer="renderer.GridNumber" width="80" />
+				
+			</s:ArrayList>
+		</s:columns>
+	</s:DataGrid>
+	<s:Label x="171" y="20" width="162" height="39" fontSize="12" fontWeight="bold"
+			 text="Before touching a patient" textAlign="center" verticalAlign="top"/>
+	<s:Label x="490" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="330" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="331" y="7" width="162" height="52" fontSize="12" fontWeight="bold"
+			 text="Before clean/aseptic procedure" textAlign="center" verticalAlign="middle"/>
+	<s:Label x="651" y="6" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="492" y="9" width="162" height="50" fontSize="12" fontWeight="bold"
+			 text="After body fluid exposure risk" textAlign="center" verticalAlign="middle"/>
+	<s:Label x="811" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="652" y="20" width="163" height="37" fontSize="12" fontWeight="bold"
+			 text="After touching a patient" textAlign="center" verticalAlign="top"/>
+	<s:Label x="970" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="1115" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="1272" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	<s:Label x="811" y="10" width="163" height="49" fontSize="12" fontWeight="bold"
+			 text="After touching patient surroundings" textAlign="center" verticalAlign="middle"/>
+	<s:Label x="988" y="20" width="108" height="28" fontSize="14" fontWeight="bold" text="Total"
+			 textAlign="center" verticalAlign="top"/>
+	<s:Label x="1117" y="19" width="164" height="28" fontSize="14" fontWeight="bold"
+			 text="Percentage (%)" textAlign="center"/>
+	<s:Label x="117" y="488" fontSize="14" fontWeight="bold" text="TOTAL"/>
+	<s:Label x="44" y="513" fontSize="14" fontWeight="bold" text="COMPLIANCE (%)"/>
+	<s:Image x="171" y="479" height="54" scaleMode="stretch" smooth="true" smoothingQuality="high"
+			 source="asset/images/footer_calc.jpg"/>
+	<s:Label id="lblTotalMWithGlove" x="1075" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissWithGlove5" x="930" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissWithGlove4" x="770" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissWithGlove3" x="609" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissWithGlove2" x="449" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissWithGlove1" x="291" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHw1" x="170" y="479" width="42" height="29" fontSize="13" fontWeight="bold" text="0"
+			 textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHr1" x="210" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMiss1" x="251" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHw2" x="330" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHr2" x="370" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMiss2" x="410" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHw3" x="490" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHr3" x="530" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMiss3" x="570" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHw4" x="650" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHr4" x="691" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMiss4" x="731" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHw5" x="811" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHr5" x="850" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMiss5" x="890" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHwHr1" x="171" y="507" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHwHr3" x="491" y="507" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHwHr4" x="651" y="507" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHwHr5" x="810" y="507" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblHwHr2" x="331" y="507" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissPect1" x="250" y="507" width="83" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissPect2" x="411" y="506" width="82" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissPect3" x="571" y="507" width="83" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissPect4" x="730" y="507" width="84" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblMissPect5" x="890" y="507" width="83" height="25" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblTotalHwHr" x="972" y="479" width="65" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblTotalM" x="1035" y="479" width="42" height="29" fontSize="13" fontWeight="bold"
+			 text="0" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblTotalComply" x="1116" y="479" width="65" height="29" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label id="lblTotalNonComply" x="1181" y="479" width="91" height="29" fontSize="13" fontWeight="bold"
+			 text="%" textAlign="center" verticalAlign="middle"/>
+	<s:Label x="170" y="5" width="3" height="60" backgroundColor="#D2D2D2"/>
+	
+	</s:BorderContainer>
+
+			<views:ProfessionMomentsComplaince y="650" id="profCompliance" />
+			
+		</s:Group>
+	</s:Scroller>
+</s:NavigatorContent>

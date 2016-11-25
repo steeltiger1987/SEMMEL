@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SkinnablePopUpContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						   xmlns:s="library://ns.adobe.com/flex/spark"
+						   creationComplete="init()"
+						   xmlns:mx="library://ns.adobe.com/flex/mx" width="522" height="180">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			
+			import mx.collections.*;
+			
+			//public function doMessage(t:String, m:String):void{
+				//this.pnl.title = t;
+				//this.lbl.text = m;
+			//}
+			
+			
+			//default value
+			private var bm:Number = 75;
+			private var th:Number = 10;
+			
+			private function init():void{
+				var file:File = File.applicationStorageDirectory.resolvePath("settings.dat");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+						trace(s.split("\n")[0]);
+						trace(s.split("\n")[1]);
+						
+						bm = Number(s.split("\n")[0]);
+						th = Number(s.split("\n")[1]);
+						
+						hsBenchmark.value = bm;
+						hsThreshold.value = th;
+						
+					} catch(e:Error){
+						trace("error settings.dat " + e.toString());
+					}
+					
+				}
+			}
+			
+			private function doApply():void{
+			
+				trace("bm: " + hsBenchmark.value.toString());
+				trace("th: " + hsThreshold.value.toString());
+				
+				//do save the setting into files
+				
+				try {
+					var file:File = File.applicationStorageDirectory.resolvePath("settings.dat");
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file, FileMode.WRITE);
+					fileStream.writeUTFBytes(hsBenchmark.value.toString() + "\n"); //user id
+					fileStream.writeUTFBytes(hsThreshold.value.toString() + "\n"); //pwd
+					fileStream.close();
+					
+					this.parentApplication.bm = hsBenchmark.value;
+					this.parentApplication.th = hsThreshold.value;
+					
+					
+					this.parentApplication.lineDataProvider = new ArrayCollection([{"X" : 0, "Y" : hsBenchmark.value}, 
+							{"X" : 1, "Y" : hsBenchmark.value}]);
+					
+					
+				}catch(e:Error){
+					trace("save setting: " + e.toString());
+				}
+				
+				close();
+			}
+			
+			
+		]]>
+	</fx:Script>
+		
+	<s:Panel id="pnl" width="522" height="180" title="Settings">
+		<s:HSlider id="hsBenchmark" x="161" y="24" width="247" height="22" liveDragging="true"
+				   maximum="100" minimum="0" stepSize="1" value="{bm}"/>
+		<s:Label x="39" y="26" text="Benchmark (%):"/>
+		<s:Label id="lblBenchmark" x="416" y="26" width="45" text="{hsBenchmark.value} %" textAlign="right"/>
+		<s:Label x="39" y="63" text="Threshold (%):"/>
+		<s:Button x="336" y="116" width="80" label="Apply" click="doApply();"/>
+		<s:Button x="424" y="116" width="80" label="Cancel" click="close();"/>
+		<s:HSlider id="hsThreshold" x="161" y="60" width="247" height="22" liveDragging="true"
+				   maximum="100" minimum="0" stepSize="1" value="{th}"/>
+		<s:Label id="lblThreshold" x="416" y="61" width="45" text="{hsThreshold.value} %" textAlign="right"/>
+	</s:Panel>
+</s:SkinnablePopUpContainer>

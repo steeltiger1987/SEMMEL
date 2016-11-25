@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<update xmlns="http://ns.adobe.com/air/framework/update/description/2.5">
+<versionNumber>1.0.8</versionNumber>
+<url>http://semmel.raydarhealth.com/SEMMEL_v1.0.8.air</url>
+<description><![CDATA[
+v1.1
+ * Introduce of Environmental Analytic Module
+v1.0.12
+ * Progress bar during login and sync
+ * Update of procedure & reason with adherence & count
+v1.0.9
+ * Fix of Ward/Facility adherence chart display issue which reported sometimes is not display
+ * Added of user license agreement
+ * Observer data collection summary
+ * Monthly leader board
+ * Audit report export in excel format
+ * New filter analytics with 'By Reason'
+ * Some minor UI/UX enhancement 
+v1.0.8
+ * Feature with Custom Reporting, output to compatible MS Office Document (.doc, .ppt, .xls, .pdf)
+ * MOH Report for Malaysia Country
+v1.0.7
+ * New Summary for Aseptic Procedure and Missed Reason
+]]></description>
+</update>

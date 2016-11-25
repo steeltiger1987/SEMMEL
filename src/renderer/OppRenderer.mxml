@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009"
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					xmlns:mx="library://ns.adobe.com/flex/mx"
+					width="35" height="22" clipAndEnableScrolling="true">
+	<fx:Script>
+		<![CDATA[
+			override public function set data(value:Object):void
+			{
+				if(value!=null){
+					super.data = value;
+					
+					if(Number(value.@opp)==0){
+						lblOpp.text = "-";
+					} else {
+						lblOpp.text = value.@opp;
+					}
+					
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="center" />
+	</s:layout>
+	<s:Label id="lblOpp" textAlign="center" width="100%" />
+</s:GridItemRenderer>

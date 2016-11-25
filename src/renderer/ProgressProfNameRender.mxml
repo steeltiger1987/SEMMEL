@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009"
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					xmlns:mx="library://ns.adobe.com/flex/mx"
+					width="185" height="42" clipAndEnableScrolling="true">
+	<!--delete script section not required-->
+	<fx:Script>
+	<![CDATA[
+
+		override public function set data(value:Object):void
+		{
+			if(value!=null){
+				super.data = value;
+				
+				if(Number(value.@opp)!=0){
+					progressBar.setProgress(Number(value.@cnt), Number(value.@opp));
+					progressBar.label = value.@cnt + "/" + value.@opp;
+					lblProgress.text = String(numForm.format((Number(value.@cnt)/Number(value.@opp))*100)) + "%";
+				} else {
+					lblProgress.text = "";
+					progressBar.label = value.@cnt;
+					progressBar.setProgress(0,0);
+				}
+			}
+		}
+	]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:NumberFormatter id="numForm" useGrouping="false" fractionalDigits="0"/>
+	</fx:Declarations>
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="left" verticalAlign="middle" paddingLeft="7" paddingRight="7"/>
+	</s:layout>
+	<mx:ProgressBar id="progressBar" width="125" height="23" label="0/0" chromeColor="#FFD27A"
+					enabled="true" indeterminate="false" labelPlacement="center" mode="manual"/>
+	<s:Label id="lblProgress" width="40" text="100%" textAlign="right" verticalAlign="middle"/>
+</s:GridItemRenderer>

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					creationComplete="doLoadXMLData()"
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	
+	<fx:Declarations>	
+		<s:HTTPService id="httpReset" url="" fault="fleventReset(event)" method="POST" result="httpReset_result(event)" resultFormat="text" />
+		<s:HTTPService id="httpReport" url="" fault="fleventReport(event)" method="POST" result="httpReport_result(event)" resultFormat="text" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import com.hurlant.crypto.*;
+			import com.hurlant.crypto.hash.SHA1;
+			import com.hurlant.crypto.symmetric.*;
+			import com.hurlant.util.Base64;
+			import com.hurlant.util.Hex;
+			import com.security.util.*;
+			import com.security.util.AESCrypto;
+			import com.semmel.Constants;
+			
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.*;
+			import mx.events.ResizeEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.*;
+			
+			
+			public var fetchXMLData:String = "";
+			
+			
+			[Bindable]
+			private var xmlDatagridWardFacility : XMLListCollection;
+			
+			[Bindable]
+			private var xmlDatagridProfession : XMLListCollection;
+			
+			[Bindable]
+			private var xmlDatagridObserverPerf : XMLListCollection;
+			
+			private function fleventReset(e:FaultEvent):void {
+				trace("fault: " + e.toString());
+				//btnAction.enabled=true;
+				var alertNetwork:NetworkDialog = new NetworkDialog();
+				alertNetwork.open(this, true);
+				PopUpManager.centerPopUp(alertNetwork);
+				alertNetwork.doMessage("ERROR", "HTTP Request Error");
+			}
+			private function fleventReport(e:FaultEvent):void {
+				trace("fault report: " + e.toString());
+				//btnAction.enabled=true;
+			}	
+			
+			private function httpReset_result(evt:ResultEvent):void{		
+				
+				Alert.show("The reset was sucessfull");
+				this.parentApplication.isReset = true;
+				
+				trace("posted data done");
+				trace(evt.result.toString());
+				
+				var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+				var stream:FileStream = new FileStream()
+				stream.open(file, FileMode.READ);
+				var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+				
+				trace("post doReport");
+				
+				httpReport.url = Constants.url_mapi;
+				httpReport.method="POST";
+				httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
+				
+			}
+			
+			private function httpReport_result(evt:ResultEvent):void{				
+				trace("report posted data done");
+				trace("need aes decrypt here...");
+				
+				//decryp key
+				// 18fd975d3f27ff11
+				
+				/*trace("RETURN: " + evt.result.toString());
+				
+				var enc:String = StringUtil.trim(evt.result.toString());
+				
+				var file:File = File.applicationStorageDirectory.resolvePath("result.data");
+				var fileStream:FileStream = new FileStream();
+				fileStream.open(file, FileMode.WRITE);
+				fileStream.writeUTFBytes(enc); //enc xml result data
+				fileStream.close()*/
+				
+				
+				doLoadXMLData();
+				
+			}
+			
+			public function doLoadXMLData():void{
+				
+				trace("do load xml data file storage");
+				
+				//Step1: load secret key first
+				var sKey:String = ""; //test: 18fd975d3f27ff11
+				var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						sKey = stream.readUTFBytes(stream.bytesAvailable).toString().substr(0, 16); //legnth 16 only
+						stream.close();
+					} catch(e:Error){
+						trace(e.toString());
+					}
+					
+				}
+				
+//				var fileData:File = File.applicationStorageDirectory.resolvePath("progress.data");
+				var dec:String = ""; //encrypted result data
+				var enc:String = ""; //fix
+//				if(fileData.exists && file.exists){
+					
+					
+//					try{
+//						var stream:FileStream = new FileStream()
+//						stream.open(fileData, FileMode.READ);
+//						enc = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
+//						stream.close();
+//						
+//						
+//						dec = AESCrypto.decrypt(enc, Constants.getLicenseKey().substring(0,16));
+//						trace("read dec: " + dec);
+//						
+//					} catch(e:Error){
+//						trace("read file: " + e.toString());
+//					}
+					
+					
+					try{
+						
+//						var s:String = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + dec;
+//						trace("dec xml: " + s);
+//						var xml:XML = new XML(s);
+//						
+//						var xml:XML = new XML(s);
+						var s:String = Constants.progressData;
+						trace("dec xml: " + s);
+						
+						if(this.parentApplication.isReset){
+							
+							var xmlListProf:XMLListCollection = new XMLListCollection(new XML(s).profprogress.profp);
+							var xmlListDept:XMLListCollection = new XMLListCollection(new XML(s).deptprogress.deptp);
+							
+							trace("isReset true");
+							
+							for each (var prof : XML in xmlListProf){
+								prof.@progress = "0";
+							}
+							
+							for each (var dept : XML in xmlListDept){
+								dept.@progress = "0";
+							}
+							
+							this.xmlDatagridProfession = xmlListProf;
+							this.xmlDatagridWardFacility = xmlListDept;
+							
+						} else {
+							
+							this.xmlDatagridProfession = new XMLListCollection(new XML(s).profprogress.profp);
+							this.xmlDatagridWardFacility = new XMLListCollection(new XML(s).deptprogress.deptp);
+							this.xmlDatagridObserverPerf = new XMLListCollection(new XML(s).obperf.perf);
+							
+						}
+						
+					}catch(e:Error){
+						trace("xml: " + e.toString());
+					}
+					
+					
+//				}
+			}
+			
+			protected function btnReset_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				Alert.show("Are you sure want to RESET? All progress count data will be reset and cannot be undo.", "Reset",
+					mx.controls.Alert.YES | mx.controls.Alert.NO, this, alertEventHandler);
+			}
+			
+			protected function alertEventHandler(event:CloseEvent):void {
+				if(event.detail == Alert.YES) {
+					
+					
+					if(this.parentApplication.isConnected==false){
+						trace("no connection");
+						
+						var alertNetwork:NetworkDialog = new NetworkDialog();
+						alertNetwork.open(this, true);
+						PopUpManager.centerPopUp(alertNetwork);
+						
+						alertNetwork.doMessage("Network Error", "Network Connection is Required");
+						
+						return;
+					} else {
+						
+						
+						
+						var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+						
+						trace("reset quota function");
+						
+						trace("license: " + s);
+						
+						trace("act: reset, key: " + s.split("\n")[0]);
+						
+						httpReset.url = Constants.url_mapi;
+						httpReset.method="POST";
+						httpReset.send({act:"reset", key:s.split("\n")[0]});
+						
+					}
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Button id="btnReset" y="10" right="10" width="92" height="30" label="Reset"
+			  chromeColor="#00A47B" click="btnReset_clickHandler(event)" color="#FFFFFF"
+			  fontSize="14"/>
+	<s:TabBar id="tabView" x="10" y="42" width="293" dataProvider="{tabvs}"/>
+	<mx:ViewStack id="tabvs" left="10" right="10" top="65" height="586" backgroundColor="#FFFFFF"
+				  borderAlpha="1.0" borderColor="#000000" borderVisible="true" cornerRadius="6"
+				  dropShadowVisible="true">
+		<s:NavigatorContent width="100%" height="100%" label="Ward/Facility">
+			<s:DataGrid x="8" top="17" bottom="8" width="550" dataProvider="{xmlDatagridWardFacility}"
+						requestedRowCount="4">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="@dept" headerText="Ward/Facility" width="240"></s:GridColumn>
+						<s:GridColumn dataField="@quota" headerText="Quota" width="60" itemRenderer="renderer.QuotaRenderer"></s:GridColumn>
+						<s:GridColumn dataField="@progress" headerText="Progress" itemRenderer="renderer.ProgressRender" ></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Profession">
+			<s:DataGrid x="8" top="17" bottom="13" width="550" dataProvider="{xmlDatagridProfession}"
+						requestedRowCount="4">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="@prof" headerText="Profession" width="200"></s:GridColumn>
+						<s:GridColumn dataField="@quota" headerText="Quota" width="60" itemRenderer="renderer.QuotaRenderer"></s:GridColumn>
+						<s:GridColumn dataField="@progress" headerText="Progress" itemRenderer="renderer.ProgressRender" ></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Observer">
+			<s:DataGrid x="8" top="17" bottom="13" width="550" dataProvider="{xmlDatagridObserverPerf}"
+						requestedRowCount="4">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="@observer" headerText="Observer" width="200"></s:GridColumn>
+						<s:GridColumn dataField="@opp" headerText="Opportunity" width="100" itemRenderer="renderer.OppRenderer"></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:NavigatorContent>
+	</mx:ViewStack>
+</s:NavigatorContent>

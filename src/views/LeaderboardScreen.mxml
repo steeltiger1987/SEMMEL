@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					creationComplete="fetchLocalXML()"
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import com.hurlant.crypto.*;
+			import com.hurlant.crypto.hash.SHA1;
+			import com.hurlant.crypto.symmetric.*;
+			import com.hurlant.util.Base64;
+			import com.hurlant.util.Hex;
+			import com.security.util.*;
+			
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.*;
+			import mx.events.ResizeEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.*;
+			
+			import mx.collections.SortField;
+			import mx.collections.Sort;
+			
+			public var fetchXMLData:String = "";
+			
+			
+			[Bindable]
+			private var xmlWardFacility : XMLListCollection;
+			
+			[Bindable]
+			private var xmlProfession : XMLListCollection;
+			
+			
+			public function fetchLocalXML():void{
+				
+				var pertSort:Sort = new Sort();
+				
+				var sortField:SortField = new SortField('@pert');
+				sortField.numeric = true;
+				sortField.descending = true;
+				
+				pertSort.fields = [sortField];
+				//pertSort.fields = [new SortField('@pert', true, false, Number)];
+				
+				var ob:String = this.parentApplication.selectedYM;
+				
+				var s:String = this.parentApplication.fetchXMLData;
+				this.xmlWardFacility = new XMLListCollection(new XML(s).hhoadh.(@ob==ob).deptahd);
+				
+				trace("ward/facility: " + this.xmlWardFacility.toString());
+				
+				this.xmlWardFacility.sort = pertSort;
+				this.xmlWardFacility.refresh();
+				
+				
+				this.xmlProfession = new XMLListCollection(new XML(s).hhoprofpert.(@ob==ob).profahd);
+				this.xmlProfession.sort = pertSort;
+				this.xmlProfession.refresh();
+				
+				
+				//xml 
+				/*
+				w/f: <hhoadh ob="20158">
+				<deptahd name="2 BEDDED WARD" opp="1" cnt="1" pert="100"/>
+				<deptahd name="DELIVERY SUITE" opp="1" cnt="1" pert="100"/>
+				<deptahd name="ED/ A&amp;E" opp="3" cnt="2" pert="66"/>
+				<deptahd name="ICU" opp="20" cnt="11" pert="55"/>
+				<deptahd name="NEONATAL UNIT" opp="6" cnt="3" pert="50"/>
+				</hhoadh>
+				prof: <profahd name="Dietitian" cnt="3" opp="6" pert="50"/>
+				<profahd name="Doctor" cnt="8" opp="13" pert="61"/>
+				<profahd name="Medical Consultant" cnt="3" opp="5" pert="60"/>
+				<profahd name="Non-Clinical" cnt="2" opp="5" pert="40"/>
+				<profahd name="Surgeon Consultant" cnt="2" opp="2" pert="100"/>
+				*/
+				
+				
+			}
+			
+			private function lfRowNum(oItem:Object,iCol:int):String
+			{
+				var iIndex:int = this.xmlWardFacility.getItemIndex(oItem) + 1;
+				return String(iIndex);
+			}
+			
+			private function lfRowNumProf(oItem:Object,iCol:int):String
+			{
+				var iIndex:int = this.xmlProfession.getItemIndex(oItem) + 1;
+				return String(iIndex);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:TabBar id="tabView" x="10" y="42" width="293" dataProvider="{tabvs}"/>
+	<mx:ViewStack id="tabvs" left="10" right="10" top="65" height="586" backgroundColor="#FFFFFF"
+				  borderAlpha="1.0" borderColor="#000000" borderVisible="true" cornerRadius="6"
+				  dropShadowVisible="true">
+		<s:NavigatorContent width="100%" height="100%" label="Ward/Facility">
+			<s:DataGrid x="8" top="17" bottom="8" width="550" dataProvider="{xmlWardFacility}"
+						sortableColumns="false"
+						requestedRowCount="4">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn headerText="Rank" width="60" labelFunction="lfRowNum"></s:GridColumn>
+						<s:GridColumn dataField="@name" headerText="Ward/Facility" width="240"></s:GridColumn>
+						<s:GridColumn headerText="Compliance" itemRenderer="renderer.AdhPertRender" width="140"></s:GridColumn>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Profession">
+			<s:DataGrid x="8" top="17" bottom="13" width="550" dataProvider="{xmlProfession}"
+						sortableColumns="false"
+						requestedRowCount="4">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn dataField="@rank" headerText="Rank" width="60" labelFunction="lfRowNumProf"></s:GridColumn>
+						<s:GridColumn dataField="@name" headerText="Profession" width="240"></s:GridColumn>
+						<s:GridColumn headerText="Compliance" itemRenderer="renderer.AdhPertRender" width="140"></s:GridColumn>
+						<!--itemRenderer="renderer.ProgressRender"-->
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:NavigatorContent>
+	</mx:ViewStack>
+</s:NavigatorContent>

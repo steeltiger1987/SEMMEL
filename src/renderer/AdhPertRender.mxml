@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:GridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009"
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					xmlns:mx="library://ns.adobe.com/flex/mx"
+					width="100%" height="42" clipAndEnableScrolling="true">
+	<!--delete script section not required-->
+	<fx:Script>
+	<![CDATA[
+
+		override public function set data(value:Object):void
+		{
+			if(value!=null){
+				super.data = value;
+				
+				if(Number(value.@opp)!=0){
+					lblProgress.text = String(numForm.format((Number(value.@cnt)/Number(value.@opp))*100)) + "%" + " (" + value.@cnt + "/" + value.@opp + ")";
+				} else {
+					lblProgress.text = "";
+				}
+			}
+		}
+	]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:NumberFormatter id="numForm" useGrouping="false" fractionalDigits="0"/>
+	</fx:Declarations>
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="left" verticalAlign="middle" paddingLeft="7" paddingRight="7"/>
+	</s:layout>
+	<s:Label id="lblProgress" width="100%" text="" textAlign="right" verticalAlign="middle"/>
+</s:GridItemRenderer>

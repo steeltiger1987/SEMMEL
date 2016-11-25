@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent 
+	xmlns:flexlib="flexlib.containers.*"
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+	xmlns:s="library://ns.adobe.com/flex/spark" 
+	xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	
+	<fx:Style>
+		@namespace tab "flexlib.controls.tabBarClasses.*";
+		tab|SuperTab{ 
+			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
+		} 
+		.SuperTabButtonStyle{
+			icon: Embed(source="close.png"); 
+		}
+	</fx:Style>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:SeriesSlide 
+			id="slideUp" 
+			duration="1000" 
+			direction="up"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import com.security.util.AESCrypto;
+			import com.semmel.Constants;
+			
+			import spark.events.PopUpEvent;
+			import mx.managers.PopUpManager;
+			import com.report.bi.*;
+			import mx.collections.*;
+			import spark.components.DropDownList;
+			import flash.display.NativeMenu;
+			import flash.display.NativeMenuItem;
+			
+			import flexlib.containers.SuperTabNavigator;
+			import flexlib.controls.SuperTabBar;
+			import flexlib.controls.tabBarClasses.SuperTab;
+			import flexlib.events.TabReorderEvent;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.Series;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.*;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.XMLListCollection;
+			import mx.containers.VBox;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.Group;
+			import spark.events.IndexChangeEvent;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.Series;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			
+			
+			//[Bindable]
+			//private var xmlColumnChart : XMLList;
+			
+			[Bindable]
+			private var xmlListProcedure : XMLList;
+			
+			[Bindable]
+			private var xmlListReason : XMLList;
+			
+			//[Bindable]
+			//public var xmlProcedure:XMLListCollection;
+			
+			//[Bindable]
+			//public var xmlReason:XMLListCollection;
+			
+			private var iColorNumber:Number = 0;
+			
+			[Embed(source="../../assets/document.png")]
+			private var document_icon:Class;       
+			
+			[Embed(source="../../assets/home.png")]
+			private var home_icon:Class;
+			
+			private var domain:String = "";
+
+			public function fetchLocalXML():void{
+				
+				initMenu();
+				
+				iColorNumber = 0;
+				trace("fetch xml...procedure");
+				
+				var raw:String = "";
+				var s:String = "";
+				var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
+						
+						
+						//start decrypt here
+						//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
+						//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
+						//doDecrypt
+						
+						
+						s = raw;//"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						trace("dec: " + s);
+						
+					}catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
+				
+				
+				if(s!=""){
+					try{
+						if(this.parentApplication.selectedYM!=""){
+							var ob:String = this.parentApplication.selectedYM;
+							var xml:XML = new XML(s);
+							//trace(s);
+							this.xmlListProcedure = new XML(s).procedures.(@ob==ob).record;
+							
+							this.xmlListReason = new XML(s).reasons.(@ob==ob).record;
+						}
+						//<hhoprofpert>
+						//<profahd name="Auxiliary" pert="94"/>
+						//<profahd name="Medical Doctor" pert="93"/>
+						//<profahd name="Other Healthcare Worker" pert="88"/>
+						//<profahd name="Nurse/Midwife" pert="85"/>
+						//<comp cal1="72" cal2="77" cal3="75" cal4="73" cal5="74"/>
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+					}					
+				}
+			}
+			
+			
+			private function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+				return item + "%"
+			}
+			private function columnSeries_labelFunc(element:ChartItem, series:Series):String {
+				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
+				var ser:ColumnSeries = ColumnSeries(series);
+				return "         " + csi.item.pert + "%";
+			}
+			
+			
+			
+			//new function for open tabs
+			private function initTabs():void
+			{
+				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+			}
+			
+			public function myListener(e:ChartItemEvent, domain:String):void {
+				
+				if(domain=="procedure"){
+					this.hitItem  = e.hitData.item.@procedure;
+					trace("hitData: " + e.hitData.item.@procedure);
+					trace("hitData: " + e.hitData.item.@cnt);
+				} else if(domain=="reason"){
+					this.hitItem  = e.hitData.item.@reason;
+					trace("hitData: " + e.hitData.item.@reason);
+					trace("hitData: " + e.hitData.item.@cnt); 
+				}
+				
+				doPopDataPoint(e, domain);
+				
+			}
+			
+			private function doPopDataPoint(e:ChartItemEvent, domain:String):void {
+				this.domain = domain;
+				trace("doPopDataPoint: " + this.domain);
+				doDynamicMenu(null);
+				popUpMenu.display(this.stage, e.stageX, e.stageY);
+			}
+			
+			private function doDynamicMenu(obj:Object):void{
+
+				popUpMenu.removeAllItems();
+				popUpMenu.addItem(popUpMenuItemByDept);
+				popUpMenu.addItem(popUpMenuItemByProf);
+				if(this.domain=="reason"){
+					//can have moment
+					popUpMenu.addItem(popUpMenuItemByMoment);
+				} else {
+					popUpMenu.addItem(popUpMenuItemByAction);
+				}
+				isSelected = false;
+				
+			}
+			
+			private var popUpMenu = new NativeMenu();
+			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
+			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
+			private var hitItem:String = "";
+			
+			private function initMenu():void{
+				popUpMenuItemByProf.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByDept.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByMoment.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByAction.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				
+				//for add to new report
+				popReport_NewReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+					showNewReportDialog();
+				});
+				//end for add to new report
+				
+			}
+			
+			var isSelected:Boolean = false;
+			
+			private function doAnalysisByDataPoint(event:Event, hitItem:String):void{
+				if(isSelected==false){
+					trace("Procedure/Reason Selected command: " + hitItem + " " + event.target.label);
+					isSelected = true;
+					
+					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+					nav.selectedIndex = nav.getChildren().length-1;
+					
+				}
+				//mx.controls.Alert.show("i");
+			}
+			
+			
+			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
+									contentString:String=null, icon:Class=null):void
+			{
+				if (lbl == "")
+					lbl = "Graph";
+				
+				var curNum:Number = nav.numChildren + 1;
+				
+				var child:VBox = new VBox();
+				
+				child.setStyle("closable", true);
+				
+				child.label = lbl + " @ " + this.parentApplication.selectedYMLabel;
+				
+				if (icon)
+				{
+					child.icon = icon;
+				}
+				else
+				{
+					child.icon = document_icon;
+				}
+				
+				var headerGroup:Group = new Group();
+				headerGroup.percentWidth=100;
+				
+				var label:Label = new Label();
+				label.text = contentString == null ? lbl : contentString; //for the new tab label
+				label.setStyle("fontWeight", "bold");
+				label.x=10;
+				label.y=10;
+				
+				
+				var ca:ColumnChart = new ColumnChart(); //1st chart column
+				
+				
+				var iSelect:Number = -1;
+				
+				var dlstMonth:DropDownList = new DropDownList();
+				dlstMonth.width = 180;
+				dlstMonth.right = 10;
+				dlstMonth.y = 5;
+				dlstMonth.dataProvider = this.parentApplication.yearMonthXML;
+				dlstMonth.labelField="@label";
+				dlstMonth.prompt = "Year/Month...";
+				dlstMonth.addEventListener(IndexChangeEvent.CHANGE, function(event:IndexChangeEvent):void{doChangeMonthTab(event, ca, caComp, domain, groupBy, item, child)}); //child is the TAB BAR label VBox object
+				
+				
+				for each (var node : XML in this.parentApplication.yearMonthXML){
+					trace("compare: " + node.@value + " vs " + this.parentApplication.selectedYM);
+					iSelect++;
+					if(node.@value==this.parentApplication.selectedYM){
+						dlstMonth.selectedIndex = iSelect;
+						break;
+					}
+				}
+				
+				//new add to report function by alfred 2015-06-27
+				var imgAddReport:Image = new Image();
+				imgAddReport.source = "asset/images/report_up.png";
+				//asset/images/report_up.png
+				imgAddReport.smooth = true;
+				imgAddReport.right = 10;
+				imgAddReport.y = 5;
+				imgAddReport.addEventListener(MouseEvent.CLICK, function(event:MouseEvent):void{doAddToReportMenu(event, lbl, domain, groupBy, item)});
+				//end new add to report function by alfred
+				
+				
+				headerGroup.addElement(label);
+				headerGroup.addElement(imgAddReport);
+				
+				var ca:ColumnChart = new ColumnChart(); //1st chart column
+				var caComp:ColumnChart = new ColumnChart(); //2nd chart column
+				
+				var iSelect:Number = -1;
+				
+				var dlstMonth:DropDownList = new DropDownList();
+				dlstMonth.width = 180;
+				dlstMonth.right = 40;
+				dlstMonth.y = 5;
+				dlstMonth.dataProvider = this.parentApplication.yearMonthXML;
+				dlstMonth.labelField="@label";
+				dlstMonth.prompt = "Year/Month...";
+				//dlstMonth.selectedIndex = 0;
+				dlstMonth.addEventListener(IndexChangeEvent.CHANGE, function(event:IndexChangeEvent):void{doChangeMonthTab(event, ca, caComp, domain, groupBy, item, child)}); //child is the TAB BAR label VBox object
+				
+				for each (var node : XML in this.parentApplication.yearMonthXML){
+					trace("compare: " + node.@value + " vs " + this.parentApplication.selectedYM);
+					iSelect++;
+					if(node.@value==this.parentApplication.selectedYM){
+						dlstMonth.selectedIndex = iSelect;
+						break;
+					}
+				}
+				
+				headerGroup.addElement(dlstMonth);
+				//headerGroup.addElement(lblProgress);
+				
+				//child.addChild(label);
+				child.addChild(headerGroup);
+				
+				var bc:BorderContainer = new BorderContainer();
+				bc.percentHeight=100;
+				bc.percentWidth=100;
+				
+				ca.seriesFilters=[]; //no shadow
+				ca.showDataTips = true;
+				//type="stacked"
+				//ca.type="stacked";
+				ca.type="overlaid";
+				
+				var cAxis:CategoryAxis = new CategoryAxis();
+				cAxis.categoryField="cat";
+				ca.horizontalAxis = cAxis;
+				
+				
+				var cs:ColumnSeries = new ColumnSeries(); //for "cnt" => complaince count
+				//fill function
+				cs.fillFunction=this.parentApplication.stackedFillFunction;
+				cs.setStyle("fontSize", 20);
+				cs.setStyle("labelAlign", "top");
+				cs.setStyle("labelPosition", "outside");
+				//cs.fillFunction = fillFunction;
+				cs.displayName = "procedure";
+				cs.yField = "cnt";
+				cs.setStyle("showDataEffect", slideUp);
+				
+				var csOpp:ColumnSeries = new ColumnSeries(); //for "opp" => opportunity count
+				//fill function
+				csOpp.fillFunction=this.parentApplication.stackedFillFunction;
+				csOpp.setStyle("fontSize", 20);
+				csOpp.setStyle("labelAlign", "top");
+				csOpp.setStyle("labelPosition", "outside");
+				//cs.fillFunction = fillFunction;
+				csOpp.displayName = "cat";
+				csOpp.yField = "opp";
+				
+				var seriesArray:Array = new Array();
+				
+				if(groupBy!="By Action"){
+					seriesArray.push(csOpp); //opportunity column
+				}
+				
+				seriesArray.push(cs); //complaince column
+				
+				ca.series = seriesArray;
+				
+				//if(groupBy!="By Action"){
+				ca.y=10;
+				ca.left=10;
+				ca.right=10;
+				ca.height=260
+				/*} else {
+				ca.percentWidth=100;
+				ca.percentHeight=100;
+				}*/
+				
+				
+				
+				var cAxisComp:CategoryAxis = new CategoryAxis();
+				cAxisComp.categoryField = "cat";
+				
+				
+				//<mx:verticalAxis>
+				//<mx:LinearAxis id="vAxis2"
+				//   minimum="0"
+				//   maximum="100"
+				//  labelFunction="linearAxis_labelFunc" />
+				//</mx:verticalAxis>
+				var lAxisComp:LinearAxis = new LinearAxis();
+				lAxisComp.minimum=0;
+				lAxisComp.maximum=100;
+				lAxisComp.labelFunction=linearAxis_labelFunc;
+				
+				
+				
+				var csComp:ColumnSeries = new ColumnSeries();
+				csComp.setStyle("fontSize", 20);
+				csComp.setStyle("labelAlign", "top");
+				csComp.setStyle("labelPosition", "outside");
+				csComp.fillFunction =this.parentApplication.stackedFillFunction;
+				csComp.displayName = "cat";
+				csComp.yField = "pect";
+				var seriesArrayComp:Array = new Array();
+				
+				
+				
+				if(groupBy!="By Action"){
+					//add benchmark line
+					var lineSeries:LineSeries = new LineSeries();
+					lineSeries.yField="Y";
+					lineSeries.xField="X";
+					lineSeries.setStyle("lineStroke", this.parentApplication.lineStroke);
+					lineSeries.dataProvider = this.parentApplication.lineDataProvider;
+					var xAxis:LinearAxis = new LinearAxis();
+					xAxis.maximum=1;
+					lineSeries.horizontalAxis = xAxis;
+					seriesArrayComp.push(lineSeries);
+					//end add benchmark line
+					
+					//csComp.setStyle("itemRenderer", this.parentApplication.colorColumnRenderer);
+					csComp.fillFunction=this.parentApplication.fill3ColorFunction;
+				}
+
+				seriesArrayComp.push(csComp);
+				
+				
+				trace("domain procedure/reason: " + domain);
+				
+				if(domain=="procedure"){
+					if(groupBy=="By Action"){
+						ca.dataProvider =  this.parentApplication.doAnalyticPRByAction(this.domain, item, "");
+					} else if(groupBy=="By Professional"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByProfession(this.domain, item, "");
+					} else if(groupBy=="By Ward/Facility"){
+						trace("groupBy ward/faclity " + this.domain + " item: " + item);
+						ca.dataProvider = this.parentApplication.doAnalyticPRByDepartment(this.domain, item, "");
+					}
+				} else if(domain=="reason"){
+					if(groupBy=="By Moment"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByMoment(this.domain, item, "");
+					} else if(groupBy=="By Professional"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByProfession(this.domain, item, "");
+					} else if(groupBy=="By Ward/Facility"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByDepartment(this.domain, item, "");
+					}
+				}
+				
+				bc.addElement(ca);
+				
+				child.addChild(bc);
+				
+				navigator.addChild(child);
+			}
+			
+			private function doChangeMonthTab(event:IndexChangeEvent, ca:ColumnChart, caComp:ColumnChart, domain:String, groupBy:String, item:String, tabLabel:VBox):void
+			{
+				// TODO Auto-generated method stub
+				trace("do change YM " + domain + " : " + groupBy + " : " + item);
+				//trace(btnYM.selectedItem.@value);
+				trace("item select: " + event.target.selectedItem.@value);
+				
+				tabLabel.label = tabLabel.label.substr(0,tabLabel.label.indexOf("@")) + "@ " + event.target.selectedItem.@label;
+				
+				doRefreshLocalTabData(domain, ca, groupBy, item, event.target.selectedItem.@value);
+
+			}
+
+			private function doRefreshLocalTabData(domain:String, ca:ColumnChart, groupBy:String, item:String, privateYM:String):void{
+				
+				if(domain=="reason"){
+					if(groupBy=="By Moment"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByMoment(this.domain, item, privateYM);
+					} else if(groupBy=="By Professional"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByProfession(this.domain, item, privateYM);
+					} else if(groupBy=="By Ward/Facility"){
+						ca.dataProvider = this.parentApplication.doAnalyticPRByDepartment(this.domain, item, privateYM);
+					}
+				}
+
+			}
+			
+			
+			//2015-08-17 by Alfred - add to report menu function
+			private var popReportMenu = new NativeMenu();
+			private var popReport_NewReport = new NativeMenuItem("New Report...");
+			
+			private var strSelectedReport:String = "";
+			
+			private var rptDomain:String="";
+			private var rptGroupBy:String="";
+			private var rptParam:String="";
+			
+			protected function doAddToReportMenu(event:MouseEvent, report:String, domain:String="", groupBy:String="", param:String=""):void{
+				// TODO Auto-generated method stub
+				//dynamic adding...
+				//default got new report...
+				
+				this.strSelectedReport = report;
+				
+				this.rptDomain = domain;
+				this.rptGroupBy = groupBy;
+				this.rptParam = param;
+				
+				isPopReport = false;
+				
+				trace("remove all item");
+				trace("add report '" + report + "'");
+				popReportMenu.removeAllItems();
+				
+				
+				popReportMenu.addItem(popReport_NewReport);
+				trace("create new report");
+				//TODO: if got report created list down here...
+				
+				//load available reports....
+				
+				try{
+					SemmelReport.loadReportListing();
+					var mList:ArrayCollection = SemmelReport.acReportsListing; 
+					if(mList.length>0){
+						for(var i:Number=0;i<mList.length;i++){
+							var itm:Object = mList.getItemAt(i); 
+							trace(itm.reportTitle);
+							
+							trace("dynamic menu label...");
+							var mnuReport:NativeMenuItem = new NativeMenuItem(itm.reportTitle);
+							
+							//mnuReport.addEventListener(Event.SELECT, function(e:Event):void{
+							//showNewReportDialog();
+							//trace("dynamic add menu: " + itm.id);
+							//showReportsWindow(itm.id);	
+							//showReportsWindow(e);
+							//});
+							
+							
+							//for add to new report
+							
+							mnuReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+								showReportsWindow(e);
+							});
+							
+							popReportMenu.addItem(mnuReport);
+						}
+						//for(var obj:Object in mList){
+						//	trace("report menu list: " + obj.reportTitle);
+						//}	
+					}	
+					
+				}catch(error:Error){
+					trace("Error list report: " + error.toString());
+				}
+				
+				
+				
+				
+				popReportMenu.display(this.stage, event.stageX, event.stageY);
+				trace("display menu...");
+			}
+			
+			private function showReportsWindow(event:Event):void {
+				//trace("pop report window id: " + reportTitle);
+				
+				//trace("event: " + e.contextMenuOwner.label);
+				//trace("event: " + e.contextMenuOwner.text);
+				
+				var menuItem:NativeMenuItem = event.target as NativeMenuItem; 
+				trace(menuItem.label + " has been selected"); 
+				
+				if(!isPopReport){
+					isPopReport = true;
+					var winReports:ReportsWindow = new ReportsWindow();
+					winReports.open(this, true);
+					var obj:Object = new Object();
+					obj.reportTitle = menuItem.label;
+					obj.addReport = this.strSelectedReport;
+					
+					obj.rptDomain = rptDomain;
+					obj.rptGroupBy = rptGroupBy;
+					obj.rptParam = rptParam;
+					
+					obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+					trace("cid: " + obj.cid + " " + this.strSelectedReport);
+					obj.isExist = "1";
+					obj.selectYM = this.parentApplication.selectedYMLabel;
+					winReports.data = obj;
+					PopUpManager.centerPopUp(winReports);
+				}
+			}
+			
+			private function showNewReportDialog():void {
+				if(!isPopReport){
+					isPopReport = true;
+					var winNewReport:NewReportWindow = new NewReportWindow();
+					winNewReport.open(this, true);
+					winNewReport.addEventListener('close', newReport_closeHandler);
+					PopUpManager.centerPopUp(winNewReport);
+				}
+			}
+			// Handle the close event from the SkinnablePopUpContainer.
+			protected function newReport_closeHandler(event:PopUpEvent):void {
+				// If commit is false, do data is returned.
+				if (!event.commit)
+					return;
+				
+				// Write the returned String to the TextArea control.
+				//myTA.text = event.data as String;
+				//trace(event.data as String);
+				trace(event.data.reportTitle as String);
+				trace(this.strSelectedReport);
+				
+				var winReports:ReportsWindow = new ReportsWindow();
+				winReports.open(this, true);
+				//winReports.addEventListener('close', newReport_closeHandler);
+				var obj:Object = new Object();
+				obj.reportTitle = event.data.reportTitle as String;
+				obj.addReport = this.strSelectedReport;
+				
+				obj.rptDomain = rptDomain;
+				obj.rptGroupBy = rptGroupBy;
+				obj.rptParam = rptParam;
+				
+				obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+				trace("cid: " + obj.cid + " " + this.strSelectedReport);
+				obj.selectYM = this.parentApplication.selectedYMLabel;
+				winReports.data = obj;
+				
+				PopUpManager.centerPopUp(winReports);
+				
+				//pop.addReport = this.strSelectedReport;
+			} 
+			
+			private var isPopReport:Boolean = false;
+			
+			//end by alfred 2015-06-25 dynamic add to report function
+			
+			
+		]]>
+	</fx:Script>
+	
+	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
+							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
+							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
+							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
+		
+		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
+			
+			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
+				
+				<mx:ColumnChart id="columnchartReason" y="28" left="10" right="10" height="396"
+								fontSize="12"
+								itemClick="myListener(event, 'reason')"
+								type="overlaid" showDataTips="true"
+								dataProvider="{xmlListReason}" seriesFilters="[]">
+					<!-- xmlColumnChart change to xmlColumnChart2 due to xmlColumnChart2 contains info of CNT/OPP-->
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis0"
+									   minimum="0" />
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="@reason"/>
+					</mx:horizontalAxis>
+					<mx:series>
+						
+						<mx:ColumnSeries displayName="@reason" yField="@cnt" 
+										 showDataEffect="slideUp"
+										 fillFunction="this.parentApplication.stackedFillFunction"
+										 labelAlign="top" labelPosition="outside" />
+
+					</mx:series>
+				</mx:ColumnChart>
+				<s:Label y="11" fontWeight="bold" horizontalCenter="1" text="Missed with Reason"/>
+				
+				<s:Image id="btnAddReport_Reason" y="3" right="10"
+						 click="doAddToReportMenu(event, SemmelReport.OppReason)" smooth="true"
+						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
+				
+			</s:BorderContainer>
+		</s:NavigatorContent>
+		
+	</flexlib:SuperTabNavigator>
+	
+</s:NavigatorContent>

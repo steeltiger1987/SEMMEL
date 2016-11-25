@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					creationComplete="fetchLocalXML()"
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="600">
+	
+
+	
+	<fx:Script>
+		<![CDATA[
+			import com.semmel.Constants;
+			
+			
+			//download file function 
+			var loadedSize:Number = 0;
+			var theAFileSize:Number= 0;
+			private var fileDownload:File;
+			private var fileDownloadTemp:File;
+			private var fileStream:FileStream = new FileStream;
+			
+			private var stream:URLStream;
+			private var ioError:Boolean = false;
+			
+			private var sponImage:String = "";
+			
+			
+			
+			
+			public function fetchLocalXML():void{
+			//<hospital hosp_name="KPJ Hospital (Selangor)" hosp_sponsor="spon1img.png" />
+				
+				var s:String = this.parentApplication.fetchXMLData;
+				if(s!=""){
+					try{
+						
+						lblHospital.text = new XML(s).hospital.@hosp_name;
+						trace(new XML(s).hospital.@hosp_sponsor);
+						
+						
+						//trace("last collected date: " + parseDate(new XML(s).lastSync.@date).toString());
+
+						sponImage = new XML(s).hospital.@hosp_sponsor;
+						
+						trace("locate sponsor image...");
+						
+						if(this.parentApplication.isConnected){
+							initDownload(new XML(s).hospital.@hosp_sponsor);
+						} else {
+							
+							trace(File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath);
+							imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath;
+						}
+						
+						
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+					}
+				}
+
+			}
+			
+			
+			
+			private function initDownload(strFileName:String):void{
+				
+				
+				
+				fileDownload = File.applicationStorageDirectory.resolvePath("asset/" + strFileName);
+				fileDownloadTemp = File.applicationStorageDirectory.resolvePath("asset/" + strFileName + ".tmp");
+				
+				
+				var header0:URLRequestHeader=null;
+				
+				var req:URLRequest = new URLRequest(Constants.url_mapi.replace("mapi","images/") + strFileName + "?rnd="+ String(Math.round(Math.random() * (9999999 - 0) + 0)));
+
+				req.method = URLRequestMethod.POST;
+				req.contentType = "application/x-www-form-urlencoded";
+				
+				stream = new URLStream();
+				stream.addEventListener(IOErrorEvent.IO_ERROR, onIOError);
+				stream.addEventListener(ProgressEvent.PROGRESS, writeFile);
+				stream.addEventListener(Event.COMPLETE, completeDownloadFile);
+				
+				
+				stream.load(req);
+				
+				fileStream.open(fileDownloadTemp, fileDownload.exists ? FileMode.WRITE:FileMode.WRITE);
+			}
+			
+			private function completeDownloadFile(evt:Event):void {
+				fileStream.close();
+				trace("Download Complete");
+				
+				fileDownloadTemp.copyTo(fileDownload, true);
+				
+				fileDownloadTemp.deleteFile();
+	
+				
+				trace(File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath);
+				
+				imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + this.sponImage).nativePath;
+			}
+			
+			private function writeFile(event:ProgressEvent):void {
+				trace("Downloading... " + (((loadedSize+event.bytesLoaded)/event.bytesTotal)*100).toFixed(0)+ "%");
+				
+				// chunk of new data
+				var fileDataChunk:ByteArray = new ByteArray();
+				// read bytes from the internet using URLStream
+				stream.readBytes(fileDataChunk,0,stream.bytesAvailable);
+				// write bytes to the disk using FileStream
+				fileStream.writeBytes(fileDataChunk,0,fileDataChunk.length);
+			}
+			
+			protected function onIOError(e:IOErrorEvent):void
+			{
+				ioError = true;
+				trace(e);
+				//isLoaded = true;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Image right="22" top="20" width="71" height="100" smooth="true" smoothingQuality="high"
+			 source="@Embed('asset/images/semmel_logo.png')"/>
+	<s:Label id="lblHospital" left="33" right="101" top="41" height="79" fontSize="30"
+			 text="Hospital Name" verticalAlign="top"/>
+	<s:Image id="imgSponsor" left="94" right="93" height="226" horizontalCenter="0"
+			 scaleMode="letterbox" smooth="true" smoothingQuality="high" verticalCenter="80"/>
+	<s:Label x="82" color="#909090" text="Brought to you by:" verticalCenter="-43"/>
+	
+</s:NavigatorContent>

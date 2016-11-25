@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent 
+	xmlns:flexlib="flexlib.containers.*"
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					creationComplete="fetchLocalXML()"
+					xmlns:comp="com.connectedpixel.charts.*"
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	
+	<fx:Style>
+		@namespace tab "flexlib.controls.tabBarClasses.*";
+		tab|SuperTab{
+			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
+		}
+		.SuperTabButtonStyle{
+			icon: Embed(source="../../close.png"); 
+		}
+	</fx:Style>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:SeriesSlide 
+			id="slideUp" 
+			duration="1000" 
+			direction="up"/>
+	</fx:Declarations>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			
+			
+			
+			import com.report.bi.*;
+			import com.report.env.*;
+			
+			import flash.display.NativeMenu;
+			import flash.display.NativeMenuItem;
+			
+			import flexlib.containers.SuperTabNavigator;
+			import flexlib.controls.SuperTabBar;
+			import flexlib.controls.tabBarClasses.SuperTab;
+			import flexlib.events.TabReorderEvent;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.Series;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.*;
+			import mx.containers.VBox;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			import mx.graphics.Stroke;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.DropDownList;
+			import spark.components.Image;
+			import spark.events.PopUpEvent;
+			
+			import views.NewReportWindow;
+			import views.ReportsWindow;
+			
+			//[Bindable]
+			//private var xmlColumnChart : XMLList;
+			
+			//[Bindable]
+			//private var xmlColumnChart2 : XMLList;
+			
+			//[Bindable]
+			//private var xmlDataWardFacilityCnt : XML;
+			
+			[Bindable]
+			private var xmlDataWardFacilityComp : XML;
+			
+			[Bindable]
+			private var xmlWardFacility:XMLList;
+			
+			
+			private var iColorNumber:Number = 0;
+			
+			private var domain:String = "department";
+			
+			[Embed(source="../../../assets/document.png")]
+			private var document_icon:Class;       
+			
+			[Embed(source="../../../assets/home.png")]
+			private var home_icon:Class;
+			
+			import spark.components.Group;
+			import spark.events.IndexChangeEvent;
+			import mx.collections.XMLListCollection;
+			
+			public function fetchLocalXML():void{
+				
+				//initMenu();
+				
+				
+				//var erc:EnvReportController = new EnvReportController();
+				//var acChartData:ArrayCollection = erc.doAnalyticComplianceByWardFacility("201512");
+				
+				//Chart #1 - opp by ward/facility + overall
+				//chtOppWardFacility.dataProvider = acChartData;
+				
+				//Chart #2 - compliance by ward/facility + overall 
+				//chtCompWardFacility.dataProvider = acChartData;
+				
+				
+				var erc:EnvReportController = new EnvReportController();
+				
+				dgAuditByArea.dataProvider = erc.doAnalyticAuditCountByArea(this.parentApplication.selectedYM.substring(0,4));
+				
+				dgAuditByWardFacility.dataProvider = erc.doAnalyticAuditCountByWardFacility(this.parentApplication.selectedYM.substring(0,4));
+				
+				//for(var obj:Object in EnvDataDictionary.getArea()){
+					////"formTemplate":[{"form_id":6,"title":"Area A"},{"form_id":7,"title":"Area B"}]}
+				//	trace("form_id: " + obj.form_id + ", title/area: " + obj.title);
+				//}
+				
+				//for each(var area:Object in EnvDataDictionary.getArea()){
+				//	trace("area object loop: " + area.form_id + ", " + area.title);
+					//loop thru 12 month
+						//count by Area FormID - if match
+				//}
+				//dg = dataProvider
+				
+				//for each(var wardFacility:Object in EnvDataDictionary.getDepartment()){
+					////"department":[{"dept_id":711,"dept_name":"ICU"},
+					//trace("ward/Facility loop: " + wardFacility.dept_id + ", " + wardFacility.dept_name);
+					//loop thru 12 month 
+						//count match with envResult
+			//	}
+				
+				
+				
+			}
+			
+			
+			private function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+				return item + "%"
+			}
+			
+			
+			
+			//new function for open tabs
+			private function initTabs():void
+			{
+				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+			}
+			
+			public function myListener(e:ChartItemEvent, domain:String):void {
+				//ti1.text = e.hitData.item.expenses;
+				//ti2.text = String(e.hitData.x) + ", " + String(e.hitData.y);
+				//trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
+				//trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
+				
+				if(domain=="profession"){
+					this.hitItem  = e.hitData.item.@prof;
+					trace("hitData: " + e.hitData.item.@prof); //profession
+					//trace("hitData: " + e.hitData.item.@comp); //compliance
+				} else if(domain=="department"){
+					this.hitItem  = e.hitData.item.@name;
+					trace("hitData: " + e.hitData.item.@name); //department
+					//trace("hitData: " + e.hitData.item.@pert); //compliance
+				} else {
+					this.hitItem  = e.hitData.item.cat;
+					trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
+					//trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
+				}
+				
+				
+				//doPopDataPoint(e, domain);
+
+			}
+			
+			private var popUpMenu = new NativeMenu();
+			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
+			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
+			private var popUpMenuItemByReason = new NativeMenuItem("By Reason");
+			
+			private var hitItem:String = "";
+			
+			
+			/*private function initMenu():void{
+				popUpMenuItemByProf.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByDept.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByMoment.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByAction.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByReason.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				
+				//for add to new report
+				popReport_NewReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+					showNewReportDialog();
+				});
+				//end for add to new report
+			}*/
+			
+			var isSelected:Boolean = false;
+			
+			
+			//2015-06-25 by Alfred - add to report menu function
+			private var popReportMenu = new NativeMenu();
+			private var popReport_NewReport = new NativeMenuItem("New Report...");
+			
+			private var strSelectedReport:String = "";
+			
+			private var rptDomain:String="";
+			private var rptGroupBy:String="";
+			private var rptParam:String="";
+			
+			protected function doAddToReportMenu(event:MouseEvent, report:String, domain:String="", groupBy:String="", param:String=""):void{
+				// TODO Auto-generated method stub
+				//dynamic adding...
+				//default got new report...
+				
+				this.strSelectedReport = report;
+				
+				this.rptDomain = domain;
+				this.rptGroupBy = groupBy;
+				this.rptParam = param;
+				
+				isPopReport = false;
+				
+				trace("remove all item");
+				trace("add report '" + report + "'");
+				popReportMenu.removeAllItems();
+				
+				
+				popReportMenu.addItem(popReport_NewReport);
+				trace("create new report");
+				//TODO: if got report created list down here...
+				
+				//load available reports....
+				
+				try{
+					SemmelReport.loadReportListing();
+					var mList:ArrayCollection = SemmelReport.acReportsListing; 
+					if(mList.length>0){
+						for(var i:Number=0;i<mList.length;i++){
+							var itm:Object = mList.getItemAt(i); 
+							trace(itm.reportTitle);
+							
+							trace("dynamic menu label...");
+							var mnuReport:NativeMenuItem = new NativeMenuItem(itm.reportTitle);
+							
+							//mnuReport.addEventListener(Event.SELECT, function(e:Event):void{
+							//showNewReportDialog();
+							//trace("dynamic add menu: " + itm.id);
+							//showReportsWindow(itm.id);	
+							//showReportsWindow(e);
+							//});
+							
+							
+							//for add to new report
+							
+							mnuReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+								showReportsWindow(e);
+							});
+							
+							popReportMenu.addItem(mnuReport);
+						}
+						//for(var obj:Object in mList){
+						//	trace("report menu list: " + obj.reportTitle);
+						//}	
+					}	
+					
+				}catch(error:Error){
+					trace("Error list report: " + error.toString());
+				}
+				
+				
+				
+				
+				popReportMenu.display(this.stage, event.stageX, event.stageY);
+				trace("display menu...");
+			}
+			
+			private function showReportsWindow(event:Event):void {
+				//trace("pop report window id: " + reportTitle);
+				
+				//trace("event: " + e.contextMenuOwner.label);
+				//trace("event: " + e.contextMenuOwner.text);
+				
+				var menuItem:NativeMenuItem = event.target as NativeMenuItem; 
+				trace(menuItem.label + " has been selected"); 
+				
+				if(!isPopReport){
+					isPopReport = true;
+					var winReports:ReportsWindow = new ReportsWindow();
+					winReports.open(this, true);
+					var obj:Object = new Object();
+					obj.reportTitle = menuItem.label;
+					obj.addReport = this.strSelectedReport;
+					
+					obj.rptDomain = rptDomain;
+					obj.rptGroupBy = rptGroupBy;
+					obj.rptParam = rptParam;
+					
+					obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+					trace("cid: " + obj.cid + " " + this.strSelectedReport);
+					obj.isExist = "1";
+					obj.selectYM = this.parentApplication.selectedYMLabel;
+					winReports.data = obj;
+					PopUpManager.centerPopUp(winReports);
+				}
+			}
+			
+			private function showNewReportDialog():void {
+				if(!isPopReport){
+					isPopReport = true;
+					var winNewReport:NewReportWindow = new NewReportWindow();
+					winNewReport.open(this, true);
+					winNewReport.addEventListener('close', newReport_closeHandler);
+					PopUpManager.centerPopUp(winNewReport);
+				}
+			}
+			// Handle the close event from the SkinnablePopUpContainer.
+			protected function newReport_closeHandler(event:PopUpEvent):void {
+				// If commit is false, do data is returned.
+				if (!event.commit)
+					return;
+				
+				// Write the returned String to the TextArea control.
+				//myTA.text = event.data as String;
+				//trace(event.data as String);
+				trace(event.data.reportTitle as String);
+				trace(this.strSelectedReport);
+				
+				var winReports:ReportsWindow = new ReportsWindow();
+				winReports.open(this, true);
+				//winReports.addEventListener('close', newReport_closeHandler);
+				var obj:Object = new Object();
+				obj.reportTitle = event.data.reportTitle as String;
+				obj.addReport = this.strSelectedReport;
+				
+				obj.rptDomain = rptDomain;
+				obj.rptGroupBy = rptGroupBy;
+				obj.rptParam = rptParam;
+				
+				obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+				
+				obj.selectYM = this.parentApplication.selectedYMLabel;
+				winReports.data = obj;
+				
+				PopUpManager.centerPopUp(winReports);
+				
+				//pop.addReport = this.strSelectedReport;
+			} 
+			
+			private var isPopReport:Boolean = false;
+			
+			//end by alfred 2015-06-25 dynamic add to report function
+			
+			
+			
+			
+			
+			private function fillFunction (item:ChartItem, index:Number):IFill
+			{
+				var csi:ColumnSeriesItem = ColumnSeriesItem(item);
+				
+				if(csi.item.cat == "Overall Adherence")
+				{
+					return new SolidColor(0xe48701);
+				} else {
+					//return new SolidColor(0xFF0000);
+					return this.parentApplication.themeColor[index];
+				}
+			}
+			
+			//end new function for open tabs
+			
+			//end new function for open tabs
+
+		]]>
+	</fx:Script>
+	
+	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
+							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
+							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
+							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
+		
+		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
+		
+			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
+		
+				<s:Label y="10" fontWeight="bold" horizontalCenter="-18" text="Audit By Area"/>
+				<s:Label y="306" fontWeight="bold" horizontalCenter="-13" text="Audit By Ward/Facility"/>
+					
+				
+				<s:Image id="btnAddReport_AdWard" y="-2" right="10"
+						 click="doAddToReportMenu(event, SemmelReport.OppAdWardFacility)" smooth="true"
+						 smoothingQuality="high" source="@Embed('../../asset/images/report_up.png')"/>
+				<s:DataGrid id="dgAuditByArea" y="24" left="10" right="10" height="268"
+							requestedRowCount="4">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="area" headerText="Area" width="180"></s:GridColumn>
+							<s:GridColumn dataField="jan" headerText="Jan"></s:GridColumn>
+							<s:GridColumn dataField="feb" headerText="Feb"></s:GridColumn>
+							<s:GridColumn dataField="mar" headerText="Mar"></s:GridColumn>
+							<s:GridColumn dataField="apr" headerText="Apr"></s:GridColumn>
+							<s:GridColumn dataField="may" headerText="May"></s:GridColumn>
+							<s:GridColumn dataField="jun" headerText="Jun"></s:GridColumn>
+							<s:GridColumn dataField="jul" headerText="Jul"></s:GridColumn>
+							<s:GridColumn dataField="aug" headerText="Aug"></s:GridColumn>
+							<s:GridColumn dataField="sep" headerText="Sep"></s:GridColumn>
+							<s:GridColumn dataField="oct" headerText="Oct"></s:GridColumn>
+							<s:GridColumn dataField="nov" headerText="Nov"></s:GridColumn>
+							<s:GridColumn dataField="dec" headerText="Dec"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:DataGrid id="dgAuditByWardFacility" y="326" left="10" right="10" height="288" requestedRowCount="4">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn dataField="wardFacility" headerText="Ward/Facility" width="180"></s:GridColumn>
+							<s:GridColumn dataField="jan" headerText="Jan"></s:GridColumn>
+							<s:GridColumn dataField="feb" headerText="Feb"></s:GridColumn>
+							<s:GridColumn dataField="mar" headerText="Mar"></s:GridColumn>
+							<s:GridColumn dataField="apr" headerText="Apr"></s:GridColumn>
+							<s:GridColumn dataField="may" headerText="May"></s:GridColumn>
+							<s:GridColumn dataField="jun" headerText="Jun"></s:GridColumn>
+							<s:GridColumn dataField="jul" headerText="Jul"></s:GridColumn>
+							<s:GridColumn dataField="aug" headerText="Aug"></s:GridColumn>
+							<s:GridColumn dataField="sep" headerText="Sep"></s:GridColumn>
+							<s:GridColumn dataField="oct" headerText="Oct"></s:GridColumn>
+							<s:GridColumn dataField="nov" headerText="Nov"></s:GridColumn>
+							<s:GridColumn dataField="dec" headerText="Dec"></s:GridColumn>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				
+				</s:BorderContainer>
+			
+		</s:NavigatorContent>
+		
+
+		
+	</flexlib:SuperTabNavigator>
+	
+</s:NavigatorContent>
