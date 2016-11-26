@@ -4257,10 +4257,13 @@
 					} else if(btnReport.selectedIndex==12){
 						doGraphSelection("graph7");
 					} else if(btnReport.selectedIndex==13){
+						btnYM.visible = false;
 						doGraphSelection("graph8");
 					} else if(btnReport.selectedIndex==14){
+						btnYM.visible = false;
 						doGraphSelection("graph9");
 					} else if(btnReport.selectedIndex==15){
+						btnYM.visible = false;
 						doGraphSelection("graph10");
 					}
 					

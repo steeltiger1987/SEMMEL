@@ -64,6 +64,9 @@
 			
 			[Bindable]
 			private var xmlDatagrid : XMLListCollection;
+			private var yearDatagrid : ArrayCollection = new ArrayCollection([]);
+			
+			private var year:Number = 0;
 			
 			
 			private var iColorNumber:Number = 0;
@@ -78,7 +81,7 @@
 			public var nicu_data:Number = 0;
 			public var ncnt:Number = 0;
 			public var nicu_data1:Number = 0;
-			private var depart:String = "";
+			private var depart:String = "All";
 			private var max:Number = 0;
 			private var paragraph:Number = 0;
 			[Embed(source="../../assets/document.png")]
@@ -98,6 +101,15 @@
 						
 					}
 				}
+				var currentDate:Date = new Date();
+				this.year = currentDate.getFullYear();
+				this.btnYear.prompt = String(year);
+				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
+				{
+					this.yearDatagrid.addItem({year:i});
+				}
+				this.legend.label = "All";
+				fetchLocalXML();
 			}
 
 			public function fetchLocalXML():void{
@@ -118,7 +130,7 @@
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-						var year:String = this.parentApplication.selectedYM.substring(0,4);
+//						var year:String = this.parentApplication.selectedYM.substring(0,4);
 						for(var i:Number=0;i<4;i++){
 							
 							icu_data = 0; nicu_data = 0;
@@ -247,7 +259,7 @@
 				else if(max == 0) {paragraph = 20;}
 				else if(max<4) {paragraph = 24;}
 				else {paragraph = 30;}
-				if(depart!=""){
+				if(depart!="All"){
 					columnchart1.left = paragraph;
 				}
 			}
@@ -269,6 +281,16 @@
 				return new SolidColor(0xFF00FF * iColorNumber, 1.0);
 			}
 			
+			
+			protected function btnYear_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				year = btnYear.selectedItem.year;
+				hospitalData = [];
+				hospitalData1 = [];
+				fetchLocalXML();
+				
+			}
 			
 			private function setCustomLabel(element:ChartItem, series:Series):String {
 				// Get a refereence to the current data element.
@@ -815,7 +837,7 @@
 							
 				<!-- From here Table 2 -->
 				<mx:Legend y="32" right="10" width="513" height="30" fontSize="12">
-					<mx:LegendItem id = "legend" label="ALL" fontWeight="bold">
+					<mx:LegendItem id="legend" label="All" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x13a8f6"/>
 						</mx:fill>
@@ -874,9 +896,15 @@
 					</mx:series>
 				</mx:ColumnChart>
 				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall) By Ward"/>
+				<s:Label y="10" right="270" text="Departments :"/>
+				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
 								blendMode="darken" change="btnDepartment_changeHandler(event)"
-								dataProvider="{xmlDatagrid}" labelField="@label" prompt="ALL"></s:DropDownList>
+								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
+				
+				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+								blendMode="darken" change="btnYear_changeHandler(event)"
+								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
 				
 				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
 						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"

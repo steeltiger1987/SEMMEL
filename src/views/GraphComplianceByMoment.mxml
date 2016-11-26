@@ -65,6 +65,9 @@
 			
 			[Bindable]
 			private var xmlDatagrid : XMLListCollection;
+			private var yearDatagrid : ArrayCollection = new ArrayCollection([]);
+
+			private var year:Number = 0;
 			
 			
 			private var iColorNumber:Number = 0;
@@ -97,6 +100,7 @@
 			private function init():void{
 
 				var s:String = this.parentApplication.fetchXMLData;
+				trace("parent XML: "+ s);
 				if(s!=""){
 					try{
 						var xml:XML = new XML(s);
@@ -105,6 +109,14 @@
 						
 					}
 				}
+				var currentDate:Date = new Date();
+				this.year = currentDate.getFullYear();
+				this.btnYear.prompt = String(year);
+				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
+				{
+					this.yearDatagrid.addItem({year:i});
+				}
+				fetchLocalXML();
 			}
 			
 			public function fetchLocalXML():void{
@@ -116,12 +128,15 @@
 				max = 0;
 				if(this.parentApplication.fetchXMLData!=""){
 					try{
+						trace("year:"+year);
 						
 						var raw:String = "";
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 //						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-						var year:String = this.parentApplication.selectedYM.substring(0,4);
+//						var year:String = this.parentApplication.selectedYM.substring(0,4);
+//						var curDate = new Date();
+//						year = this.btnYear.selectedItem.year;
 						for(var i:Number=0;i<4;i++){
 							
 							total_bp = 0;total_ba = 0;total_af = 0;total_ap = 0;total_as = 0;
@@ -217,7 +232,6 @@
 														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss2"))
 														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove2")))*100;
 												if(cnt){total_ba+=cnt;}
-												trace("cnt: "+total_ba);
 												
 												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
 													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3")))
@@ -269,22 +283,18 @@
 							if(comp_ap>max){max=comp_ap;}
 							if(comp_as>max){max=comp_as;}
 							if(i==0){
-								trace(total_bp/3);
 								columnData.push({cat:year+" Jan - Mar",bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
 								columnData1.push({cat:year+" Jan - Mar",bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==1){
-								trace(total_bp/3);
 								columnData.push({cat:year+" Apr - Jun",bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
 								columnData1.push({cat:year+" Apr - Jun",bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==2){
-								trace(total_bp/3);
 								columnData.push({cat:year+" Jul - Sep",bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
 								columnData1.push({cat:year+" Jul - Sep",bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==3){
-								trace(total_bp/3);
 								columnData.push({cat:year+" Oct - Dec",bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
 								columnData1.push({cat:year+" Oct - Dec",bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
@@ -334,6 +344,16 @@
 			{
 				// TODO Auto-generated method stub
 				depart = btnDepartment.selectedItem.@label;
+				columnData = [];
+				columnData1 = [];
+				fetchLocalXML();
+				
+			}
+
+			protected function btnYear_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				year = btnYear.selectedItem.year;
 				columnData = [];
 				columnData1 = [];
 				fetchLocalXML();
@@ -953,10 +973,16 @@
 					</mx:series>
 				</mx:ColumnChart>
 				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall)- By Moment"/>
+				<s:Label y="10" right="270" text="Departments :"/>
+				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
 								blendMode="darken" change="btnDepartment_changeHandler(event)"
 								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
-				
+
+				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+								blendMode="darken" change="btnYear_changeHandler(event)"
+								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
+
 				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
 						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>

@@ -64,7 +64,9 @@
 			
 			[Bindable]
 			private var xmlDatagrid : XMLListCollection;
+			private var yearDatagrid : ArrayCollection = new ArrayCollection([]);
 			
+			private var year:Number = 0;			
 			
 			private var iColorNumber:Number = 0;
 			
@@ -114,6 +116,15 @@
 						
 					}
 				}
+				var currentDate:Date = new Date();
+				this.depart = "All";
+				this.year = currentDate.getFullYear();
+				this.btnYear.prompt = String(year);
+				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
+				{
+					this.yearDatagrid.addItem({year:i});
+				}
+				fetchLocalXML();
 			}
 			
 			public function fetchLocalXML():void{
@@ -129,12 +140,12 @@
 				if(this.parentApplication.fetchXMLData!=""){
 					try{
 						
-						
+						trace("year: "+year);						
 						var raw:String = "";
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-						var year:String = this.parentApplication.selectedYM.substring(0,4);
+//						var year:String = this.parentApplication.selectedYM.substring(0,4);
 						for(var i:Number=0;i<4;i++){
 							doc = 0; nur=0; csp=0; cst=0; mct=0; mof=0; ncl=0; dit=0; phy=0; sct=0;
 							doc1 = 0; nur1=0; csp1=0; cst1=0; mct1=0; mof1=0; ncl1=0; dit1=0; phy1=0; sct1=0;
@@ -375,6 +386,16 @@
 				profData = [];
 				profData1 = [];
 				fetchLocalXML();
+			}
+			
+			protected function btnYear_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				year = btnYear.selectedItem.year;
+				profData = [];
+				profData = [];
+				fetchLocalXML();
+				
 			}
 
 			protected function setValue()
@@ -1066,9 +1087,15 @@
 					</mx:series>
 				</mx:ColumnChart>
 				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall) By Job"/>
+				<s:Label y="10" right="270" text="Departments :"/>
+				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
 								blendMode="darken" change="btnDepartment_changeHandler(event)"
 								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
+				
+				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+								blendMode="darken" change="btnYear_changeHandler(event)"
+								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
 				
 				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
 						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"
