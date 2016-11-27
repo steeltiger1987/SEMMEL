@@ -111,7 +111,7 @@
 				this.legend.label = "All";
 				fetchLocalXML();
 			}
-			
+
 			public function fetchLocalXML():void{
 				
 				initMenu();
@@ -130,7 +130,7 @@
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-						//						var year:String = this.parentApplication.selectedYM.substring(0,4);
+//						var year:String = this.parentApplication.selectedYM.substring(0,4);
 						for(var i:Number=0;i<4;i++){
 							
 							icu_data = 0; nicu_data = 0;
@@ -187,7 +187,7 @@
 										}
 										var cnt:Number = 0;
 										var temp:Number = 0;
-										
+
 										while(xml.deptComp.deptc[cnt]){
 											temp += Number(xml.deptComp.deptc[cnt].(@dept!="").attribute("comply"));
 											cnt++;
@@ -272,7 +272,7 @@
 				hospitalData1 = [];
 				fetchLocalXML();
 			}
-			
+
 			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
 				//var curItem:ColumnSeries = ColumnSeries(item);
 				/* Convert to a number between 0 and 1. */
@@ -476,7 +476,7 @@
 			}
 			
 			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
-																			 contentString:String=null, icon:Class=null):void
+									contentString:String=null, icon:Class=null):void
 			{
 				if (lbl == "")
 					lbl = "Graph";
@@ -834,7 +834,7 @@
 		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 			
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-				
+							
 				<!-- From here Table 2 -->
 				<mx:Legend y="32" right="10" width="513" height="30" fontSize="12">
 					<mx:LegendItem id="legend" label="All" fontWeight="bold">
