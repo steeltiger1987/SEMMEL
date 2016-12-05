@@ -34,7 +34,7 @@
 								stream.close();
 								
 								s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-								trace("dec: " + s);
+								trace("decaa: " + s);
 								
 							}catch(e:Error){
 								trace("e: " + e.toString());
@@ -46,6 +46,7 @@
 //						var xml:XML = new XML(s);
 						
 						var jsonRaw = JSON.parse(s);
+						trace("jsonRaw raw:"+s);
 						var who_safety:ArrayCollection = new ArrayCollection(jsonRaw["who_safety"]);
 						
 						//var oooFilter:String = "infectioncontrol_20146";
@@ -131,8 +132,12 @@
 										if(professionCompliance[j].prof == who_safety[i].prof && int(who_safety[i].indi) == indi) {
 											professionCompliance[j]['hr'+indi] = Number(professionCompliance[j]['hr'+indi]) + Number(who_safety[i].hr);
 											professionCompliance[j]['hw'+indi] = Number(professionCompliance[j]['hw'+indi]) + Number(who_safety[i].hw);
-											professionCompliance[j]['glove'+indi] = Number(professionCompliance[j]['glove'+indi]) + Number(who_safety[i].glove);
-											professionCompliance[j]['missed'+indi] = Number(professionCompliance[j]['missed'+indi]) + Number(who_safety[i].missed);
+											if(Number(who_safety[i].glove)==1&&Number(who_safety[i].missed)==1){
+												professionCompliance[j]['glove'+indi] = Number(professionCompliance[j]['glove'+indi]) + Number(who_safety[i].glove);
+											}
+											if(Number(who_safety[i].glove)==0&&Number(who_safety[i].missed)==1){
+												professionCompliance[j]['missed'+indi] = Number(professionCompliance[j]['missed'+indi]) + Number(who_safety[i].missed);
+											}
 										}
 									}
 								}
@@ -240,8 +245,14 @@
 							lblMissPect4.text = (Math.round((100 - hwhr4) * 100)/100).toString();
 							
 							var hwhr5:Number = Math.round(((hw5Total + hr5Total)/(hw5Total + hr5Total + m5Total + mg5Total))*100 * 100)/100;
+							if(!hwhr5){hwhr5=0;}
 							lblHwHr5.text = hwhr5.toString();
-							lblMissPect5.text = (Math.round((100 - hwhr5) * 100)/100).toString();
+							if(!(m5Total+mg5Total)){
+								lblMissPect5.text = String(0);
+							}
+							else{
+								lblMissPect5.text = (Math.round((100 - hwhr5) * 100)/100).toString();
+							}			
 						
 						} 
 						

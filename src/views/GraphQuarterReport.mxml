@@ -34,6 +34,7 @@
 			import flash.display.NativeMenuItem;
 			
 			import mx.charts.ChartItem;
+			import mx.charts.ColumnChart;
 			import mx.charts.chartClasses.IAxis;
 			import mx.charts.chartClasses.Series;
 			import mx.charts.events.ChartItemEvent;
@@ -65,9 +66,11 @@
 			[Bindable]
 			private var xmlDatagrid : XMLListCollection;
 			private var yearDatagrid : ArrayCollection = new ArrayCollection([]);
+			private var data : ArrayCollection = new ArrayCollection([]);
 			
 			private var year:Number = 0;
-			
+			private var firstYear:Number = 0;
+			private var lastYear:Number = 0;
 			
 			private var iColorNumber:Number = 0;
 			
@@ -76,7 +79,6 @@
 			private var icu_data:Number = 0;
 			private var icu_data1:Number = 0;
 			private var hospitalData : Array = [];
-			private var hospitalData1 : Array = [];
 			
 			public var nicu_data:Number = 0;
 			public var ncnt:Number = 0;
@@ -108,18 +110,16 @@
 				{
 					this.yearDatagrid.addItem({year:i});
 				}
-				this.legend.label = "All";
 				fetchLocalXML();
 			}
-
+			
 			public function fetchLocalXML():void{
 				
-				initMenu();
 				
 				iColorNumber = 0;
 				hospitalData = [];
-				hospitalData1 = [];
 				max = 0;
+				data = new ArrayCollection([]);
 				trace("fetch xml...hho by department");
 				
 				if(this.parentApplication.fetchXMLData!=""){
@@ -130,44 +130,63 @@
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-//						var year:String = this.parentApplication.selectedYM.substring(0,4);
-						for(var i:Number=0;i<4;i++){
-							
-							icu_data = 0; nicu_data = 0;
-							icu_data1 = 0; nicu_data1 = 0; 
-							for(var j:Number=1;j<=3;j++){
-								var month:Number = i*3 + j;
-								var MonthYear:String = year + "" + month;
-								var file1:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
-								if(file1.exists){
-									try{
-										var stream:FileStream = new FileStream()
-										stream.open(file1, FileMode.READ);
-										raw = stream.readUTFBytes(stream.bytesAvailable).toString();
-										stream.close();
-										
-										s = raw;
-										var xml:XML = new XML(s);
-										
-										ncnt = 0;
-										//From here you can get the compliance times by Overall.
-										if(depart == ""||depart == "All"){
-											if(Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"))){
-												icu_data1 += Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"));
-											}											
-										}
-										else{
-											if(Number(xml.deptComp.deptc.(@dept==depart).attribute("totalhwhr"))){
-												icu_data1 += Number(xml.deptComp.deptc.(@dept==depart).attribute("totalhwhr"));
+						//						var year:String = this.parentApplication.selectedYM.substring(0,4);
+						for(var k:Number = this.year-2; k<=this.year; k++)
+						{
+							for(var i:Number=0;i<4;i++){
+								
+								icu_data = 0; nicu_data = 0;
+								icu_data1 = 0; nicu_data1 = 0; 
+								for(var j:Number=1;j<=3;j++){
+									var month:Number = i*3 + j;
+									var MonthYear:String = k + "" + month;
+									var file1:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
+									if(file1.exists){
+										try{
+											var stream:FileStream = new FileStream()
+											stream.open(file1, FileMode.READ);
+											raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+											stream.close();
+											
+											s = raw;
+											var xml:XML = new XML(s);
+											
+											ncnt = 0;
+											//From here you can get the compliance times by Overall.
+											if(depart == ""||depart == "All"){
+												if(Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"))){
+													icu_data1 += Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"));
+												}											
 											}
-										}
-										
-										if(Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"))){
-											nicu_data1 += Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"));
-										}
-										
-										//From here you can get the compliance rate by Overall.	
-										if(depart == ""||depart == "All"){
+											else{
+												if(Number(xml.deptComp.deptc.(@dept==depart).attribute("totalhwhr"))){
+													icu_data1 += Number(xml.deptComp.deptc.(@dept==depart).attribute("totalhwhr"));
+												}
+											}
+											
+											if(Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"))){
+												nicu_data1 += Number(xml.deptComp.summ_total.(@totalmisswithglove!="").attribute("totalhwhr"));
+											}
+											
+											//From here you can get the compliance rate by Overall.	
+											if(depart == ""||depart == "All"){
+												var cnt:Number = 0;
+												var temp:Number = 0;
+												
+												while(xml.deptComp.deptc[cnt]){
+													temp += Number(xml.deptComp.deptc[cnt].(@dept!="").attribute("comply"));
+													cnt++;
+												}
+												if(cnt!=0){
+													trace("data: "+temp/cnt);
+													icu_data += temp/cnt;
+												}											
+											}
+											else {
+												if(Number(xml.deptComp.deptc.(@dept==depart).attribute("comply"))){
+													icu_data += Number(xml.deptComp.deptc.(@dept==depart).attribute("comply"));
+												}
+											}
 											var cnt:Number = 0;
 											var temp:Number = 0;
 											
@@ -177,56 +196,41 @@
 											}
 											if(cnt!=0){
 												trace("data: "+temp/cnt);
-												icu_data += temp/cnt;
-											}											
-										}
-										else {
-											if(Number(xml.deptComp.deptc.(@dept==depart).attribute("comply"))){
-												icu_data += Number(xml.deptComp.deptc.(@dept==depart).attribute("comply"));
+												nicu_data += temp/cnt;
 											}
+											//Until here you can get the Compliance rate by Overall.
+											
 										}
-										var cnt:Number = 0;
-										var temp:Number = 0;
-
-										while(xml.deptComp.deptc[cnt]){
-											temp += Number(xml.deptComp.deptc[cnt].(@dept!="").attribute("comply"));
-											cnt++;
-										}
-										if(cnt!=0){
-											trace("data: "+temp/cnt);
-											nicu_data += temp/cnt;
-										}
-										//Until here you can get the Compliance rate by Overall.
-										
+										catch(e:Error){
+											trace("e: " + e.toString());
+										} 
 									}
-									catch(e:Error){
-										trace("e: " + e.toString());
-									} 
+								}
+								trace("icu_data: "+icu_data1);
+								if(icu_data1>max){max=icu_data1;}
+								if(nicu_data1>max){max=nicu_data1;}
+								var syear:String = String(k).substring(2,4);
+								if(i==0){
+									trace("year: "+k);
+									data.addItem({cat:"Jan "+syear+" - Mar "+syear,icu:icu_data/3});
+									hospitalData.push({cat:"Jan "+syear+" - Mar "+syear,icu:icu_data/3,total:nicu_data/3});
+								}
+								else if(i==1){
+									data.addItem({cat:"Apr "+syear+" - Jun "+syear,icu:icu_data/3});
+									hospitalData.push({cat:"Apr "+syear+" - Jun "+syear,icu:icu_data/3,total:nicu_data/3});
+								}
+								else if(i==2){
+									data.addItem({cat:"Jul "+syear+" - Sep "+syear,icu:icu_data/3});
+									hospitalData.push({cat:"Jul "+syear+" - Sep "+syear,icu:icu_data/3,total:nicu_data/3});
+								}
+								else if(i==3){
+									data.addItem({cat:"Oct "+syear+" - Dec "+syear,icu:icu_data/3});
+									hospitalData.push({cat:"Oct "+syear+" - Dec "+syear,icu:icu_data/3,total:nicu_data/3});
 								}
 							}
-							trace("icu_data: "+icu_data1);
-							if(icu_data1>max){max=icu_data1;}
-							if(nicu_data1>max){max=nicu_data1;}
-							if(i==0){
-								hospitalData.push({cat:year+" Jan - Mar",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Jan - Mar",icu:icu_data1,total:nicu_data1});
-							}
-							else if(i==1){
-								hospitalData.push({cat:year+" Apr - Jun",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Apr - Jun",icu:icu_data1,total:nicu_data1});
-							}
-							else if(i==2){
-								hospitalData.push({cat:year+" Jul - Sep",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Jul - Sep",icu:icu_data1,total:nicu_data1});
-							}
-							else if(i==3){
-								hospitalData.push({cat:year+" Oct - Dec",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Oct - Dec",icu:icu_data1,total:nicu_data1});
-							}
 						}
-						columnchart.dataProvider = hospitalData;
-						columnchart1.dataProvider = hospitalData1;
-						legend.label = depart;
+						lineChart.dataProvider = data;
+//						columnchart1.dataProvider = hospitalData1;
 						if(file.exists){
 							try{
 								var stream:FileStream = new FileStream()
@@ -260,7 +264,7 @@
 				else if(max<4) {paragraph = 24;}
 				else {paragraph = 30;}
 				if(depart!="All"){
-					columnchart1.left = paragraph;
+//					columnchart1.left = paragraph;
 				}
 			}
 			
@@ -269,10 +273,10 @@
 				// TODO Auto-generated method stub
 				depart = btnDepartment.selectedItem.@label;
 				hospitalData = [];
-				hospitalData1 = [];
+				data = new ArrayCollection ([]);
 				fetchLocalXML();
 			}
-
+			
 			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
 				//var curItem:ColumnSeries = ColumnSeries(item);
 				/* Convert to a number between 0 and 1. */
@@ -287,7 +291,7 @@
 				// TODO Auto-generated method stub
 				year = btnYear.selectedItem.year;
 				hospitalData = [];
-				hospitalData1 = [];
+				data = new ArrayCollection ([]);
 				fetchLocalXML();
 				
 			}
@@ -312,17 +316,17 @@
 			/*private function columnSeries2_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@hw).toFixed(2).toString() + "%";
+			return Number(csi.item.@hw).toFixed(1).toString() + "%";
 			}
 			private function columnSeries3_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@miss).toFixed(2).toString() + "%";
+			return Number(csi.item.@miss).toFixed(1).toString() + "%";
 			}
 			private function columnSeries4_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@glove).toFixed(2).toString() + "%";
+			return Number(csi.item.@glove).toFixed(1).toString() + "%";
 			}*/
 			
 			
@@ -389,6 +393,7 @@
 			{
 				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
+			
 			
 			public function myListener(e:ChartItemEvent):void {
 				//ti1.text = e.hitData.item.expenses;
@@ -476,7 +481,7 @@
 			}
 			
 			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
-									contentString:String=null, icon:Class=null):void
+																			 contentString:String=null, icon:Class=null):void
 			{
 				if (lbl == "")
 					lbl = "Graph";
@@ -834,78 +839,39 @@
 		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 			
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-							
-				<!-- From here Table 2 -->
-				<mx:Legend y="32" right="10" width="513" height="30" fontSize="12">
-					<mx:LegendItem id="legend" label="All" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0x13a8f6"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="Hospital-Wide" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0xcbde2a"/>
-						</mx:fill>
-					</mx:LegendItem>
-				</mx:Legend>
-				<mx:ColumnChart id="columnchart" y="363" left="10" right="10" height="240"
-								dataProvider="{hospitalData}" fontSize="12" seriesFilters="[]"
-								showDataTips="false">
+				
+				<mx:LineChart id="lineChart"
+							  seriesFilters="[]"
+							  y="120" width="100%" height="500" fontSize="12" dataProvider="{this.data}">
 					<mx:verticalAxis>
-						<mx:LinearAxis id="vAxis1"
+						<mx:LinearAxis id="vAxisYTD"
 									   minimum="0" 
-									   maximum="100" labelFunction="linearAxis_labelFunc" />
-					</mx:verticalAxis>	
+									   maximum="100"
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
 					<mx:horizontalAxis>
-						<mx:CategoryAxis categoryField="cat"/>
-					</mx:horizontalAxis>		
+						<mx:CategoryAxis categoryField="cat" />
+					</mx:horizontalAxis>
 					<mx:series>
+								
+						<mx:LineSeries itemRenderer="mx.charts.renderers.CircleItemRenderer"
+									   radius="5" yField="icu"/>						
 						
-						<!--THIS IS NOT REQUIRED cant be benchmark also for benchmark line-->
-						<!--<mx:LineSeries yField="Y" xField="X"
-						lineStroke="{this.parentApplication.lineStroke}"
-						dataProvider="{this.parentApplication.lineDataProvider}">
-						<mx:horizontalAxis>
-						<mx:LinearAxis maximum="1"/>
-						</mx:horizontalAxis>
-						</mx:LineSeries>-->
-						<!--end for benchmark line-->
 						
-						<mx:ColumnSeries 
-							fills="{warmColorsArray}" labelFunction="setCustomLabel" displayName="Before Patient" yField="icu" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray2}" labelFunction="setCustomLabel" displayName="Before Aseptic" yField="total" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						
 					</mx:series>
-				</mx:ColumnChart>
-				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="273"
-								dataProvider="{hospitalData1}" fontSize="12" seriesFilters="[]"
-								showDataTips="false">
-					<mx:verticalAxis>
-						<mx:LinearAxis id="vAxis2"
-									   minimum="0" 
-									   />
-					</mx:verticalAxis>	
-					<mx:horizontalAxis>
-						<mx:CategoryAxis categoryField="cat"/>
-					</mx:horizontalAxis>			
-					<mx:series>
-						<mx:ColumnSeries 
-							fills="{warmColorsArray}" displayName="Before Patient" yField="icu" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray2}" displayName="Before Aseptic" yField="total" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-					</mx:series>
-				</mx:ColumnChart>
-				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall) By Ward"/>
+				</mx:LineChart>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall)"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
 								blendMode="darken" change="btnDepartment_changeHandler(event)"
 								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
 				
-				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="110" height="32"
 								blendMode="darken" change="btnYear_changeHandler(event)"
 								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
-				
+								
 				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
 						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>

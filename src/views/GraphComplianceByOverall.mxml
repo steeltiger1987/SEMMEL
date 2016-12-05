@@ -207,21 +207,22 @@
 							trace("icu_data: "+icu_data1);
 							if(icu_data1>max){max=icu_data1;}
 							if(nicu_data1>max){max=nicu_data1;}
+							var syear:String = String(year).substring(2,4);
 							if(i==0){
-								hospitalData.push({cat:year+" Jan - Mar",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Jan - Mar",icu:icu_data1,total:nicu_data1});
+								hospitalData.push({cat:"Jan "+syear+" - Mar "+syear,icu:icu_data/3,total:nicu_data/3});
+								hospitalData1.push({cat:"Jan "+syear+" - Mar "+syear,icu:icu_data1,total:nicu_data1});
 							}
 							else if(i==1){
-								hospitalData.push({cat:year+" Apr - Jun",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Apr - Jun",icu:icu_data1,total:nicu_data1});
+								hospitalData.push({cat:"Apr "+syear+" - Jun "+syear,icu:icu_data/3,total:nicu_data/3});
+								hospitalData1.push({cat:"Apr "+syear+" - Jun "+syear,icu:icu_data1,total:nicu_data1});
 							}
 							else if(i==2){
-								hospitalData.push({cat:year+" Jul - Sep",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Jul - Sep",icu:icu_data1,total:nicu_data1});
+								hospitalData.push({cat:"Jul "+syear+" - Sep "+syear,icu:icu_data/3,total:nicu_data/3});
+								hospitalData1.push({cat:"Jul "+syear+" - Sep "+syear,icu:icu_data1,total:nicu_data1});
 							}
 							else if(i==3){
-								hospitalData.push({cat:year+" Oct - Dec",icu:icu_data/3,total:nicu_data/3});
-								hospitalData1.push({cat:year+" Oct - Dec",icu:icu_data1,total:nicu_data1});
+								hospitalData.push({cat:"Oct "+syear+" - Dec "+syear,icu:icu_data/3,total:nicu_data/3});
+								hospitalData1.push({cat:"Oct "+syear+" - Dec "+syear,icu:icu_data1,total:nicu_data1});
 							}
 						}
 						columnchart.dataProvider = hospitalData;
@@ -312,17 +313,17 @@
 			/*private function columnSeries2_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@hw).toFixed(2).toString() + "%";
+			return Number(csi.item.@hw).toFixed(1).toString() + "%";
 			}
 			private function columnSeries3_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@miss).toFixed(2).toString() + "%";
+			return Number(csi.item.@miss).toFixed(1).toString() + "%";
 			}
 			private function columnSeries4_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@glove).toFixed(2).toString() + "%";
+			return Number(csi.item.@glove).toFixed(1).toString() + "%";
 			}*/
 			
 			
@@ -895,7 +896,7 @@
 							fills="{warmColorsArray2}" displayName="Before Aseptic" yField="total" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall) By Ward"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Ward- By Moment"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

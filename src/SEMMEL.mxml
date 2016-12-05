@@ -13,9 +13,9 @@
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 		<s:HTTPService id="httpAuth" url="" fault="fleventAuth(event)" method="POST" result="httpAuth_result(event)" resultFormat="text" />
-
+		
 		<s:HTTPService id="httpReport" url="" fault="fleventReport(event)" method="POST" result="httpReport_result(event)" resultFormat="text" />
-	
+		
 		<s:SkinnablePopUpContainer id="saving" backgroundAlpha="0.5" backgroundColor="0x000000">
 			<s:Panel title="Sync Report" horizontalCenter="0" verticalCenter="0" width="80%">
 				<s:HGroup width="100%" x="10" y="10">
@@ -27,7 +27,7 @@
 				</s:HGroup>
 			</s:Panel>
 		</s:SkinnablePopUpContainer>
-	
+		
 		<mx:DateFormatter id="sdf" formatString="MMM,YYYY"/>
 		
 		<mx:DateFormatter id="sdfYM" formatString="MMMM, YYYY"/>
@@ -78,7 +78,7 @@
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
 			import mx.utils.*;
-			
+			import mx.controls.Alert;			
 			import spark.events.IndexChangeEvent;
 			
 			import views.*;
@@ -156,6 +156,9 @@
 			public var graphHHOByIndication:GraphHHOByIndication = new GraphHHOByIndication;
 			public var graphAverageActionByIndication:GraphAverageActionByIndication =  new GraphAverageActionByIndication;
 			public var departmentMomentsComplaince:DepartmentMomentsComplaince = new DepartmentMomentsComplaince;
+			public var graphQuarterReport:GraphQuarterReport = new GraphQuarterReport;
+			public var graphJobReport:GraphJobReport = new GraphJobReport;
+			public var graphMomentReport:GraphMomentReport = new GraphMomentReport;
 			
 			//new added - 2015-06-05 for procedure
 			public var graphProcedure:GraphProcedure = new GraphProcedure;
@@ -204,9 +207,9 @@
 			
 			//to remove status bar
 			//private function removeStatusBar(event:AIREvent):void{
-				//removeChild(statusBar);
+			//removeChild(statusBar);
 			//}
-			
+			public var restart:Number = 0;
 			
 			//for BIRT report download
 			public var documentsDirectory:File = File.desktopDirectory;// active user documents directory  
@@ -214,7 +217,7 @@
 			public var fileToSave:File;  
 			public var fileStream:FileStream;  
 			public var fileData:ByteArray;
-			  
+			
 			public var urlRequest:URLRequest = new URLRequest("http://semmel.raydarhealth.com/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
 			
 			//public var urlRequest:URLRequest = new URLRequest("http://192.168.220.1:8082/BIRT_Report_Integration/loadReport?act=batchreport&ReportName=MOH_RawData.rptdesign");
@@ -361,7 +364,7 @@
 						break;
 				}
 				
-			
+				
 				return c;
 			} 
 			
@@ -370,7 +373,7 @@
 				if(EncryptedLocalStore.isSupported) {
 					var va:ByteArray = EncryptedLocalStore.getItem("cleanedOnce");
 					if(va)
-					cleaned = va.readUTFBytes(va.bytesAvailable);
+						cleaned = va.readUTFBytes(va.bytesAvailable);
 				}
 				var fileslist:Array = File.applicationStorageDirectory.getDirectoryListing();
 				
@@ -415,11 +418,11 @@
 			private var pass:String;
 			
 			private function init():void{
-//				user = "demo1";
-//				pass = "5tgb1qaz";
-
-//				user = "demo@yahoo.com";
-//				pass = "1234";
+				//				user = "demo1";
+				//				pass = "5tgb1qaz";
+				
+				//				user = "demo@yahoo.com";
+				//				pass = "1234";
 				
 				checkUpdate();
 				setApplicationVersion();
@@ -438,8 +441,8 @@
 				monitor.start();
 				
 				//used to clean the application directory to behave in accordance to the architecture change		AMOL
-		    	cleanLocalData();
-
+				cleanLocalData();
+				
 				//load settings....
 				var file:File = File.applicationStorageDirectory.resolvePath("settings.dat");
 				if(file.exists){
@@ -501,7 +504,7 @@
 			
 			//for application auto updater
 			private function checkUpdate():void {
-//				setApplicationVersion();
+				//				setApplicationVersion();
 				// we set the URL for the update.xml file 
 				appUpdater.updateURL = Constants.url_update;
 				//we set the event handlers for INITIALIZED nad ERROR
@@ -544,6 +547,15 @@
 			 * A simple code just to read the current version of the application 
 			 * and display it in a label. 
 			 */ 
+			
+			var myClickHandler:Function = function (evt_obj:Object) {
+				if (evt_obj.detail == Alert.OK) {
+					navigateToURL(new URLRequest("http://semmel.raydarhealth.com/download.jsp"), "_blank");
+				} else if (evt_obj.detail == Alert.CANCEL) {
+					trace(Alert.cancelLabel);
+				}
+			};
+
 			private function setApplicationVersion():void {
 				var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
 				var ns:Namespace = appXML.namespace();
@@ -642,7 +654,7 @@
 				
 				//TODO: store json file license.key
 				if(evt.result.toString().indexOf("00")!=-1 && this.currentState=="State1"){
-				
+					
 					trace("hosp_id: " + jsonRead.hosp_id);
 					trace("save/update license.key");
 					//save license key here
@@ -653,7 +665,7 @@
 					fileStream.writeUTFBytes("\n" + jsonRead.hosp_id);
 					fileStream.close()
 					//end save license key here
-						
+					
 					//create install key
 					/*var fileInstall:File = File.applicationDirectory.resolvePath("install");
 					var fileStreamInstall:FileStream = new FileStream();
@@ -661,17 +673,17 @@
 					fileStreamInstall.writeUTFBytes("1");
 					fileStreamInstall.close()*/
 					//end create install key
-						
+					
 					
 					this.currentState = "LoginState";
 					
 					//temp cpmment ... Amol
-//					txtLicense.text = ""; //become user id
-//					
-//					txtPwd.text = "";
+					//					txtLicense.text = ""; //become user id
+					//					
+					//					txtPwd.text = "";
 					
 				} else if(evt.result.toString().indexOf("00")!=-1 && this.currentState=="LoginState"){
-				
+					
 					trace("login success...");
 					
 					//{"uid":"1","status":"00","desp":"Success"}
@@ -691,13 +703,27 @@
 					
 					trace(evt.result.toString());	
 					
+					if(this.restart == 0){
 					//arrState = new ArrayCollection(jsonRead.RefState);
+						var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
+						var ns:Namespace = appXML.namespace();
+						//this.appVersion = "App version:" + appXML.ns::version;
+//					appXML.ns::versionNumber = "1.1.7";
+						if(appXML.ns::versionNumber<jsonRead.analytic_version){
+							Alert.okLabel = "Update Now";
+							Alert.cancelLabel = "Update Later";
+							Alert.buttonWidth = 100;
+							var dialog_obj:Object = Alert.show("A new version of analytic app v"+jsonRead.analytic_version+" is available. Please update to latest version.", "Alert", Alert.OK | Alert.CANCEL, null, myClickHandler, null, Alert.OK);
+						}
+						trace("App version: " + appXML.ns::versionNumber);
+						Constants.appVersion = appXML.ns::versionNumber;
+						
+						
+						//store constant value
+						Constants.hospName = jsonRead.hospital;
+					}
 					
 					
-					//store constant value
-					Constants.hospName = jsonRead.hospital;
-					
-				
 					
 					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
 					var fileStream:FileStream = new FileStream();
@@ -720,26 +746,26 @@
 					var stream:FileStream = new FileStream()
 					stream.open(file, FileMode.READ);
 					var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
-					trace(s.split("\n")[0]);
-					trace(s.split("\n")[1]);
+					trace("split 1:"+s.split("\n")[0]);
+					trace("split 2:"+s.split("\n")[1]);
 					
 					//trace("post doReprot + license Key " + s.split("\n")[0]);
-
+					
 					
 					savingAlert(); //with network!
 					
 					
-//					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
-//						doPostReport(s);
-//					});
+					//					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
+					//						doPostReport(s);
+					//					});
 					doPostReport(s);
-//					timer.start();
+					//					timer.start();
 					
 					
 					
 					//end auto fetch latest data
 					
-				
+					
 					//img sponser here
 					trace("sponsor image: " + jsonRead.hosp_sponsor);
 					
@@ -757,8 +783,8 @@
 					
 					
 				}
-
-			
+				
+				
 			}
 			
 			//download image function
@@ -812,7 +838,7 @@
 			}
 			
 			private function writeFile(event:ProgressEvent):void {
-				trace("Downloading... " + (((loadedSize+event.bytesLoaded)/event.bytesTotal)*100).toFixed(0)+ "%");
+//				trace("Downloading... " + (((loadedSize+event.bytesLoaded)/event.bytesTotal)*100).toFixed(0)+ "%");
 				
 				// chunk of new data
 				var fileDataChunk:ByteArray = new ByteArray();
@@ -832,7 +858,7 @@
 			
 			
 			
-			private var myTimer:Timer = new Timer(500);
+			private var myTimer:Timer = new Timer(1500);
 			
 			private function doPostReport(s:String):void{
 				trace("call doPostReport after 5 seconds");
@@ -849,7 +875,7 @@
 				httpReport.requestTimeout = 120; //120 seconds, 2 minutes
 				httpReport.url = Constants.url_mapi;
 				httpReport.method="POST";
-//				httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
+				//				httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
 				httpReport.send({act:"doReport", v:"2.0", key:Constants.getLicenseKey()});
 				
 				if(gProgress==0){
@@ -869,17 +895,18 @@
 			var gProgress:Number = 0;
 			
 			private function timerListener (e:TimerEvent):void{
-				trace("Timer is Triggered");
+//				trace("Timer is Triggered");
 				gProgress += 5;
-				if(gProgress>=80){
-					gProgress = 80; //still here
+				if(gProgress>=105){
+					gProgress = 105; //still here
 					
 					if(this.pb.label.length>=24){
-						this.pb.label = "please wait... " + String(gProgress) + "%";
+						this.pb.label = "The server is taking longer time than usual, please wait";
 					} else {
 						this.pb.label += " .";
 						this.pb.invalidateDisplayList();
 					}
+//					doStart();
 					
 				} else {
 					this.pb.setProgress(gProgress, 100);
@@ -908,21 +935,21 @@
 						trace("found license.key");
 						this.currentState = "LoginState";
 					} else {
-					
+						
 						var alertNetwork:NetworkDialog = new NetworkDialog();
 						alertNetwork.open(this, true);
 						PopUpManager.centerPopUp(alertNetwork);
 						alertNetwork.doMessage("ERROR", "HTTP Request Error");
-					
+						
 					}
 				} else {
-				
+					
 					var alertNetwork:NetworkDialog = new NetworkDialog();
 					alertNetwork.open(this, true);
 					PopUpManager.centerPopUp(alertNetwork);
 					alertNetwork.doMessage("ERROR", "HTTP Request Error");
-				
-				
+					
+					
 				}
 			}	
 			
@@ -953,7 +980,7 @@
 					
 					return;
 				} else {
-				
+					
 					//data syncing...
 					
 					//start auto fetch latest data
@@ -978,7 +1005,7 @@
 					
 					//end auto fetch latest data
 					
-				
+					
 				}
 			}
 			
@@ -1019,7 +1046,7 @@
 					this.pb.invalidateDisplayList();
 					this.pb.label = "please wait... 95% analysing data";
 				} else if(stageNum==4){
-				
+					
 					this.pb.label="Complete";
 					this.pb.setProgress(100, 100);
 					this.pb.invalidateDisplayList();
@@ -1029,12 +1056,12 @@
 				trace("deTimer addEventListener");
 				deTimer.addEventListener(TimerEvent.TIMER, timerListener);
 				function timerListener (e:TimerEvent):void{
-					trace("Timer is Triggered x");
+//					trace("Timer is Triggered x");
 					deTimer.stop();
 					deTimer.removeEventListener(TimerEvent.TIMER, timerListener);
-					trace("run doLoadXMLData");
+//					trace("run doLoadXMLData");
 					doLoadXMLData();
-
+					
 				}
 				trace("deTimer.start");
 				deTimer.start();
@@ -1073,20 +1100,20 @@
 						} catch(e:Error){
 							trace(e.toString());
 						}
-				
+						
 					}
 					
 					
-				//for v1.0.2 - more analysis data
-				var fileRaw:File = File.applicationStorageDirectory.resolvePath("raw.data");
-				
-				
-				if(fileRaw.exists){
-					trace("raw.data is exists");
-					kdata = Hex.toArray(Hex.fromString(sKey)); //plain text
-					//trace(Base64.encodeByteArray(kdata));
+					//for v1.0.2 - more analysis data
+					var fileRaw:File = File.applicationStorageDirectory.resolvePath("raw.data");
 					
-					//try{
+					
+					if(fileRaw.exists){
+						trace("raw.data is exists");
+						kdata = Hex.toArray(Hex.fromString(sKey)); //plain text
+						//trace(Base64.encodeByteArray(kdata));
+						
+						//try{
 						var stream:FileStream = new FileStream()
 						stream.open(fileRaw, FileMode.READ);
 						raw = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
@@ -1105,97 +1132,17 @@
 						return;
 					}
 				}		
-					if(stageNum==1){
-						trace("stageNum=1 mode.decrypt data");
-						
-						var pad:IPad = new PKCS5;
-						var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
-						//mode = Crypto.getCipher("aes-cbc", kdata, pad);
-						
-						trace("pad: " + pad);
-						trace("kdata: " + kdata);
-						trace("mode: " + mode);
-						
-						if (mode is IVMode) {
-							var ivmode:IVMode = mode as IVMode;
-							// Just remember this is just a cast. The IV is still being set on the mode variable.
-							//MThmZDk3NWQzZjI3ZmYxMQ== //for licne key 16 char
-							
-							//WORKING!
-							//ivmode.IV = Base64.decodeToByteArray("MThmZDk3NWQzZjI3ZmYxMQ==");
-							
-							ivmode.IV = Base64.decodeToByteArray(Base64.encodeByteArray(kdata));
-							
-						}
-						pad.setBlockSize(mode.getBlockSize());
-					
-						//trace(this.data);
-						mode.decrypt(this.data);
-						
-						trace("done decrypt...json parsing");
-						stageNum=2;
-						doStart();
-						return;
-					}
-					
-					
-					if(stageNum==2){
-						raw = Hex.toString(Hex.fromArray(data));
-						//end decryypt
-						
-						
-						//start parse json here...
-						trace("json: " + raw);
-						jsonRaw = JSON.parse(raw);
-						this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
-						this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
-						trace("output :",this.who_safety);
-						//trace("length: " + this.who_safety.length.toString());
-						//trace("length: " + this.who_safety_department.length.toString());
-						
-						
-						//this.pb.label = "analysing data...";
-						
-						
-						doAnalyticByAction("", "");
-
-					//}catch(error:Error){
-					//	trace("load raw.data" + error.toString());
-					//}
-				//} //else {
-					//trace("file raw.data not exits");
-				//}
-				
-				stageNum=3;
-				doStart();
-				return;
-				}
-				
-				//end for v1.0.2 - more analysis data
-				
-				if(stageNum==3){
-				
-				var fileData:File = File.applicationStorageDirectory.resolvePath("result.data");
-				var enc:String = ""; //encrypted result data
-				if(fileData.exists && file.exists){
-					
-					trace("result.data is exists");
-					
-					//semmel result data - encrpyted
-					
-					try{
-						var stream:FileStream = new FileStream()
-						stream.open(fileData, FileMode.READ);
-						enc = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
-						stream.close();
-					} catch(e:Error){
-						trace(e.toString());
-					}
-					
-					var data:ByteArray = Base64.decodeToByteArray(enc);
+				if(stageNum==1){
+					trace("stageNum=1 mode.decrypt data");
 					
 					var pad:IPad = new PKCS5;
 					var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+					//mode = Crypto.getCipher("aes-cbc", kdata, pad);
+					
+					trace("pad: " + pad);
+					trace("kdata: " + kdata);
+					trace("mode: " + mode);
+					
 					if (mode is IVMode) {
 						var ivmode:IVMode = mode as IVMode;
 						// Just remember this is just a cast. The IV is still being set on the mode variable.
@@ -1208,55 +1155,135 @@
 						
 					}
 					pad.setBlockSize(mode.getBlockSize());
-					trace("about to decrypt2");
-					//dispatchEvent(new TimerEvent("timerListener"));
 					
-					mode.decrypt(data);
+					//trace(this.data);
+					mode.decrypt(this.data);
 					
-					this.fetchXMLData = Hex.toString(Hex.fromArray(data));
-					//trace( "Decrypt AES: " +  this.fetchXMLData);
-					/*trace( "Decrypt AES: " +  fetchXMLData);
-					
-					
-					//later comment output .xml result file
-					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
-					var fileStream:FileStream = new FileStream();
-					fileStream.open(file, FileMode.WRITE);
-					fileStream.writeUTFBytes(fetchXMLData); //dec xml result data
-					fileStream.close()*/
-					//end later commetn output .xml result file
-					
-					
-					
-					viewstack1.visible=true;
-					viewstack1.removeAll();
-					
-					//viewstack1.addChild(homeScreen);
-					
-					//btnYM.visible = false;
-					
-					
-					this.maximize();
-					
-					this.lblBg.text = "SEMMEL";
-					
-					
-					this.currentState = "ModulesScreen";
-					//this.currentState = "MainMenu";
-					saving.close();
-					//return;
-					
-					//*************** REMOVE THE FETCH XML FUNCTION HERE
-					//*************** MOVE INTO DO LOAD HAND HYGINE MODULE FUNCTION
-					
+					trace("done decrypt...json parsing");
+					stageNum=2;
+					doStart();
+					return;
 				}
-				stageNum=4;
-				doStart();
-				return;
-				}
-			
-				if(stageNum==4){
 				
+				
+				if(stageNum==2){
+					raw = Hex.toString(Hex.fromArray(data));
+					//end decryypt
+					
+					
+					//start parse json here...
+					trace("json: " + raw);
+					jsonRaw = JSON.parse(raw);
+					this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+					this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+					trace("output :",this.who_safety);
+					//trace("length: " + this.who_safety.length.toString());
+					//trace("length: " + this.who_safety_department.length.toString());
+					
+					
+					//this.pb.label = "analysing data...";
+					
+					
+					doAnalyticByAction("", "");
+					
+					//}catch(error:Error){
+					//	trace("load raw.data" + error.toString());
+					//}
+					//} //else {
+					//trace("file raw.data not exits");
+					//}
+					
+					stageNum=3;
+					doStart();
+					return;
+				}
+				
+				//end for v1.0.2 - more analysis data
+				
+				if(stageNum==3){
+					
+					var fileData:File = File.applicationStorageDirectory.resolvePath("result.data");
+					var enc:String = ""; //encrypted result data
+					if(fileData.exists && file.exists){
+						
+						trace("result.data is exists");
+						
+						//semmel result data - encrpyted
+						
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(fileData, FileMode.READ);
+							enc = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
+							stream.close();
+						} catch(e:Error){
+							trace(e.toString());
+						}
+						
+						var data:ByteArray = Base64.decodeToByteArray(enc);
+						
+						var pad:IPad = new PKCS5;
+						var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+						if (mode is IVMode) {
+							var ivmode:IVMode = mode as IVMode;
+							// Just remember this is just a cast. The IV is still being set on the mode variable.
+							//MThmZDk3NWQzZjI3ZmYxMQ== //for licne key 16 char
+							
+							//WORKING!
+							//ivmode.IV = Base64.decodeToByteArray("MThmZDk3NWQzZjI3ZmYxMQ==");
+							
+							ivmode.IV = Base64.decodeToByteArray(Base64.encodeByteArray(kdata));
+							
+						}
+						pad.setBlockSize(mode.getBlockSize());
+						trace("about to decrypt2");
+						//dispatchEvent(new TimerEvent("timerListener"));
+						
+						mode.decrypt(data);
+						
+						this.fetchXMLData = Hex.toString(Hex.fromArray(data));
+						//trace( "Decrypt AES: " +  this.fetchXMLData);
+						/*trace( "Decrypt AES: " +  fetchXMLData);
+						
+						
+						//later comment output .xml result file
+						var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+						var fileStream:FileStream = new FileStream();
+						fileStream.open(file, FileMode.WRITE);
+						fileStream.writeUTFBytes(fetchXMLData); //dec xml result data
+						fileStream.close()*/
+						//end later commetn output .xml result file
+						
+						
+						
+						viewstack1.visible=true;
+						viewstack1.removeAll();
+						
+						//viewstack1.addChild(homeScreen);
+						
+						//btnYM.visible = false;
+						
+						
+						this.maximize();
+						
+						this.lblBg.text = "SEMMEL";
+						
+						
+						this.currentState = "ModulesScreen";
+						//this.currentState = "MainMenu";
+						saving.close();
+						//return;
+						
+						//*************** REMOVE THE FETCH XML FUNCTION HERE
+						//*************** MOVE INTO DO LOAD HAND HYGINE MODULE FUNCTION
+						
+					}
+					stageNum=4;
+					doStart();
+					return;
+				}
+				
+				if(stageNum==4){
+					
 					saving.close();
 					//data sync is up to date message
 					var alertNetwork:NetworkDialog = new NetworkDialog();
@@ -1309,7 +1336,7 @@
 					//by date range first
 					if(startDate<=objDate && objDate<=endDate && obj.dept==dept){
 						//if(!acSurveyID.contains(obj.survey_id)){
-							//acSurveyID.addItem(obj.survey_id);
+						//acSurveyID.addItem(obj.survey_id);
 						//}
 						if(!hmProf.hasKey(String(objDate.fullYear)+String(objDate.month))){
 							prof = new Object();
@@ -1365,8 +1392,8 @@
 							hmProf.set(String(objDate.fullYear)+String(objDate.month), prof);
 							ac.addItem(prof);
 						} else {
-						
-
+							
+							
 							prof = hmProf.get(String(objDate.fullYear)+String(objDate.month));
 							if(obj.prof1!=null){
 								
@@ -1449,7 +1476,7 @@
 				for each(var profTrend:Object in ac){
 					for(var i:Number=0;i<acListProf.length;i++){
 						strProf = acListProf.getItemAt(i).toString();
-
+						
 						if(profTrend["opp_"+strProf]!=null){
 							profTrend[strProf] = percentageFormat((profTrend["cnt_"+strProf]/profTrend["opp_"+strProf])*100);
 							trace(strProf + " => " + profTrend.cat + ": " + profTrend[strProf]);
@@ -1473,16 +1500,16 @@
 				
 				
 				/*for each(var profTrend:Object in ac){
-					for(var i:Number=0;i<acListProf.length;i++){
-						strProf = acListProf.getItemAt(i).toString();
-						//trace("cat: " + profTrend.cat);
-						//trace("pect." + strProf + ": " + profTrend[strProf]);
-					}
+				for(var i:Number=0;i<acListProf.length;i++){
+				strProf = acListProf.getItemAt(i).toString();
+				//trace("cat: " + profTrend.cat);
+				//trace("pect." + strProf + ": " + profTrend[strProf]);
+				}
 				}*/
 				
 				//for each(var prof:Object in acAnalytic){
-					//prof.pect = percentageFormat((prof.cnt/overAllCnt)*100);
-					//trace(prof.cat + " = " + prof.pect);
+				//prof.pect = percentageFormat((prof.cnt/overAllCnt)*100);
+				//trace(prof.cat + " = " + prof.pect);
 				//}
 				
 				return ac;
@@ -1584,7 +1611,7 @@
 				//var matches : Array = str.match(/(\d\d\d\d)-(\d\d)-(\d\d)/);
 				var matches : Array = str.match(/(\d\d\d\d)-(\d\d)/);
 				var d : Date = new Date();
-			
+				
 				//d.setUTCFullYear(int(matches[1]), int(matches[2]) - 1, int(matches[3]));
 				d.setUTCFullYear(int(matches[1]), int(matches[2]) - 1, 1);
 				
@@ -1594,60 +1621,60 @@
 			
 			//by moment
 			/*public function doAnalyticByDepartmentXXX(domain:String, item:String):ArrayCollection{
-				var acAnalytic:ArrayCollection = new ArrayCollection();
-				var hm:HashMap = new HashMap();
-				
-				var dept:Object = new Object();
-				var obj:Object;
-				
-				//for complaince rate
-				var overAllCnt:Number = 0;
-				
-				trace("item: " + item);
-				
-				//determine got how many prof?!
-				for(var i:Number=0;i<this.who_safety_department.length;i++){
-					obj = this.who_safety_department.getItemAt(i);
-					if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(selectedYM)!=-1){
-						
-						//if the survey match with selected profession
-						if(obj.prof1==item 
-							|| obj.prof2==item
-							|| obj.prof3==item
-							|| obj.prof4==item){
-							
-							if(!hm.hasKey(obj.dept)){
-								dept = new Object();
-								dept.cat = obj.dept;
-								dept.cnt = doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
-								if(dept.cnt!=0){
-									hm.set(obj.dept, dept);
-									acAnalytic.addItem(dept);
-									overAllCnt += dept.cnt;
-								}
-							} else {
-								dept = hm.get(obj.dept);
-								dept.cnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
-								overAllCnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
-							}
-							
-						}
-						
-						
-					}
-				}
-				
-				for each(var dept:Object in acAnalytic){
-					
-					trace(dept.cat + " = " + dept.cnt + " / " + overAllCnt);
-					
-					dept.pect = percentageFormat((dept.cnt/overAllCnt)*100);
-					
-				}
-				return acAnalytic;
+			var acAnalytic:ArrayCollection = new ArrayCollection();
+			var hm:HashMap = new HashMap();
+			
+			var dept:Object = new Object();
+			var obj:Object;
+			
+			//for complaince rate
+			var overAllCnt:Number = 0;
+			
+			trace("item: " + item);
+			
+			//determine got how many prof?!
+			for(var i:Number=0;i<this.who_safety_department.length;i++){
+			obj = this.who_safety_department.getItemAt(i);
+			if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(selectedYM)!=-1){
+			
+			//if the survey match with selected profession
+			if(obj.prof1==item 
+			|| obj.prof2==item
+			|| obj.prof3==item
+			|| obj.prof4==item){
+			
+			if(!hm.hasKey(obj.dept)){
+			dept = new Object();
+			dept.cat = obj.dept;
+			dept.cnt = doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+			if(dept.cnt!=0){
+			hm.set(obj.dept, dept);
+			acAnalytic.addItem(dept);
+			overAllCnt += dept.cnt;
+			}
+			} else {
+			dept = hm.get(obj.dept);
+			dept.cnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+			overAllCnt += doCalculateComplianceBySurveyIDByDepartment(obj.survey_id);
+			}
+			
+			}
+			
+			
+			}
+			}
+			
+			for each(var dept:Object in acAnalytic){
+			
+			trace(dept.cat + " = " + dept.cnt + " / " + overAllCnt);
+			
+			dept.pect = percentageFormat((dept.cnt/overAllCnt)*100);
+			
+			}
+			return acAnalytic;
 			}*/
 			//end by moment
-
+			
 			
 			public function doAnalyticPRByMoment(domain:String, item:String, privateYM:String=""):ArrayCollection{
 				
@@ -1859,7 +1886,7 @@
 				
 				return acAnalytic;
 			}
-
+			
 			public function doAnalyticPRByDepartment(domain:String, item:String, privateYM:String=""):ArrayCollection{
 				
 				var hm:HashMap = new HashMap();
@@ -1877,10 +1904,10 @@
 					// [department name, objects]
 					hm.set(obj.label.toString(), dept);
 					acAnalytic.addItem(dept);
-
+					
 				}
 				
-
+				
 				var queryYM:String="";
 				if(privateYM==""){
 					queryYM = selectedYM;
@@ -1945,7 +1972,7 @@
 				
 				//for complaince rate
 				var overAllCnt:Number = 0;
-
+				
 				trace("item: " + item);
 				
 				//determine got how many prof?!
@@ -1961,7 +1988,7 @@
 							|| obj.prof2==item
 							|| obj.prof3==item
 							|| obj.prof4==item){
-					
+							
 							trace("survey_id: " + obj.survey_id);
 							
 							if(!hm.hasKey(obj.dept)){
@@ -2149,7 +2176,7 @@
 				trace("Domain: " + domain);
 				
 				if(domain=="department"){
-				
+					
 					
 					//trace(this.who_safety_department);
 					
@@ -2157,7 +2184,7 @@
 						obj = this.who_safety_department.getItemAt(i);
 						if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1
 							&& obj.dept==item){
-	
+							
 							trace("obj.dept: " + item + " obj.survey_id: " + obj.survey_id);
 							
 							//determine got how many Reason capture
@@ -2480,7 +2507,7 @@
 					obj = this.who_safety.getItemAt(i);
 					if(obj.survey_id==survey_id){
 						//if(obj.hr=="1" || obj.hw=="1"){
-							cnt++;
+						cnt++;
 						//}
 					}
 				}
@@ -2633,16 +2660,16 @@
 				var actionCnt=0;
 				for each(var moment:Object in acAnalytic){
 					//if(domain=="profession"){
-						actionCnt += moment.cnt;
+					actionCnt += moment.cnt;
 					//} else {
-						//moment.pect = percentageFormat((moment.cnt/moment.allCnt)*100);
+					//moment.pect = percentageFormat((moment.cnt/moment.allCnt)*100);
 					//}
 				}
 				
 				if(actionCnt>0){
 					for each(var moment:Object in acAnalytic){
 						//if(domain=="profession"){
-							moment.pect = percentageFormat((moment.cnt/actionCnt)*100);
+						moment.pect = percentageFormat((moment.cnt/actionCnt)*100);
 						//}
 					}
 				}
@@ -2673,7 +2700,7 @@
 				var moment:Object;
 				
 				if(domain=="profession"){
-				
+					
 					//Step1: filter the survet id first!
 					var acSurveyID:ArrayCollection = new ArrayCollection();
 					for(var i:Number=0;i<this.who_safety_department.length;i++){
@@ -2754,7 +2781,7 @@
 					}
 					
 				} else if(domain=="department"){
-				
+					
 					//Step1: filter the survey id first!
 					
 					var acSurveyID:ArrayCollection = new ArrayCollection();
@@ -2877,8 +2904,8 @@
 						obj = this.who_safety.getItemAt(i);
 						if(obj.indi==dataPoint && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
 							/*if(!prof.hasOwnProperty(obj.prof)){
-								prof[obj.prof] = obj.prof;
-								trace("Prof: " + obj.prof);
+							prof[obj.prof] = obj.prof;
+							trace("Prof: " + obj.prof);
 							}*/
 							
 							
@@ -2901,7 +2928,7 @@
 								}
 								
 							} else {
-							
+								
 								if(!hm.hasKey(obj.prof)){
 									prof = new Object();
 									prof.cat = obj.prof;
@@ -2913,9 +2940,9 @@
 									prof = hm.get(obj.prof);
 									prof.opp++;
 								}
-							
+								
 							}
-
+							
 						}
 					}
 					
@@ -2924,9 +2951,9 @@
 						prof.pect = percentageFormat((prof.cnt/prof.opp)*100);
 						//trace(prof.cat + " = " + prof.pect);
 					}
-				
+					
 				} else if(domain=="department"){
-				
+					
 					
 					var acSurveyID:ArrayCollection = new ArrayCollection();
 					for(var i:Number=0;i<this.who_safety_department.length;i++){
@@ -3022,7 +3049,7 @@
 				//someobject.sometextfield.text = formattedString;
 				
 			}
-
+			
 			
 			public function doAnalyticByAction(indi:String, privateYM:String=""):ArrayCollection{
 				
@@ -3080,7 +3107,7 @@
 					//trace(obj.end_date);
 					//hr/hw/missed/gloved
 				}
-
+				
 				acAnalytic.addItem(catHR);
 				acAnalytic.addItem(catHW);
 				acAnalytic.addItem(catMissed);
@@ -3130,9 +3157,9 @@
 				var acReport:ArrayCollection = new ArrayCollection();
 				acReport.addItem("Home");
 				acReport.addItem("Adherence Dashboard");
-				acReport.addItem("Opportunity vs. Adherence by Ward/Facility");
-				acReport.addItem("Opportunity vs. Adherence by Profession");
-				acReport.addItem("Opportunity vs. Adherence by Moments");
+				acReport.addItem("Compliance By Ward");
+				acReport.addItem("Compliance By Profession");
+				acReport.addItem("Compliance By Moment");
 				acReport.addItem("Average Action by Moments");
 				acReport.addItem("Ward/Facility Compliance Summary");
 				acReport.addItem("Progress Report");
@@ -3140,132 +3167,135 @@
 				acReport.addItem("Aseptic Procedure");
 				acReport.addItem("Missed with Reason");
 				acReport.addItem("Leaderboard");
-				acReport.addItem("Ward Facility");
+//				acReport.addItem("Ward Facility");
 				acReport.addItem("Quarter Report By Moment");
 				acReport.addItem("Quarter Report for Overall");
-				acReport.addItem("Quarter Report By Job Category");
+				acReport.addItem("Quarter Report By Profession");
+				acReport.addItem("Overall Compliance - Quarterly");
+				acReport.addItem("Overall Compliance Report By Profession - Quarterly");
+				acReport.addItem("Overall Compliance Report By Moment - Quarterly");
 				
 				btnReport.dataProvider = acReport;
 				btnReport.selectedIndex=1;
 				//btnReport.visible = true;
 				
 				//fetch configure, xml. update reporrt!!!!
-
+				
 				//try{
-					
-//					var file:File = File.applicationStorageDirectory.resolvePath("result.data");
-					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
-					if(file.exists){
-						var stream:FileStream = new FileStream()
-						stream.open(file, FileMode.READ);
-//						this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(stream.readUTFBytes(stream.bytesAvailable).toString(), Constants.getLicenseKey().substring(0,16)) + "</report>";		
-						this.fetchXMLData = stream.readUTFBytes(stream.bytesAvailable).toString();						
-						trace("result.data " + this.fetchXMLData);
+				
+				//					var file:File = File.applicationStorageDirectory.resolvePath("result.data");
+				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+				if(file.exists){
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					//						this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(stream.readUTFBytes(stream.bytesAvailable).toString(), Constants.getLicenseKey().substring(0,16)) + "</report>";		
+					this.fetchXMLData = stream.readUTFBytes(stream.bytesAvailable).toString();						
+					trace("result.data " + this.fetchXMLData);
+				}
+				
+				
+				var xml:XML = new XML(this.fetchXMLData);
+				this.yearMonthXML = new XMLListCollection(xml.months.month);//.month;
+				var sort:Sort = new Sort();
+				sort.compareFunction = monthSort;
+				this.yearMonthXML.sort = sort;
+				this.yearMonthXML.refresh();
+				
+				
+				//btnYM.dataProvider = this.yearMonthXML;
+				//this.observerXML = new XMLListCollection(xml.observers.observer);//.observer;
+				
+				
+				//add country code by alfred - 2015-07-20
+				if(xml.hospital.@hosp_country!=undefined){
+					this.countryCode = xml.hospital.@hosp_country;
+				}
+				trace("Country Code: " + this.countryCode);
+				
+				
+				//store progress config separate file
+				//<?xml version=\"1.0\" encoding=\"utf-8\"?>
+				var sbProgress:String = "<reports>";
+				sbProgress += "<profprogress>" + new XMLListCollection(xml.profprogress.profp).toString() + "</profprogress>";
+				sbProgress += "<deptprogress>" + new XMLListCollection(xml.deptprogress.deptp).toString() + "</deptprogress>";
+				
+				//added 2015-08-10 for observer performance report
+				sbProgress += "<obperf>" + new XMLListCollection(xml.obperf.perf).toString() + "</obperf>";
+				//added 2015-08-11 for profession name adherence report
+				sbProgress += "<profnamerpt>" + new XMLListCollection(xml.profnameadh.profname).toString() + "</profnamerpt>";
+				
+				sbProgress += "</reports>";
+				
+				trace("****************PROGRESS DATA****************");
+				trace(new XMLListCollection(xml.profnameadh.profname).toString());
+				
+				trace("ORIGINAL: " + sbProgress);
+				
+				var s:String = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + sbProgress;
+				Constants.progressData = s;
+				
+				//					var progressFile = File.applicationStorageDirectory.resolvePath("progress.data");
+				//					var progressFileStream:FileStream = new FileStream();
+				//					progressFileStream.open(progressFile, FileMode.WRITE);
+				
+				
+				//do encrypt data
+				//					kdata = Hex.toArray(Hex.fromString(Constants.getLicenseKey().substring(0,16))); //plain text
+				//					var pad:IPad = new PKCS5;
+				//					var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
+				//					
+				//					var data:ByteArray = Hex.toArray(Hex.fromString(sbProgress));
+				//					pad.setBlockSize(mode.getBlockSize());
+				//					mode.encrypt(data);
+				//end encrypt data
+				
+				//					progressFileStream.writeUTFBytes(Base64.encodeByteArray(data)); //enc xml result data
+				//					progressFileStream.close();
+				//end do encrypt data
+				
+				btnYM.selectedIndex = 0;
+				
+				try{
+					this.selectedYM = this.btnYM.selectedItem.@value;
+					this.selectedYMLabel = this.btnYM.selectedItem.@label;
+				}catch(e:Error){
+					trace("e selectedYM: " + e.toString());
+				}
+				
+				trace("selectedYM: " + this.selectedYM);
+				
+				
+				
+				this.doUpdateReport();
+				
+				
+				//laod the department listing...
+				var xmlDepartment:XMLListCollection = new XMLListCollection(xml.depts.dept);
+				
+				for each (var node : XML in xmlDepartment){
+					var obj:Object = new Object();
+					obj.label = node.@label;
+					trace("display department label: " + obj.label);
+					obj.selected = false;
+					if(obj.label!="All"){
+						acDepartment.addItem(obj);
+						trace("acDepartment: " + obj.label);
 					}
-					
-					
-					var xml:XML = new XML(this.fetchXMLData);
-					this.yearMonthXML = new XMLListCollection(xml.months.month);//.month;
-					var sort:Sort = new Sort();
-					sort.compareFunction = monthSort;
-					this.yearMonthXML.sort = sort;
-					this.yearMonthXML.refresh();
-					
-					
-					//btnYM.dataProvider = this.yearMonthXML;
-					//this.observerXML = new XMLListCollection(xml.observers.observer);//.observer;
-					
-					
-					//add country code by alfred - 2015-07-20
-					if(xml.hospital.@hosp_country!=undefined){
-						this.countryCode = xml.hospital.@hosp_country;
+				}
+				
+				//load the profession lising
+				var xmlProfession:XMLListCollection = new XMLListCollection(xml.profprogress.profp);
+				for each(var node:XML in xmlProfession){
+					var obj:Object = new Object();
+					obj.label = node.@prof;
+					if(obj.label!="All"){
+						acProfession.addItem(obj);
+						trace("acProfession: " + obj.label);
 					}
-					trace("Country Code: " + this.countryCode);
-					
-					
-					//store progress config separate file
-					//<?xml version=\"1.0\" encoding=\"utf-8\"?>
-					var sbProgress:String = "<reports>";
-					sbProgress += "<profprogress>" + new XMLListCollection(xml.profprogress.profp).toString() + "</profprogress>";
-					sbProgress += "<deptprogress>" + new XMLListCollection(xml.deptprogress.deptp).toString() + "</deptprogress>";
-					
-					//added 2015-08-10 for observer performance report
-					sbProgress += "<obperf>" + new XMLListCollection(xml.obperf.perf).toString() + "</obperf>";
-					//added 2015-08-11 for profession name adherence report
-					sbProgress += "<profnamerpt>" + new XMLListCollection(xml.profnameadh.profname).toString() + "</profnamerpt>";
-					
-					sbProgress += "</reports>";
-					
-					trace("****************PROGRESS DATA****************");
-					trace(new XMLListCollection(xml.profnameadh.profname).toString());
-					
-					trace("ORIGINAL: " + sbProgress);
-					
-					var s:String = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + sbProgress;
-					Constants.progressData = s;
-					
-//					var progressFile = File.applicationStorageDirectory.resolvePath("progress.data");
-//					var progressFileStream:FileStream = new FileStream();
-//					progressFileStream.open(progressFile, FileMode.WRITE);
-					
-					
-					//do encrypt data
-//					kdata = Hex.toArray(Hex.fromString(Constants.getLicenseKey().substring(0,16))); //plain text
-//					var pad:IPad = new PKCS5;
-//					var mode:ICipher = Crypto.getCipher("aes-cbc", kdata, pad);
-//					
-//					var data:ByteArray = Hex.toArray(Hex.fromString(sbProgress));
-//					pad.setBlockSize(mode.getBlockSize());
-//					mode.encrypt(data);
-					//end encrypt data
-					
-//					progressFileStream.writeUTFBytes(Base64.encodeByteArray(data)); //enc xml result data
-//					progressFileStream.close();
-					//end do encrypt data
-					
-					btnYM.selectedIndex = 0;
-					
-					try{
-						this.selectedYM = this.btnYM.selectedItem.@value;
-						this.selectedYMLabel = this.btnYM.selectedItem.@label;
-					}catch(e:Error){
-						trace("e selectedYM: " + e.toString());
-					}
-					
-					trace("selectedYM: " + this.selectedYM);
-					
-					
-					
-					this.doUpdateReport();
-					
-					
-					//laod the department listing...
-					var xmlDepartment:XMLListCollection = new XMLListCollection(xml.depts.dept);
-					
-					for each (var node : XML in xmlDepartment){
-						var obj:Object = new Object();
-						obj.label = node.@label;
-						trace("display department label: " + obj.label);
-						obj.selected = false;
-						if(obj.label!="All"){
-							acDepartment.addItem(obj);
-							trace("acDepartment: " + obj.label);
-						}
-					}
-					
-					//load the profession lising
-					var xmlProfession:XMLListCollection = new XMLListCollection(xml.profprogress.profp);
-					for each(var node:XML in xmlProfession){
-						var obj:Object = new Object();
-						obj.label = node.@prof;
-						if(obj.label!="All"){
-							acProfession.addItem(obj);
-							trace("acProfession: " + obj.label);
-						}
-					}
-					
-
-					
+				}
+				
+				
+				
 				//}catch(e:Error){
 				//	trace(e.toString());
 				//}
@@ -3486,36 +3516,69 @@
 				
 				//decryp key
 				// 18fd975d3f27ff11
-
+				
 				//03 - ready for download server - print out => ready_download
-				trace("httpReport_result new: " + evt.result.toString());
+//				trace("httpReport_result new: " + evt.result.toString());
+				if(evt.result.toString()=="wait"||evt.result.toString()=="pending"){
+					trace("I am waiting");
+					this.restart = 1;
+//					this.doLicenseOrLogin();
+//					this.init();
+					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
+					var stream:FileStream = new FileStream()
+					stream.open(file, FileMode.READ);
+					var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+					trace(s.split("\n")[0]);
+					trace(s.split("\n")[1]);
+					Constants.setHospitalId(s.split("\n")[1]);
+					
+					//start auto fetch latest data
+					if(this.isConnected){
+						trace("post doReprot1 + license Key " + s.split("\n")[0]);
+						
+						savingAlert(); //pop loading dialog...
+						
+						httpReport.requestTimeout = 120; //120 seconds, 2 minutes
+						httpReport.url = Constants.url_mapi;
+						httpReport.method="POST";
+						httpReport.send({act:"doReport", v:"2.0", key:s.split("\n")[0]});
+						
+						
+						
+					} else {
+						//doLoadXMLData(); //load from local device
+						//										savingAlert();
+						fetchLocalData();
+						//										doStart(); //load xml data offline!
+					}
+				}
 				if(evt.result.toString().indexOf("ready_download")!=-1){
 					//initDownload();
 					
 					acDownload.removeAll();
 					
-					trace("trigger download files...");
+//					trace("trigger download files...");
 					
-					trace("get enc file + crc32 by month break listing...");
+//					trace("get enc file + crc32 by month break listing...");
 					
 					var jsonFiles:String = evt.result.toString().split("|")[1];
 					
 					var rawData = evt.result.toString().split("|")[2];
-					trace("raw data: "+ rawData);
+//					trace("raw data: "+ rawData);
 					
 					//all the progress data month, prof/dept data configs data
 					var resultData = evt.result.toString().split("|")[3];
-					trace("result data: " + resultData);
+//					trace("result data: " + resultData);
 					
 					this.fetchXMLData = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(resultData, Constants.getLicenseKey().substring(0,16)) + "</report>";						
-					trace("result.data " + this.fetchXMLData);
-
+//					trace("result.data " + this.fetchXMLData);
+					
 					//decode recieved data and store the decoded data
-//					var fileStream:FileStream = new FileStream(); 
-//					var file:File = File.applicationStorageDirectory.resolvePath("raw.data");
-//					fileStream.open(file, FileMode.WRITE);
-//					fileStream.writeUTFBytes(rawData); //enc xml raw data [json]
-//					fileStream.close();
+					//					var fileStream:FileStream = new FileStream(); 
+					//					var file:File = File.applicationStorageDirectory.resolvePath("raw.data");
+					//					fileStream.open(file, FileMode.WRITE);
+					//					fileStream.writeUTFBytes(rawData); //enc xml raw data [json]
+					//					fileStream.close();
 					
 					var rawjsonStr:String = AESCrypto.decrypt(rawData, Constants.getLicenseKey().substring(0,16));
 					jsonRaw = JSON.parse( rawjsonStr );
@@ -3555,14 +3618,14 @@
 					unique_dates.source.reverse();
 					unique_dates.refresh();
 					
-//					for(var k:int=0;k<unique_dates.length;k++) {
-//						trace(unique_dates[k]);
-//					}
+					//					for(var k:int=0;k<unique_dates.length;k++) {
+					//						trace(unique_dates[k]);
+					//					}
 					
 					var newDate:Date = new Date();
-
+					
 					if(unique_dates.length > 0) {
-						trace("\n"+unique_dates[0]);
+//						trace("\n"+unique_dates[0]);
 						startMonth = int(unique_dates[0].split('-')[1]);
 						startYear = int(unique_dates[0].split('-')[0]);
 					} else {
@@ -3573,9 +3636,9 @@
 					//get the current month and year
 					currentMonth = newDate.month + 1;
 					currentYear = newDate.fullYear;
-					trace(currentMonth + "    -------    " + currentYear);
+//					trace(currentMonth + "    -------    " + currentYear);
 					
-//					shardList.addItem("report_16_201610.shard");
+					//					shardList.addItem("report_16_201610.shard");
 					//generate the filenames for the months that fall in between start month/year and current moth/year
 					//determine the year/month format eg. 20167 (July 2016)
 					var yearDiff:int = int(currentYear) - int(startYear);
@@ -3610,7 +3673,7 @@
 					
 					
 					
-					trace("try out skali :"+ AESCrypto.decrypt(rawData, Constants.getLicenseKey().substring(0,16)));	
+//					trace("try out skali :"+ AESCrypto.decrypt(rawData, Constants.getLicenseKey().substring(0,16)));	
 					
 					var fileStream:FileStream = new FileStream(); 
 					var file:File = File.applicationStorageDirectory.resolvePath("raw.json");
@@ -3618,10 +3681,10 @@
 					fileStream.writeUTFBytes(rawjsonStr); //decoded json data
 					fileStream.close();
 					
-//					file = File.applicationStorageDirectory.resolvePath("result.data");
-//					fileStream.open(file, FileMode.WRITE);
-//					fileStream.writeUTFBytes(resultData); //enc xml result data
-//					fileStream.close();
+					//					file = File.applicationStorageDirectory.resolvePath("result.data");
+					//					fileStream.open(file, FileMode.WRITE);
+					//					fileStream.writeUTFBytes(resultData); //enc xml result data
+					//					fileStream.close();
 					
 					file = File.applicationStorageDirectory.resolvePath("result.xml");
 					fileStream.open(file, FileMode.WRITE);
@@ -3630,7 +3693,7 @@
 					
 					//reading json into array
 					//trace("json only: "+ evt.result.toString().substring(15));
-					trace("json file list: " + jsonFiles);
+//					trace("json file list: " + jsonFiles);
 					//var hhFileObject:Array = JSON.parse(evt.result.toString().substring(15)) as Array;
 					var hhFileObject:Array = JSON.parse(jsonFiles) as Array;
 					
@@ -3649,11 +3712,11 @@
 					for(var i:int=0;i<shardList.length;i++){
 						file = File.applicationStorageDirectory.resolvePath(shardList[i]);
 						//TODO: file check if exists
-						trace("check fn: " + shardList[i]);
+//						trace("check fn: " + shardList[i]);
 						var toUpdate:Boolean;
 						
 						if(file.exists) {
-							trace(file.modificationDate + "          " + file.creationDate + "         " + file.name);
+//							trace(file.modificationDate + "          " + file.creationDate + "         " + file.name);
 							var justName:String = file.name.split(".")[0];
 							var startIndex:int = justName.lastIndexOf("_") + 1;
 							var justDate:String = justName.substr(startIndex);
@@ -3667,8 +3730,8 @@
 							}
 							
 							var fileDt:Date = new Date(fileYear, fileMonth);
-							trace(justDate + "      " + fileDt);
-							trace(ObjectUtil.dateCompare(file.modificationDate, fileDt));//if compare == -1 then add
+//							trace(justDate + "      " + fileDt);
+//							trace(ObjectUtil.dateCompare(file.modificationDate, fileDt));//if compare == -1 then add
 							
 							if(ObjectUtil.dateCompare(file.modificationDate, fileDt) == -1) {
 								toUpdate = true;
@@ -3677,39 +3740,39 @@
 						//trace("fn: " + obj.crc32);
 						if(!file.exists){
 							acDownload.addItem(shardList[i]);
-							trace("dl: " + shardList[i]);
+//							trace("dl: " + shardList[i]);
 						} else if(file.exists && (file.name == latestRawData || file.name == latestReport || toUpdate)) {
 							acDownload.addItem(shardList[i]);
-							trace("re-dl: " + shardList[i]);
+//							trace("re-dl: " + shardList[i]);
 						}
 						
 					}
 					
-//					for(var i:int=0;i<hhFileObject.length;i++){
-//						obj = hhFileObject[i];
-//						//filter to compare then only download...
-//						
-//						file = File.applicationStorageDirectory.resolvePath(obj.fn);
-//						//TODO: file check if exists
-//						trace("check fn: " + obj.fn);
-//						//trace("fn: " + obj.crc32);
-//						if(!file.exists){
-//							acDownload.addItem(obj.fn);
-//							trace("dl: " + obj.fn);
-//						} else if(Util.crc32Check(obj.fn)!=obj.crc32) {
-//							acDownload.addItem(obj.fn);
-//							trace("dl crc32: " + obj.fn);
-//						}
-						
-						
-						//json only: [{"crc32":"9ffed9e","fn":"report_111_20151.shard"},{"crc32":"3f83245c","fn":"report_111_20152.shard"},{"crc32":"5c672063","fn":"report_111_20153.shard"},{"crc32":"6be337f4","fn":"report_111_20154.shard"},{"crc32":"f1da68cb","fn":"report_111_20155.shard"},{"crc32":"13c76724","fn":"report_111_20156.shard"},{"crc32":"fc1c584a","fn":"report_111_20157.shard"},{"crc32":"9296f18f","fn":"report_111_20158.shard"},{"crc32":"e460c819","fn":"report_111_20149.shard"},{"crc32":"2928616a","fn":"report_111_20159.shard"},{"crc32":"83fe13c5","fn":"report_111_201410.shard"},{"crc32":"2a54f2d0","fn":"report_111_201510.shard"},{"crc32":"fa72153a","fn":"report_111_201411.shard"},{"crc32":"b0cbb5f2","fn":"report_111_201412.shard"}]
-						//len: 14
-						//fn: report_111_20151.shard
-						//fn: 9ffed9e
-
-						
-//					}
-//					acDownload.addItem("report_16_20167.shard");
+					//					for(var i:int=0;i<hhFileObject.length;i++){
+					//						obj = hhFileObject[i];
+					//						//filter to compare then only download...
+					//						
+					//						file = File.applicationStorageDirectory.resolvePath(obj.fn);
+					//						//TODO: file check if exists
+					//						trace("check fn: " + obj.fn);
+					//						//trace("fn: " + obj.crc32);
+					//						if(!file.exists){
+					//							acDownload.addItem(obj.fn);
+					//							trace("dl: " + obj.fn);
+					//						} else if(Util.crc32Check(obj.fn)!=obj.crc32) {
+					//							acDownload.addItem(obj.fn);
+					//							trace("dl crc32: " + obj.fn);
+					//						}
+					
+					
+					//json only: [{"crc32":"9ffed9e","fn":"report_111_20151.shard"},{"crc32":"3f83245c","fn":"report_111_20152.shard"},{"crc32":"5c672063","fn":"report_111_20153.shard"},{"crc32":"6be337f4","fn":"report_111_20154.shard"},{"crc32":"f1da68cb","fn":"report_111_20155.shard"},{"crc32":"13c76724","fn":"report_111_20156.shard"},{"crc32":"fc1c584a","fn":"report_111_20157.shard"},{"crc32":"9296f18f","fn":"report_111_20158.shard"},{"crc32":"e460c819","fn":"report_111_20149.shard"},{"crc32":"2928616a","fn":"report_111_20159.shard"},{"crc32":"83fe13c5","fn":"report_111_201410.shard"},{"crc32":"2a54f2d0","fn":"report_111_201510.shard"},{"crc32":"fa72153a","fn":"report_111_201411.shard"},{"crc32":"b0cbb5f2","fn":"report_111_201412.shard"}]
+					//len: 14
+					//fn: report_111_20151.shard
+					//fn: 9ffed9e
+					
+					
+					//					}
+					//					acDownload.addItem("report_16_20167.shard");
 					
 					if(acDownload.length>0){
 						intTotal = acDownload.length;
@@ -3718,7 +3781,7 @@
 						hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDone);
 						hhc.initDownload(acDownload.getItemAt(intDownload).toString());
 					} else {
-					
+						
 						doCompleteSync();
 					}
 					
@@ -3735,7 +3798,7 @@
 					
 				} else if(evt.result.toString()!="wait"
 					&& evt.result.toString()!="pending"){
-				
+					
 					var allEnc:Array = evt.result.toString().split("|");
 					
 					
@@ -3755,14 +3818,14 @@
 						
 						
 					} else {
-					
-					
+						
+						
 						
 						this.pb.setProgress(80, 100);
 						
 						this.pb.label = "downloaded complete";
 						
-						trace("enc dec for result.data | raw.data");
+//						trace("enc dec for result.data | raw.data");
 						
 						var enc:String = allEnc[0]; //StringUtil.trim(evt.result.toString());
 						
@@ -3780,7 +3843,7 @@
 						
 						
 						//doLoadXMLData();
-					
+						
 						timer.stop();
 						//saving.close(); //loaded of data
 						
@@ -3810,7 +3873,7 @@
 			
 			
 			public function doGraphSelection(s:String):void{
-			
+				
 				trace("do graph selection: " + s);
 				
 				//TODO: graph navigation UI
@@ -3819,7 +3882,7 @@
 				//home screen
 				if(s=="home"){
 					/*
-				//if(s==Constants.SCREEN_HOME){
+					//if(s==Constants.SCREEN_HOME){
 					
 					//this.lblBg.text = "SEMMEL";
 					//this.currentState = "ModulesScreen";
@@ -3930,15 +3993,15 @@
 					//if data is large many column
 					//not using Department Large Anymore!
 					//if(this.lblBg.text.indexOf("Generating report")!=-1){
-						//viewstack1.addChild(graphHHOByDepartmentLarge);
-						//graphHHOByDepartmentLarge.fetchLocalXML();
+					//viewstack1.addChild(graphHHOByDepartmentLarge);
+					//graphHHOByDepartmentLarge.fetchLocalXML();
 					//} else {
-						viewstack1.addChild(graphHHOByDepartment);
-						graphHHOByDepartment.fetchLocalXML();
+					viewstack1.addChild(graphHHOByDepartment);
+					graphHHOByDepartment.fetchLocalXML();
 					//}
 					
 					
-					this.lblBg.text = "Opportunity vs. Adherence by Ward/Facility";
+					this.lblBg.text = "Compliance By Ward";
 					
 					//graphHHOByDepartment.fetchLocalXML();
 					
@@ -3955,7 +4018,7 @@
 					
 					
 					
-					this.lblBg.text = "Opportunity vs. Adherence by Profession";
+					this.lblBg.text = "Compliance By Profession";
 					
 					graphHHOByProfession.fetchLocalXML();
 					//this.lblAction.text = "Opportunity vs. Adherence by Moments >";
@@ -3966,17 +4029,17 @@
 					viewstack1.visible=true;
 					viewstack1.removeAll();
 					viewstack1.addChild(graphHHOByIndication);
-					this.lblBg.text = "Opportunity vs. Adherence by Moments";
+					this.lblBg.text = "Compliance By Moment";
 					
 					graphHHOByIndication.fetchLocalXML();
 				}
 				
 				
 				/*if(s=="graph5"){ //by Opp. vs Action
-					viewstack1.visible=true;
-					viewstack1.removeAll();
-					viewstack1.addChild(new GraphOpportunityVsAction);
-					this.lblBg.text = "Opportunity vs. Action";
+				viewstack1.visible=true;
+				viewstack1.removeAll();
+				viewstack1.addChild(new GraphOpportunityVsAction);
+				this.lblBg.text = "Opportunity vs. Action";
 				}*/
 				
 				if(s=="graph5"){ //by Avg Action
@@ -4009,7 +4072,7 @@
 					pie.fetchLocalXML();
 					//this.lblAction.text = "Opportunity vs. Adherence by Moments >";
 				}
-
+				
 				//graph 8 - 
 				if(s=="graph8"){
 					viewstack1.visible=true;
@@ -4020,7 +4083,7 @@
 					//TODO: 5 moments + adherence summary calculation
 					
 					graphComplianceByMoment.fetchLocalXML();
-
+					
 				}
 				
 				//graph 9 - 
@@ -4048,7 +4111,45 @@
 					
 				}
 				
+				//Graph 11
+				if(s=="graph11"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphQuarterReport);
+					this.lblBg.text = "Overall Compliance - Quarterly";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphQuarterReport.fetchLocalXML();
+					
+				}
 				
+				//Graph 12
+				if(s=="graph12"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphJobReport);
+					this.lblBg.text = "Overall Compliance Report By Profession - Quarterly";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphJobReport.fetchLocalXML();
+					
+				}
+				
+				//Graph 13
+				if(s=="graph13"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphMomentReport);
+					this.lblBg.text = "Overall Compliance Report By Moment - Quarterly";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphMomentReport.fetchLocalXML();
+					
+				}
+
 				//progress screen
 				if(s=="progress"){
 					viewstack1.visible=true;
@@ -4103,9 +4204,9 @@
 			
 			protected function lblAction_clickHandler(event:MouseEvent):void
 			{
-
+				
 				// TODO Auto-generated method stub
-
+				
 				//doSwitch here...
 				trace("do click action...");
 				
@@ -4113,8 +4214,8 @@
 				viewstack1.visible=true;
 				viewstack1.removeAll();
 				viewstack1.addChild(new GraphHHOByProfession);
-
-
+				
+				
 			}
 			
 			
@@ -4135,13 +4236,13 @@
 					isConnected = false;
 				}
 				
-//				manually running in the offline mode ... not required in the production version
-//				isConnected = false;
+				//				manually running in the offline mode ... not required in the production version
+				//				isConnected = false;
 				
 				isNetworkCheck = true;
 				
 				if(this.currentState=="State1"){
-				
+					
 					var file:File = File.applicationStorageDirectory.resolvePath("license.key");
 					if(file.exists){
 						trace("found license.key");
@@ -4172,18 +4273,18 @@
 							this.currentState = "LoginState";
 							
 							//update logo here AMOL
-//							trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
-//							imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
+							//							trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
+							//							imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
 						}
-					
+						
 					} else {
-					
+						
 						pbCheck.visible = false;
 						btnSubmit.visible = true;
 						txtLicense.visible = true;
-					
+						
 					}
-				
+					
 				}
 				
 			}
@@ -4205,14 +4306,14 @@
 			
 			/*protected function btnObserver_changeHandler(event:IndexChangeEvent):void
 			{
-				// TODO Auto-generated method stub
-				trace("do change obs");	
-				trace(btnObserver.selectedItem.@value);
-				
-				this.selectedObserver = btnObserver.selectedItem.@value;
-				
-				doUpdateReport();
-				
+			// TODO Auto-generated method stub
+			trace("do change obs");	
+			trace(btnObserver.selectedItem.@value);
+			
+			this.selectedObserver = btnObserver.selectedItem.@value;
+			
+			doUpdateReport();
+			
 			}*/
 			
 			protected function btnReport_changeHandler(event:IndexChangeEvent):void
@@ -4255,16 +4356,23 @@
 					} else if(btnReport.selectedIndex==11){
 						doGraphSelection("leaderboard");
 					} else if(btnReport.selectedIndex==12){
-						doGraphSelection("graph7");
-					} else if(btnReport.selectedIndex==13){
 						btnYM.visible = false;
 						doGraphSelection("graph8");
-					} else if(btnReport.selectedIndex==14){
+					} else if(btnReport.selectedIndex==13){
 						btnYM.visible = false;
 						doGraphSelection("graph9");
-					} else if(btnReport.selectedIndex==15){
+					} else if(btnReport.selectedIndex==14){
 						btnYM.visible = false;
 						doGraphSelection("graph10");
+					} else if(btnReport.selectedIndex==15){
+						btnYM.visible = false;
+						doGraphSelection("graph11");
+					} else if(btnReport.selectedIndex==16){
+						btnYM.visible = false;
+						doGraphSelection("graph12");
+					} else if(btnReport.selectedIndex==17){
+						btnYM.visible = false;
+						doGraphSelection("graph13");
 					}
 					
 				} else if(this.CURRENT_MODULE == Constants.MODULE_ENVIRONMENT) {
@@ -4292,35 +4400,35 @@
 			}
 			
 			
-//			private function doUpdateReport():void{
-//			
-//				if(btnReport.selectedIndex==1){
-//					doGraphSelection("graph1");	
-//				} else if(btnReport.selectedIndex==2){
-//					doGraphSelection("graph2");
-//				} else if(btnReport.selectedIndex==3){
-//					doGraphSelection("graph3");
-//				} else if(btnReport.selectedIndex==4){
-//					doGraphSelection("graph4");
-//				} else if(btnReport.selectedIndex==5){
-//					doGraphSelection("graph5");
-//				} else if(btnReport.selectedIndex==6){
-//					doGraphSelection("graph6");
-//				} else if(btnReport.selectedIndex==7){
-//					doGraphSelection("progress");
-//				} else if(btnReport.selectedIndex==8){
-//					doGraphSelection("profname");
-//				} else if(btnReport.selectedIndex==9){
-//					doGraphSelection("procedure");
-//				} else if(btnReport.selectedIndex==10){
-//					doGraphSelection("missedreason");
-//				} else if(btnReport.selectedIndex==11){
-//					doGraphSelection("leaderboard");
-//				} else if(btnReport.selectedIndex==12){
-//					doGraphSelection("graph7");
-//				}
-//			
-//			}
+			//			private function doUpdateReport():void{
+			//			
+			//				if(btnReport.selectedIndex==1){
+			//					doGraphSelection("graph1");	
+			//				} else if(btnReport.selectedIndex==2){
+			//					doGraphSelection("graph2");
+			//				} else if(btnReport.selectedIndex==3){
+			//					doGraphSelection("graph3");
+			//				} else if(btnReport.selectedIndex==4){
+			//					doGraphSelection("graph4");
+			//				} else if(btnReport.selectedIndex==5){
+			//					doGraphSelection("graph5");
+			//				} else if(btnReport.selectedIndex==6){
+			//					doGraphSelection("graph6");
+			//				} else if(btnReport.selectedIndex==7){
+			//					doGraphSelection("progress");
+			//				} else if(btnReport.selectedIndex==8){
+			//					doGraphSelection("profname");
+			//				} else if(btnReport.selectedIndex==9){
+			//					doGraphSelection("procedure");
+			//				} else if(btnReport.selectedIndex==10){
+			//					doGraphSelection("missedreason");
+			//				} else if(btnReport.selectedIndex==11){
+			//					doGraphSelection("leaderboard");
+			//				} else if(btnReport.selectedIndex==12){
+			//					doGraphSelection("graph7");
+			//				}
+			//			
+			//			}
 			
 			public function onDownloadComplete(e:Event):void {  
 				// get the index position of the last forward slash in the file path  
@@ -4366,32 +4474,32 @@
 			
 			/*protected function btnPrintReport_clickHandler(event:MouseEvent):void
 			{
-				
-				//report download BIRT function
-				btnPrintReport.label = "wait...";
-				btnPrintReport.enabled = false;
-				trace("download report...");
-				
-				//hospital
-				//hid
-				//year
-				//month
-				//month_name
-				
-				urlRequest.method = URLRequestMethod.POST;  
-				var variables : URLVariables = new URLVariables();  
-				variables.hospital = "Raydar Hospital";  
-				variables.hid = 16;
-				variables.year = 2015;
-				variables.month = 6;
-				variables.month_name = "June";
-				
-				urlRequest.data = variables;  
-				
-				urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
-				urlStream.load(urlRequest);  
-				
-					
+			
+			//report download BIRT function
+			btnPrintReport.label = "wait...";
+			btnPrintReport.enabled = false;
+			trace("download report...");
+			
+			//hospital
+			//hid
+			//year
+			//month
+			//month_name
+			
+			urlRequest.method = URLRequestMethod.POST;  
+			var variables : URLVariables = new URLVariables();  
+			variables.hospital = "Raydar Hospital";  
+			variables.hid = 16;
+			variables.year = 2015;
+			variables.month = 6;
+			variables.month_name = "June";
+			
+			urlRequest.data = variables;  
+			
+			urlStream.addEventListener(Event.COMPLETE, onDownloadComplete);  
+			urlStream.load(urlRequest);  
+			
+			
 			}*/
 			
 			protected function btnLicense_clickHandler(event:MouseEvent):void
@@ -4404,19 +4512,19 @@
 			protected function alertEventHandler(event:CloseEvent):void {
 				if(event.detail == Alert.YES) {
 					//delete license
-//					if(File.applicationStorageDirectory.resolvePath("license.key").exists){
-//						File.applicationStorageDirectory.resolvePath("license.key").deleteFile();
-//					}
-//					
-//					if(File.applicationStorageDirectory.resolvePath("user.key").exists){
-//						File.applicationStorageDirectory.resolvePath("user.key").deleteFile();
-//					}
-//					if(File.applicationStorageDirectory.resolvePath("result.data").exists){
-//						File.applicationStorageDirectory.resolvePath("result.data").deleteFile();
-//					}
-//					if(File.applicationStorageDirectory.resolvePath("asset").exists){
-//						File.applicationStorageDirectory.resolvePath("asset").deleteDirectory(true);
-//					}
+					//					if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+					//						File.applicationStorageDirectory.resolvePath("license.key").deleteFile();
+					//					}
+					//					
+					//					if(File.applicationStorageDirectory.resolvePath("user.key").exists){
+					//						File.applicationStorageDirectory.resolvePath("user.key").deleteFile();
+					//					}
+					//					if(File.applicationStorageDirectory.resolvePath("result.data").exists){
+					//						File.applicationStorageDirectory.resolvePath("result.data").deleteFile();
+					//					}
+					//					if(File.applicationStorageDirectory.resolvePath("asset").exists){
+					//						File.applicationStorageDirectory.resolvePath("asset").deleteDirectory(true);
+					//					}
 					
 					var fileslist:Array = File.applicationStorageDirectory.getDirectoryListing();
 					
@@ -4551,7 +4659,6 @@
 						
 						httpAuth.url = Constants.url_mapi;
 						httpAuth.method="POST";
-						
 						var file:File = File.applicationStorageDirectory.resolvePath("license.key");
 						var stream:FileStream = new FileStream()
 						stream.open(file, FileMode.READ);
@@ -4632,9 +4739,9 @@
 										
 									} else {
 										//doLoadXMLData(); //load from local device
-//										savingAlert();
+										//										savingAlert();
 										fetchLocalData();
-//										doStart(); //load xml data offline!
+										//										doStart(); //load xml data offline!
 									}
 									
 									//end auto fetch latest data
@@ -4750,64 +4857,64 @@
 				
 				if(evt.target.returnData!=""){
 					//try {
-						//var json:JSONDecoder = new JSONDecoder();
-						//var obj:Object = j.decode(evt.target.returnData);
+					//var json:JSONDecoder = new JSONDecoder();
+					//var obj:Object = j.decode(evt.target.returnData);
+					
+					//note: for HH need replace "ready_download|"
+					
+					//var hhFileObject:Array = JSON.parse(evt.target.returnData.replace("ready_download|", "")) as Array;
+					var hhFileObject:Array = JSON.parse(downloadList) as Array;
+					
+					trace("len hh file: " + hhFileObject.length.toString());
+					var obj:Object = null;
+					
+					this.pb.setProgress(80, 100);
+					this.pb.label = "Checking for updates...";
+					
+					for(var i:Number=0;i<hhFileObject.length;i++){
+						obj = hhFileObject[i];
+						trace("obj: " + obj);
+						trace("crc: " + obj.crc32);
+						trace("fn: " + obj.fn);
 						
-						//note: for HH need replace "ready_download|"
-						
-						//var hhFileObject:Array = JSON.parse(evt.target.returnData.replace("ready_download|", "")) as Array;
-						var hhFileObject:Array = JSON.parse(downloadList) as Array;
-						
-						trace("len hh file: " + hhFileObject.length.toString());
-						var obj:Object = null;
-						
-						this.pb.setProgress(80, 100);
-						this.pb.label = "Checking for updates...";
-						
-						for(var i:Number=0;i<hhFileObject.length;i++){
-							obj = hhFileObject[i];
-							trace("obj: " + obj);
-							trace("crc: " + obj.crc32);
-							trace("fn: " + obj.fn);
-							
-							if(File.applicationStorageDirectory.resolvePath(obj.fn).exists){
-								if(Util.crc32Check(obj.fn)!=obj.crc32){
-									acDownloadFile.addItem(obj.fn);
-								}
-							} else {
+						if(File.applicationStorageDirectory.resolvePath(obj.fn).exists){
+							if(Util.crc32Check(obj.fn)!=obj.crc32){
 								acDownloadFile.addItem(obj.fn);
 							}
-							
-						}
-						
-						//check file crc32 if not match trigger file to download or not exists!
-						//						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
-						//Util.crc32Check(
-						
-						//call download
-						
-						trace("file need to download hh: " + acDownloadFile.length.toString());
-						
-						intDownload=0;
-						
-						if(acDownloadFile.length>0){
-							//this.pb.setProgress(0, 100);
-							//this.pb.label = "downloading file(s) 1/" + acDownloadFile.length.toString() + "...";
-							
-							intTotalFile = acDownloadFile.length;
-							this.pb.setProgress(0, 100);
-							this.pb.label = "Downloading... 1 of " + String(intTotalFile) + " (0%)";
-							
-							hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDoneHH);
-							hhc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
-							
-							//doBatchDownload(acDownloadFile);
 						} else {
-							
-							doCompleteSyncHandHygiene();
+							acDownloadFile.addItem(obj.fn);
 						}
 						
+					}
+					
+					//check file crc32 if not match trigger file to download or not exists!
+					//						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
+					//Util.crc32Check(
+					
+					//call download
+					
+					trace("file need to download hh: " + acDownloadFile.length.toString());
+					
+					intDownload=0;
+					
+					if(acDownloadFile.length>0){
+						//this.pb.setProgress(0, 100);
+						//this.pb.label = "downloading file(s) 1/" + acDownloadFile.length.toString() + "...";
 						
+						intTotalFile = acDownloadFile.length;
+						this.pb.setProgress(0, 100);
+						this.pb.label = "Downloading... 1 of " + String(intTotalFile) + " (0%)";
+						
+						hhc.addEventListener(HandHygieneController.DOWNLOADED_EVENT, doDoneHH);
+						hhc.initDownload(acDownloadFile.getItemAt(intDownload).toString());
+						
+						//doBatchDownload(acDownloadFile);
+					} else {
+						
+						doCompleteSyncHandHygiene();
+					}
+					
+					
 					//} catch (e:Error){
 					//	trace("json parse error: " + e.toString());
 					//}
@@ -4856,7 +4963,7 @@
 							if(obj.yyyymm=="config"){
 								
 							} else {
-							
+								
 								//<month label=\"October, 2015\" value=\"201510\" />
 								if(obj.yyyymm.substring(4).length==1){
 									//oYM.label = sdfYM.format(parseDate(obj.yyyymm.substring(0,4)+"-0"+obj.yyyymm.substring(4)));
@@ -4885,7 +4992,7 @@
 						//check file crc32 if not match trigger file to download or not exists!
 						//						if(File.applicationStorageDirectory.resolvePath("license.key").exists){
 						//Util.crc32Check(
-
+						
 						//call download
 						
 						trace("file need to download env: " + acDownloadFile.length.toString());
@@ -4905,7 +5012,7 @@
 							
 							//doBatchDownload(acDownloadFile);
 						} else {
-						
+							
 							doCompleteSyncEnv();
 						}
 						
@@ -4938,7 +5045,7 @@
 			private function doSelectEnvironmentalModule():void{
 				
 				this.CURRENT_MODULE = Constants.MODULE_ENVIRONMENT;
-
+				
 				savingAlert();
 				
 				this.pb.setProgress(50, 100);
@@ -4951,7 +5058,7 @@
 				erc.addEventListener(EnvReportController.CHECKUPDATE_EVENT, doUpdateComplete);
 				
 				//return;
-
+				
 			}
 			
 			//end env module plugin
@@ -4959,26 +5066,26 @@
 			protected function windowedapplication1_stateChangeCompleteHandler(event:FlexEvent):void
 			{
 				// TODO Auto-generated method stub
-//				if(this.currentState = "State1") {
-//					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
-//					if(!file.exists){
-//						if(!this.isConnected){
-//							var alertNetwork:NetworkDialog = new NetworkDialog();
-//							alertNetwork.open(this, true);
-//							PopUpManager.centerPopUp(alertNetwork);
-//							alertNetwork.doMessage("Network Error", "Network Connection is Required");
-//							return;
-//						}
-//					} else {
-//						var stream:FileStream = new FileStream()
-//						stream.open(file, FileMode.READ);
-//						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
-//						trace(s.split("\n")[0]);
-//						trace(s.split("\n")[1]);
-//						user = AESCrypto.decrypt(s.split("\n")[0], Constants.getLicenseKey().substring(0,16));
-//						stream.close();
-//					}
-//				}
+				//				if(this.currentState = "State1") {
+				//					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
+				//					if(!file.exists){
+				//						if(!this.isConnected){
+				//							var alertNetwork:NetworkDialog = new NetworkDialog();
+				//							alertNetwork.open(this, true);
+				//							PopUpManager.centerPopUp(alertNetwork);
+				//							alertNetwork.doMessage("Network Error", "Network Connection is Required");
+				//							return;
+				//						}
+				//					} else {
+				//						var stream:FileStream = new FileStream()
+				//						stream.open(file, FileMode.READ);
+				//						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+				//						trace(s.split("\n")[0]);
+				//						trace(s.split("\n")[1]);
+				//						user = AESCrypto.decrypt(s.split("\n")[0], Constants.getLicenseKey().substring(0,16));
+				//						stream.close();
+				//					}
+				//				}
 			}
 			
 		]]>
@@ -5017,7 +5124,7 @@
 				 contentBackgroundColor="#F2F2F2" displayAsPassword="true" horizontalCenter="6"
 				 keyDown="txtPwd_keyDownHandler(event)" prompt="Password" tabIndex="2"
 				 textAlign="center"/>
-
+	
 	<mx:ViewStack id="viewstack1" visible="false" x="0" y="44" width="1024" height="700"
 				  backgroundColor="#FFFFFF"
 				  width.MainMenu="100%" height.MainMenu="100%">
@@ -5039,7 +5146,7 @@
 					blendMode="add" borderVisible="true" change="btnReport_changeHandler(event)"
 					selectedIndex="0"
 					contentBackgroundColor="#FFFFFF" dropShadowVisible="true" prompt="Report...">
-	
+		
 		<s:layout>
 			<s:VerticalLayout gap="0"
 							  horizontalAlign="contentJustify"
@@ -5047,19 +5154,19 @@
 		</s:layout>
 		
 		<!--<mx:ArrayCollection>
-			<fx:String>Home</fx:String>
-			<fx:String>Adherence Dashboard</fx:String>
-			<fx:String>Opportunity vs. Adherence by Ward/Facility</fx:String>
-			<fx:String>Opportunity vs. Adherence by Profession</fx:String>
-			<fx:String>Opportunity vs. Adherence by Moments</fx:String>
-			<fx:String>Average Action by Moments</fx:String>
-			<fx:String>Ward/Facility Compliance Summary</fx:String>
-			<fx:String>Progress Report</fx:String>
-			<fx:String>Profession Name Compliance Summary</fx:String>
-			<fx:String>Aseptic Procedure</fx:String>
-			<fx:String>Missed with Reason</fx:String>
-			<fx:String>Leaderboard</fx:String>
-			<fx:String>Ward Facility</fx:String>
+		<fx:String>Home</fx:String>
+		<fx:String>Adherence Dashboard</fx:String>
+		<fx:String>Opportunity vs. Adherence by Ward/Facility</fx:String>
+		<fx:String>Opportunity vs. Adherence by Profession</fx:String>
+		<fx:String>Opportunity vs. Adherence by Moments</fx:String>
+		<fx:String>Average Action by Moments</fx:String>
+		<fx:String>Ward/Facility Compliance Summary</fx:String>
+		<fx:String>Progress Report</fx:String>
+		<fx:String>Profession Name Compliance Summary</fx:String>
+		<fx:String>Aseptic Procedure</fx:String>
+		<fx:String>Missed with Reason</fx:String>
+		<fx:String>Leaderboard</fx:String>
+		<fx:String>Ward Facility</fx:String>
 		</mx:ArrayCollection>-->
 		
 	</s:DropDownList>
@@ -5069,11 +5176,11 @@
 					chromeColor="#FFFFFF" contentBackgroundAlpha="1.0" dataProvider="{yearMonthXML}"
 					labelField="@label"></s:DropDownList>
 	<!--<s:DropDownList id="btnObserver" includeIn="MainMenu" y="6" width="190" height="32"
-					blendMode="add" change="btnObserver_changeHandler(event)"
-					dataProvider="{observerXML}" horizontalCenter="95" labelField="@label"
-					prompt="All Observer"></s:DropDownList>-->
+	blendMode="add" change="btnObserver_changeHandler(event)"
+	dataProvider="{observerXML}" horizontalCenter="95" labelField="@label"
+	prompt="All Observer"></s:DropDownList>-->
 	
-		<mx:LinkButton id="btnLicense" includeIn="LoginState,ModulesScreen" right="10" bottom="10"
+	<mx:LinkButton id="btnLicense" includeIn="LoginState,ModulesScreen" right="10" bottom="10"
 				   label="Install New License" click="btnLicense_clickHandler(event)"
 				   color="#0085D1"/>
 	<s:Label includeIn="LoginState,ModulesScreen,State1" y="52" right="6" text="v {Constants.appVersion}"/>

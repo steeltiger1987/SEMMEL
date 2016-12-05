@@ -1680,6 +1680,18 @@
 				
 			}
 			
+			private function setCustomLabel(element:ChartItem, series:Series):String {
+				// Get a refereence to the current data element.
+				var data:ColumnSeriesItem = ColumnSeriesItem(element);        
+				
+				// Get a reference to the current series.        
+				var currentSeries:ColumnSeries = ColumnSeries(series);
+				
+				// Create a return String and format the number.
+				//return currentSeries.yField + ":" + " $" + nf1.format(data.yNumber);
+				return Number(data.yNumber).toFixed(1).toString();
+			}
+
 			public function getSelectionLabel():void{
 				//lbSelections.text = "";
 				ddlMultiSelection.labelDisplay.text = "Multi Selection";
@@ -1796,7 +1808,7 @@
 						<!--end for benchmark line-->
 						
 						<!-- itemRenderer="{this.parentApplication.colorColumnRenderer}"-->
-						<mx:ColumnSeries fontSize="16" 
+						<mx:ColumnSeries fontSize="16" labelFunction = "setCustomLabel"
 										 fillFunction="{this.parentApplication.fill3ColorFunction}"
 										 fills="{this.parentApplication.themeColor}" 
 										 displayName="cat" yField="cnt" labelAlign="top" 
@@ -1834,7 +1846,7 @@
 						</mx:LineSeries>
 						<!--end for benchmark line-->
 						
-						<mx:ColumnSeries xField="@name" yField="@pert" labelPosition="outside" 
+						<mx:ColumnSeries fontSize="16" xField="@name" yField="@pert" labelPosition="outside" labelFunction = "setCustomLabel"
 										 fillFunction="{this.parentApplication.fill3ColorFunction}" />
 
 					</mx:series>
@@ -1900,7 +1912,7 @@
 						</mx:LineSeries>
 						<!--end for benchmark line-->
 						
-						<mx:ColumnSeries fontSize="16" 
+						<mx:ColumnSeries fontSize="16" labelFunction = "setCustomLabel"
 										 fillFunction="{this.parentApplication.fill3ColorFunction}"
 										 fills="{this.parentApplication.themeColor}" displayName="@prof" yField="@comp" 
 										 labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />

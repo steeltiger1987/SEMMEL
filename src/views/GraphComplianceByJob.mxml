@@ -318,22 +318,23 @@
 							if(ncl1>max){max=ncl1;}
 							if(dit1>max){max=dit1;}
 							if(phy1>max){max=phy1;}
-							if(sct1>max){max=sct1;}							
+							if(sct1>max){max=sct1;}
+							var syear:String = String(year).substring(2,4);
 							if(i==0){
-								profData.push({cat:year+" Jan - Mar",doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:year+" Jan - Mar",doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
+								profData.push({cat:"Jan "+syear+" - Mar "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
+								profData1.push({cat:"Jan "+syear+" - Mar "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
 							}
 							else if(i==1){
-								profData.push({cat:year+" Apr - Jun",doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:year+" Apr - Jun",doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
+								profData.push({cat:"Apr "+syear+" - Jun "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
+								profData1.push({cat:"Apr "+syear+" - Jun "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
 							}
 							else if(i==2){
-								profData.push({cat:year+" Jul - Sep",doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:year+" Jul - Sep",doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
+								profData.push({cat:"Jul "+syear+" - Sep "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
+								profData1.push({cat:"Jul "+syear+" - Sep "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
 							}
 							else if(i==3){
-								profData.push({cat:year+" Oct - Dec",doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:year+" Oct - Dec",doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
+								profData.push({cat:"Oct "+syear+" - Dec "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
+								profData1.push({cat:"Oct "+syear+" - Dec "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
 							}
 						}
 						if(depart!="")
@@ -432,17 +433,17 @@
 			/*private function columnSeries2_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@hw).toFixed(2).toString() + "%";
+			return Number(csi.item.@hw).toFixed(1).toString() + "%";
 			}
 			private function columnSeries3_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@miss).toFixed(2).toString() + "%";
+			return Number(csi.item.@miss).toFixed(1).toString() + "%";
 			}
 			private function columnSeries4_labelFunc(element:ChartItem, series:Series):String {
 			var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 			var ser:ColumnSeries = ColumnSeries(series);
-			return Number(csi.item.@glove).toFixed(2).toString() + "%";
+			return Number(csi.item.@glove).toFixed(1).toString() + "%";
 			}*/
 			
 			
@@ -1086,7 +1087,7 @@
 							fills="{warmColorsArray10}" displayName="Surgeon Consultant" yField="sct" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall) By Job"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Profession"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

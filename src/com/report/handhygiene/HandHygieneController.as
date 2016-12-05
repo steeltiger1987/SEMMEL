@@ -84,7 +84,7 @@ package com.report.handhygiene
 				if(!isRawData)
 					s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + s + "</report>";
 					
-				trace("dec: " + s);
+//				trace("dec: " + s);
 				
 				fileStream.writeUTFBytes(s);
 				
