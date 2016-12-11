@@ -207,6 +207,19 @@
 			private function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
 				return item + "%"
 			}
+
+			private function setCustomLabel(element:ChartItem, series:Series):String {
+				// Get a refereence to the current data element.
+				var data:ColumnSeriesItem = ColumnSeriesItem(element);        
+				
+				// Get a reference to the current series.        
+				var currentSeries:ColumnSeries = ColumnSeries(series);
+				
+				// Create a return String and format the number.
+				//return currentSeries.yField + ":" + " $" + nf1.format(data.yNumber);
+				return Number(data.yNumber).toFixed(1).toString();
+			}
+
 			private function columnSeries_labelFunc(element:ChartItem, series:Series):String {
 				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 				var ser:ColumnSeries = ColumnSeries(series);
@@ -1087,7 +1100,7 @@
 					</mx:LineSeries>
 					<!--end for benchmark line-->
 					<!--itemRenderer="{this.parentApplication.colorColumnRenderer}"-->
-					<mx:ColumnSeries fontSize="16" fills="{this.parentApplication.themeColor}" 
+					<mx:ColumnSeries labelFunction="setCustomLabel" fontSize="16" fills="{this.parentApplication.themeColor}" 
 									 fillFunction="{this.parentApplication.fill3ColorFunction}"
 									 displayName="@name" yField="@pert" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 				</mx:series>

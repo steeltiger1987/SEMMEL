@@ -1,0 +1,1193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent 
+	xmlns:flexlib="flexlib.containers.*"
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+	xmlns:s="library://ns.adobe.com/flex/spark" 
+	creationComplete="init()"
+	xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
+	
+		<fx:Style>
+		@namespace tab "flexlib.controls.tabBarClasses.*";
+		tab|SuperTab{ 
+			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
+		} 
+		.SuperTabButtonStyle{
+			icon: Embed(source="close.png");
+		}
+	</fx:Style>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:SeriesSlide 
+			id="slideUp" 
+			duration="1000" 
+			direction="up"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.report.bi.SemmelReport;
+			import com.security.util.AESCrypto;
+			import com.semmel.Constants;
+			
+			import flash.display.NativeMenu;
+			import flash.display.NativeMenuItem;
+			
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.Series;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.containers.VBox;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			import mx.graphics.Stroke;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.PopUpEvent;
+			
+			import flexlib.containers.SuperTabNavigator;
+			import flexlib.controls.SuperTabBar;
+			import flexlib.controls.tabBarClasses.SuperTab;
+			import flexlib.events.TabReorderEvent;
+			
+			[Bindable]
+			private var xmlColumnChart2 : XMLList;
+			
+			[Bindable]
+			private var xmlColumnChart : XMLList;
+			
+			[Bindable]
+			private var xmlDatagrid : XMLListCollection;
+			private var yearDatagrid : ArrayCollection = new ArrayCollection([]);
+			
+			private var year:Number = 0;			
+			
+			private var iColorNumber:Number = 0;
+			
+			//For quater percent by moment.
+			
+			private var doc:Number = 0; //doctor
+			private var nur:Number = 0;
+			private var csp:Number = 0;
+			private var cst:Number = 0;
+			private var mct:Number =0;
+			private var mof:Number =0;
+			private var ncl:Number =0;
+			private var dit:Number = 0;
+			private var phy:Number = 0;
+			private var sct:Number = 0;
+			private var doc1:Number = 0;
+			private var nur1:Number = 0;
+			private var csp1:Number = 0;
+			private var cst1:Number = 0;
+			private var mct1:Number = 0;
+			private var mof1:Number = 0;
+			private var ncl1:Number = 0;
+			private var dit1:Number = 0;
+			private var phy1:Number = 0;
+			private var sct1:Number = 0;
+			private var max:Number = 0;
+			private var paragraph:Number = 0;
+			
+			private var profData : Array = [];
+			private var profData1 : Array = [];
+			public var ncnt:Number = 0;
+			private var depart:String = "";
+			[Embed(source="../../assets/document.png")]
+			private var document_icon:Class;       
+			
+			[Embed(source="../../assets/home.png")]
+			private var home_icon:Class;
+			
+			private function init():void{
+				
+				var s:String = this.parentApplication.fetchXMLData;
+				if(s!=""){
+					try{
+						var xml:XML = new XML(s);
+						this.xmlDatagrid = new XMLListCollection(xml.depts.dept);//.month;
+					}catch(e:Error){
+						
+					}
+				}
+				var currentDate:Date = new Date();
+				this.depart = "All";
+				this.year = currentDate.getFullYear();
+				this.btnYear.prompt = String(year);
+				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
+				{
+					this.yearDatagrid.addItem({year:i});
+				}
+				fetchLocalXML();
+			}
+			
+			public function fetchLocalXML():void{
+				
+				initMenu();
+				
+				iColorNumber = 0;
+				profData = [];
+				profData1 = [];
+				max = 0;
+				trace("fetch xml...hho by department");
+				var docquarter1:Number = 0;
+				var nurquarter1:Number = 0;
+				var cspquarter1:Number = 0;
+				var cstquarter1:Number = 0;
+				var mctquarter1:Number = 0;
+				var mofquarter1:Number = 0;
+				var nclquarter1:Number = 0;
+				var ditquarter1:Number = 0;
+				var phyquarter1:Number = 0;
+				var sctquarter1:Number = 0;											
+
+				var docquarter2:Number = 0;
+				var nurquarter2:Number = 0;
+				var cspquarter2:Number = 0;
+				var cstquarter2:Number = 0;
+				var mctquarter2:Number = 0;
+				var mofquarter2:Number = 0;
+				var nclquarter2:Number = 0;
+				var ditquarter2:Number = 0;
+				var phyquarter2:Number = 0;
+				var sctquarter2:Number = 0;											
+
+				var docquarter3:Number = 0;
+				var nurquarter3:Number = 0;
+				var cspquarter3:Number = 0;
+				var cstquarter3:Number = 0;
+				var mctquarter3:Number = 0;
+				var mofquarter3:Number = 0;
+				var nclquarter3:Number = 0;
+				var ditquarter3:Number = 0;
+				var phyquarter3:Number = 0;
+				var sctquarter3:Number = 0;											
+
+				var docquarter4:Number = 0;
+				var nurquarter4:Number = 0;
+				var cspquarter4:Number = 0;
+				var cstquarter4:Number = 0;
+				var mctquarter4:Number = 0;
+				var mofquarter4:Number = 0;
+				var nclquarter4:Number = 0;
+				var ditquarter4:Number = 0;
+				var phyquarter4:Number = 0;
+				var sctquarter4:Number = 0;											
+
+				var docquarter11:Number = 0;
+				var nurquarter11:Number = 0;
+				var cspquarter11:Number = 0;
+				var cstquarter11:Number = 0;
+				var mctquarter11:Number = 0;
+				var mofquarter11:Number = 0;
+				var nclquarter11:Number = 0;
+				var ditquarter11:Number = 0;
+				var phyquarter11:Number = 0;
+				var sctquarter11:Number = 0;											
+				
+				var docquarter21:Number = 0;
+				var nurquarter21:Number = 0;
+				var cspquarter21:Number = 0;
+				var cstquarter21:Number = 0;
+				var mctquarter21:Number = 0;
+				var mofquarter21:Number = 0;
+				var nclquarter21:Number = 0;
+				var ditquarter21:Number = 0;
+				var phyquarter21:Number = 0;
+				var sctquarter21:Number = 0;											
+				
+				var docquarter31:Number = 0;
+				var nurquarter31:Number = 0;
+				var cspquarter31:Number = 0;
+				var cstquarter31:Number = 0;
+				var mctquarter31:Number = 0;
+				var mofquarter31:Number = 0;
+				var nclquarter31:Number = 0;
+				var ditquarter31:Number = 0;
+				var phyquarter31:Number = 0;
+				var sctquarter31:Number = 0;											
+				
+				var docquarter41:Number = 0;
+				var nurquarter41:Number = 0;
+				var cspquarter41:Number = 0;
+				var cstquarter41:Number = 0;
+				var mctquarter41:Number = 0;
+				var mofquarter41:Number = 0;
+				var nclquarter41:Number = 0;
+				var ditquarter41:Number = 0;
+				var phyquarter41:Number = 0;
+				var sctquarter41:Number = 0;											
+				
+				if(this.parentApplication.fetchXMLData!=""){
+					try{
+						
+						trace("year: "+year);						
+						var raw:String = "";
+						var s:String = "";
+						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+						//						var year:String = this.parentApplication.selectedYM.substring(0,4);
+						for(var i:Number=0;i<4;i++){
+							doc = 0; nur=0; csp=0; cst=0; mct=0; mof=0; ncl=0; dit=0; phy=0; sct=0;
+							doc1 = 0; nur1=0; csp1=0; cst1=0; mct1=0; mof1=0; ncl1=0; dit1=0; phy1=0; sct1=0;
+							for(var j:Number=1;j<=3;j++){
+								var month:Number = i*3 + j;
+								var MonthYear:String = year + "" + month;
+								var file1:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
+								if(file1.exists){
+									try{
+										var stream:FileStream = new FileStream()
+										stream.open(file1, FileMode.READ);
+										raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+										stream.close();
+										
+										s = raw;
+										var xml:XML = new XML(s);
+										
+										ncnt = 0;
+
+										//From here you can get the compliance times by Job Category.
+										if(depart=="All"||depart==""){
+											if(Number(xml.hhoprofpert.(@ob==MonthYear).profahd.attribute("cnt"))){
+												doc1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Doctor").attribute("cnt"));
+												nur1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"));
+												csp1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"));
+												cst1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"));
+												mct1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"));
+												mof1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"));
+												ncl1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"));
+												dit1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Dietitian").attribute("cnt"));
+												phy1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"));
+												sct1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"));
+											}
+										}
+										else {
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("cnt"))){
+												doc1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("cnt"));
+												nur1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"));
+												csp1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"));
+												cst1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"));
+												mct1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"));
+												mof1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"));
+												ncl1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"));
+												dit1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("cnt"));
+												phy1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"));
+												sct1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"));
+											}											
+										}
+										//From here you can get the compliance rate by Job Category.
+										if(depart=="All"||depart==""){
+											if(Number(xml.basic.profcomplaince.(@prof=="Doctor").attribute("comp"))){
+												doc += Number(xml.basic.profcomplaince.(@prof=="Doctor").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Student Nurse").attribute("comp")))
+											{
+												nur += Number(xml.basic.profcomplaince.(@prof=="Student Nurse").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Clinical Support").attribute("comp")))
+											{
+												csp += Number(xml.basic.profcomplaince.(@prof=="Clinical Support").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="CONSULTANT").attribute("comp")))
+											{
+												cst += Number(xml.basic.profcomplaince.(@prof=="CONSULTANT").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Medical Consultant").attribute("comp")))
+											{
+												mct += Number(xml.basic.profcomplaince.(@prof=="Medical Consultant").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Medical Officer").attribute("comp")))
+											{
+												mof += Number(xml.basic.profcomplaince.(@prof=="Medical Officer").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Non-Clinical").attribute("comp")))
+											{
+												ncl += Number(xml.basic.profcomplaince.(@prof=="Non-Clinical").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Dietitian").attribute("comp")))
+											{
+												dit += Number(xml.basic.profcomplaince.(@prof=="Dietitian").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Physiotherapist").attribute("comp")))
+											{
+												phy += Number(xml.basic.profcomplaince.(@prof=="Physiotherapist").attribute("comp"));
+											}
+											if(Number(xml.basic.profcomplaince.(@prof=="Surgeon Consultant").attribute("comp")))
+											{
+												sct += Number(xml.basic.profcomplaince.(@prof=="Surgeon Consultant").attribute("comp"));
+											}
+										}
+										else
+										{
+											var cnt:Number = 0;
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("opp"))*100;
+												if(cnt){doc+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("opp"))*100;
+												if(cnt){nur+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("opp"))*100;
+												if(cnt){csp+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("opp"))*100;
+												if(cnt){cst+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("opp"))*100;
+												if(cnt){mct+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("opp"))*100;
+												if(cnt){mof+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("opp"))*100;
+												if(cnt){ncl+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("opp"))*100;
+												if(cnt){dit+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("opp"))*100;
+												if(cnt){phy+=cnt;}
+											}
+											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
+											{
+												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"))
+													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("opp"))*100;
+												if(cnt){sct+=cnt;}
+											}																						
+										}
+										//Until here you can get the Compliance rate by Job Category.
+										
+									}
+									catch(e:Error){
+										trace("e: " + e.toString());
+									} 
+								}
+							}
+							if(doc1>max){max=doc1;}
+							if(nur1>max){max=nur1;}
+							if(csp1>max){max=csp1;}
+							if(cst1>max){max=cst1;}
+							if(mct1>max){max=mct1;}							
+							if(mof1>max){max=mof1;}
+							if(ncl1>max){max=ncl1;}
+							if(dit1>max){max=dit1;}
+							if(phy1>max){max=phy1;}
+							if(sct1>max){max=sct1;}
+							if(i==0){
+								docquarter1 = doc/3;
+								nurquarter1 = nur/3;
+								cspquarter1 = csp/3;
+								cstquarter1 = cst/3;
+								mctquarter1 = mct/3;
+								mofquarter1 = mof/3;
+								nclquarter1 = ncl/3;
+								ditquarter1 = dit/3;
+								phyquarter1 = phy/3;
+								sctquarter1 = sct/3;
+								docquarter11 = doc1;
+								nurquarter11 = nur1;
+								cspquarter11 = csp1;
+								cstquarter11 = cst1;
+								mctquarter11 = mct1;
+								mofquarter11 = mof1;
+								nclquarter11 = ncl1;
+								ditquarter11 = dit1;
+								phyquarter11 = phy1;
+								sctquarter11 = sct1;
+							}
+							else if(i==1){
+								docquarter2 = doc/3;
+								nurquarter2 = nur/3;
+								cspquarter2 = csp/3;
+								cstquarter2 = cst/3;
+								mctquarter2 = mct/3;
+								mofquarter2 = mof/3;
+								nclquarter2 = ncl/3;
+								ditquarter2 = dit/3;
+								phyquarter2 = phy/3;
+								sctquarter2 = sct/3;
+								docquarter21 = doc1;
+								nurquarter21 = nur1;
+								cspquarter21 = csp1;
+								cstquarter21 = cst1;
+								mctquarter21 = mct1;
+								mofquarter21 = mof1;
+								nclquarter21 = ncl1;
+								ditquarter21 = dit1;
+								phyquarter21 = phy1
+								sctquarter21 = sct1;
+							}
+							else if(i==2){
+								docquarter3 = doc/3;
+								nurquarter3 = nur/3;
+								cspquarter3 = csp/3;
+								cstquarter3 = cst/3;
+								mctquarter3 = mct/3;
+								mofquarter3 = mof/3;
+								nclquarter3 = ncl/3;
+								ditquarter3 = dit/3;
+								phyquarter3 = phy/3;
+								sctquarter3 = sct/3;
+								docquarter31 = doc1;
+								nurquarter31 = nur1;
+								cspquarter31 = csp1;
+								cstquarter31 = cst1;
+								mctquarter31 = mct1;
+								mofquarter31 = mof1;
+								nclquarter31 = ncl1;
+								ditquarter31 = dit1;
+								phyquarter31 = phy1;
+								sctquarter31 = sct1;
+							}
+							else if(i==3){
+								docquarter4 = doc/3;
+								nurquarter4 = nur/3;
+								cspquarter4 = csp/3;
+								cstquarter4 = cst/3;
+								mctquarter4 = mct/3;
+								mofquarter4 = mof/3;
+								nclquarter4 = ncl/3;
+								ditquarter4 = dit/3;
+								phyquarter4 = phy/3;
+								sctquarter4 = sct/3;
+								docquarter41 = doc1;
+								nurquarter41 = nur1;
+								cspquarter41 = csp1;
+								cstquarter41 = cst1;
+								mctquarter41 = mct1;
+								mofquarter41 = mof1;
+								nclquarter41 = ncl1;
+								ditquarter41 = dit1;
+								phyquarter41 = phy1;
+								sctquarter41 = sct1;
+							}
+						}
+						profData.push({cat:"Doctor",doc1:docquarter1, doc2:docquarter2, doc3:docquarter3, doc4:docquarter4});
+						profData.push({cat:"Student Nurse",doc1:nurquarter1, doc2:nurquarter2, doc3:nurquarter3, doc4:nurquarter4});
+						profData.push({cat:"Clinical Support",doc1:cspquarter1, doc2:cspquarter2, doc3:cspquarter3, doc4:cspquarter4});
+						profData.push({cat:"Consultant",doc1:cstquarter1, doc2:cstquarter2, doc3:cstquarter3, doc4:cstquarter4});
+						profData.push({cat:"Medical Consultant",doc1:mctquarter1, doc2:mctquarter2, doc3:mctquarter3, doc4:mctquarter4});
+						profData.push({cat:"Medical Officer",doc1:mofquarter1, doc2:mofquarter2, doc3:mofquarter3, doc4:mofquarter4});
+						profData.push({cat:"Non-Clinical",doc1:nclquarter1, doc2:nclquarter2, doc3:nclquarter3, doc4:nclquarter4});
+						profData.push({cat:"Dietitian",doc1:ditquarter1, doc2:ditquarter2, doc3:ditquarter3, doc4:ditquarter4});
+						profData.push({cat:"Physiotherapist",doc1:phyquarter1, doc2:phyquarter2, doc3:phyquarter3, doc4:phyquarter4});
+						profData.push({cat:"Surgeon Consultant",doc1:sctquarter1, doc2:sctquarter2, doc3:sctquarter3, doc4:sctquarter4});
+						profData1.push({cat:"Doctor",doc1:docquarter11, doc2:docquarter21, doc3:docquarter31, doc4:docquarter41});
+						profData1.push({cat:"Student Nurse",doc1:nurquarter11, doc2:nurquarter21, doc3:nurquarter31, doc4:nurquarter41});
+						profData1.push({cat:"Clinical Support",doc1:cspquarter11, doc2:cspquarter21, doc3:cspquarter31, doc4:cspquarter41});
+						profData1.push({cat:"Consultant",doc1:cstquarter11, doc2:cstquarter21, doc3:cstquarter31, doc4:cstquarter41});
+						profData1.push({cat:"Medical Consultant",doc1:mctquarter11, doc2:mctquarter21, doc3:mctquarter31, doc4:mctquarter41});
+						profData1.push({cat:"Medical Officer",doc1:mofquarter11, doc2:mofquarter21, doc3:mofquarter31, doc4:mofquarter41});
+						profData1.push({cat:"Non-Clinical",doc1:nclquarter11, doc2:nclquarter21, doc3:nclquarter31, doc4:nclquarter41});
+						profData1.push({cat:"Dietitian",doc1:ditquarter11, doc2:ditquarter21, doc3:ditquarter31, doc4:ditquarter41});
+						profData1.push({cat:"Physiotherapist",doc1:phyquarter11, doc2:phyquarter21, doc3:phyquarter31, doc4:phyquarter41});
+						profData1.push({cat:"Surgeon Consultant",doc1:sctquarter11, doc2:sctquarter21, doc3:sctquarter31, doc4:sctquarter41});
+
+						if(depart!="")
+						{
+							columnchart.dataProvider = profData;
+							columnchart1.dataProvider = profData1;
+						}
+
+						if(file.exists){
+							try{
+								var stream:FileStream = new FileStream()
+								stream.open(file, FileMode.READ);
+								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+								stream.close();
+								
+								
+								//start decrypt here
+								//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
+								//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
+								//doDecrypt
+								
+								
+								s = raw;//"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+								trace("dec: " + s);
+								
+							}catch(e:Error){
+								trace("e: " + e.toString());
+							}
+						}
+						//this.xmlColumnChart2 = new XML(s).day.dt;
+					}catch(error:Error){
+						trace("Err: " + error.toString());
+					}
+				}
+				if(max/100>=1){paragraph = 20;}
+				else if(max/10 >=1){paragraph = 27;}
+				else if(max == 0) {paragraph = 20;}
+				else if(max<4) {paragraph = 24;}
+				else {paragraph = 34;}
+				if(depart!=""){
+					columnchart1.left = paragraph;
+				}
+			}
+			
+			protected function btnDepartment_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				depart = btnDepartment.selectedItem.@label;
+				profData = [];
+				profData1 = [];
+				fetchLocalXML();
+			}
+			
+			protected function btnYear_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				year = btnYear.selectedItem.year;
+				profData = [];
+				profData1 = [];
+				fetchLocalXML();
+				
+			}
+			
+			private function setCustomLabel(element:ChartItem, series:Series):String {
+				// Get a refereence to the current data element.
+				var data:ColumnSeriesItem = ColumnSeriesItem(element);        
+				
+				// Get a reference to the current series.        
+				var currentSeries:ColumnSeries = ColumnSeries(series);
+				
+				// Create a return String and format the number.
+				//return currentSeries.yField + ":" + " $" + nf1.format(data.yNumber);
+				return Number(data.yNumber).toFixed(1).toString();
+			}
+			
+			protected function setValue()
+			{
+				columnchart.dataProvider = profData;
+				columnchart1.dataProvider = profData1;
+			}
+			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
+				//var curItem:ColumnSeries = ColumnSeries(item);
+				/* Convert to a number between 0 and 1. */
+				//var pct:Number = curItem.percentValue / 100;
+				iColorNumber += 20;
+				return new SolidColor(0xFF00FF * iColorNumber, 1.0);
+			}
+			
+			
+			private function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+				return item + "%"
+			}
+			
+			[Bindable]
+			private var warmColorsArray:Array = new Array(
+				//new SolidColor(0xfd135a, 1) 
+				new SolidColor(0x13a8f6, 1)
+			);
+			[Bindable]
+			private var warmColorsArray2:Array = new Array(
+				//new SolidColor(0x25857d, 1)
+				new SolidColor(0xcbde2a, 1)
+			);
+			[Bindable]
+			private var warmColorsArray3:Array = new Array(
+				//new SolidColor(0x350d25, 1)
+				new SolidColor(0xffcf0d, 1)
+			);
+			[Bindable]
+			private var warmColorsArray4:Array = new Array(
+				//new SolidColor(0x00c088, 1)
+				new SolidColor(0xff69b0, 1)
+			);
+
+			
+			//new SolidColor(0x13a8f6, 1), 
+			//new SolidColor(0xcbde2a, 1), 
+			//new SolidColor(0xffcf0d, 1),
+			//new SolidColor(0xff69b0, 1)
+						
+			
+			//end for report funciton
+			
+			private function initTabs():void
+			{
+				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+			}
+			public function myListener(e:ChartItemEvent):void {
+				//ti1.text = e.hitData.item.expenses;
+				//ti2.text = String(e.hitData.x) + ", " + String(e.hitData.y);
+				trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
+				trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
+				
+				doPopDataPoint(e);
+				
+			}
+			
+			private var popUpMenu = new NativeMenu();
+			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
+			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
+			private var hitItem:String = "";
+			
+			private function initMenu():void{
+				popUpMenuItemByProf.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByDept.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByMoment.addEventListener(Event.SELECT, function(e:Event):void{
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByAction.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				
+				//for add to new report
+				popReport_NewReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+					showNewReportDialog();
+				});
+				//end for add to new report
+				
+			}
+			
+			var isSelected:Boolean = false;
+			
+			private function doAnalysisByDataPoint(event:Event, hitItem:String):void{
+				if(isSelected==false){
+					trace("Selected command: " + hitItem + " " + event.target.label);
+					isSelected = true;
+					
+					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+					nav.selectedIndex = nav.getChildren().length-1;
+					
+				}
+				//mx.controls.Alert.show("i");
+			}
+			
+			private function doDynamicMenu(obj:Object):void{
+				//trace("obj.id " + obj.id);
+				
+				//if(obj id)
+				popUpMenu.removeAllItems();
+				popUpMenu.addItem(popUpMenuItemByDept);
+				popUpMenu.addItem(popUpMenuItemByProf);
+				popUpMenu.addItem(popUpMenuItemByAction);
+				isSelected = false;
+				
+			}
+			
+			private function doPopDataPoint(e:ChartItemEvent):void {
+				
+				hitItem = e.hitData.item.cat;
+				doDynamicMenu(null);
+				popUpMenu.display(this.stage, e.stageX, e.stageY);
+				
+				//trace("hit1");
+				//popMenu.display(this.stage, e.stageX, e.stageY);
+				//trace("hit2");
+				/*trace("hit: " + e.hitData.item.cat);
+				myMenu = new FlexNativeMenu(); 
+				myMenu.dataProvider = menuData; 
+				myMenu.labelField = "@label"; 
+				myMenu.showRoot = false; 
+				myMenu.setContextMenu(columnchart2);
+				
+				myMenu.display(this.stage, e.localX, e.localY);*/
+				
+			}
+			
+			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
+																			 contentString:String=null, icon:Class=null):void
+			{
+				if (lbl == "")
+					lbl = "Graph";
+				
+				var curNum:Number = nav.numChildren + 1;
+				
+				var child:VBox = new VBox();
+				
+				child.setStyle("closable", true);
+				
+				child.label = lbl;
+				
+				if (icon)
+				{
+					child.icon = icon;
+				}
+				else
+				{
+					child.icon = document_icon;
+				}
+				var label:Label = new Label();
+				label.text = contentString == null ? "Content for: " + lbl : contentString;
+				
+				child.addChild(label);
+				
+				var bc:BorderContainer = new BorderContainer();
+				bc.percentHeight=100;
+				bc.percentWidth=100;
+				var ca:ColumnChart = new ColumnChart();
+				var cAxis:CategoryAxis = new CategoryAxis();
+				cAxis.categoryField="cat";
+				ca.horizontalAxis = cAxis;
+				var cs:ColumnSeries = new ColumnSeries();
+				cs.setStyle("fontSize", 20);
+				cs.setStyle("labelAlign", "top");
+				cs.setStyle("labelPosition", "outside");
+				//cs.fillFunction = fillFunction;
+				cs.displayName = "cat";
+				cs.yField = "cnt";
+				var seriesArray:Array = new Array();
+				seriesArray.push(cs);
+				ca.series = seriesArray;
+				
+				//if(groupBy!="By Action"){
+				ca.y=10;
+				ca.left=10;
+				ca.right=10;
+				ca.height=260
+				/*} else {
+				ca.percentWidth=100;
+				ca.percentHeight=100;
+				}*/
+				
+				var caComp:ColumnChart = new ColumnChart();
+				var cAxisComp:CategoryAxis = new CategoryAxis();
+				cAxisComp.categoryField = "cat";
+				caComp.horizontalAxis = cAxisComp;
+				
+				//<mx:verticalAxis>
+				//<mx:LinearAxis id="vAxis2"
+				//   minimum="0"
+				//   maximum="100"
+				//  labelFunction="linearAxis_labelFunc" />
+				//</mx:verticalAxis>		
+				var lAxisComp:LinearAxis = new LinearAxis();
+				lAxisComp.minimum=0;
+				lAxisComp.maximum=100;
+				lAxisComp.labelFunction=linearAxis_labelFunc;
+				
+				caComp.verticalAxis=lAxisComp;
+				
+				var csComp:ColumnSeries = new ColumnSeries();
+				csComp.setStyle("fontSize", 20);
+				csComp.setStyle("labelAlign", "top");
+				csComp.setStyle("labelPosition", "outside");
+				//csComp.fillFunction = fillFunction;
+				csComp.displayName = "cat";
+				csComp.yField = "pect";
+				var seriesArrayComp:Array = new Array();
+				seriesArrayComp.push(csComp);
+				caComp.series = seriesArrayComp;
+				//caComp.percentWidth=100;
+				//caComp.y = systemManager.screen.height/2;
+				//trace("Y NEW caComp Chart " + String(systemManager.screen.height/2));
+				
+				caComp.y=270;
+				caComp.left=10;
+				caComp.right=10;
+				caComp.height=260;
+				
+				/*<mx:ColumnChart id="chartAnalytic" x="89" y="20" width="456" height="241" dataProvider="{jsonAnalytic}">
+				
+				<mx:horizontalAxis>
+				<mx:CategoryAxis categoryField="cat"/>
+				</mx:horizontalAxis>		
+				<mx:series>
+				<mx:ColumnSeries fontSize="16" 
+				fillFunction="{fillFunction}"
+				fills="{this.parentApplication.themeColor}" displayName="cat" yField="cnt" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+				</mx:series>
+				
+				</mx:ColumnChart>*/
+				
+				
+				if(groupBy=="By Action"){
+					
+					if(item=="Before patient"){
+						ca.dataProvider =  this.parentApplication.doAnalyticByAction("1", "2015-03");
+					} else if(item=="Before aseptic"){
+						ca.dataProvider =  this.parentApplication.doAnalyticByAction("2", "2015-03");
+					} else if(item=="After body fluid"){
+						ca.dataProvider =  this.parentApplication.doAnalyticByAction("3", "2015-03");
+					} else if(item=="After patient"){
+						ca.dataProvider =  this.parentApplication.doAnalyticByAction("4", "2015-03");
+					} else if(item=="After patient surrounding"){
+						ca.dataProvider =  this.parentApplication.doAnalyticByAction("5", "2015-03");
+					}
+					
+				} else if(groupBy=="By Professional"){
+					if(item=="Before patient"){
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("1", "2015-03");
+					} else if(item=="Before aseptic"){
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("2", "2015-03");
+					} else if(item=="After body fluid"){
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("3", "2015-03");
+					} else if(item=="After patient"){
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("4", "2015-03");
+					}  else if(item=="After patient surrounding"){
+						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("5", "2015-03");
+					}
+				} else if(groupBy=="By Ward/Facility"){
+					if(item=="Before patient"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1", "2015-03");
+					} else if(item=="Before aseptic"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2", "2015-03");
+					} else if(item=="After body fluid"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3", "2015-03");
+					} else if(item=="After patient"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4", "2015-03");
+					}  else if(item=="After patient surrounding"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5", "2015-03");
+					}
+				}
+				
+				bc.addElement(ca);
+				//if(groupBy!="By Action"){				
+				caComp.dataProvider = ca.dataProvider;
+				bc.addElement(caComp);
+				//}
+				child.addChild(bc);
+				
+				navigator.addChild(child);
+			}
+			
+			//end new function for open tabs
+			
+			
+			//2015-06-25 by Alfred - add to report menu function
+			private var isPopReport:Boolean = false;
+			private var popReportMenu = new NativeMenu();
+			private var popReport_NewReport = new NativeMenuItem("New Report...");
+			
+			private var strSelectedReport:String = "";
+			
+			private var rptDomain:String="";
+			private var rptGroupBy:String="";
+			private var rptParam:String="";
+			
+			//add on json report field
+			private var rptStart:String = "";
+			private var rptEnd:String = "";
+			private var rptWards:String = "";
+			private var rptProfs:String = ""; 
+			private var rptWard:String = "";
+			
+			
+			//for report function 
+			protected function doAddToReportMenu(event:MouseEvent, report:String, domain:String="", groupBy:String="", param:String=""):void{
+				// TODO Auto-generated method stub
+				//dynamic adding...
+				//default got new report...
+				
+				this.strSelectedReport = report;
+				
+				this.rptDomain = domain;
+				this.rptGroupBy = groupBy;
+				this.rptParam = param;
+				
+				trace("domain: " + domain + " groupby: " + groupBy + " param: " + param);
+				
+				isPopReport = false;
+				
+				trace("remove all item");
+				trace("add report '" + report + "'");
+				popReportMenu.removeAllItems();
+				
+				
+				popReportMenu.addItem(popReport_NewReport);
+				trace("create new report");
+				//TODO: if got report created list down here...
+				
+				//load available reports....
+				
+				try{
+					SemmelReport.loadReportListing();
+					var mList:ArrayCollection = SemmelReport.acReportsListing; 
+					if(mList.length>0){
+						for(var i:Number=0;i<mList.length;i++){
+							var itm:Object = mList.getItemAt(i); 
+							trace(itm.reportTitle);
+							
+							trace("dynamic menu label...");
+							var mnuReport:NativeMenuItem = new NativeMenuItem(itm.reportTitle);
+							
+							//mnuReport.addEventListener(Event.SELECT, function(e:Event):void{
+							//showNewReportDialog();
+							//trace("dynamic add menu: " + itm.id);
+							//showReportsWindow(itm.id);	
+							//showReportsWindow(e);
+							//});
+							//for add to new report
+							
+							mnuReport.addEventListener(Event.SELECT, function(e:Event):void{ 
+								showReportsWindow(e);
+							});
+							
+							popReportMenu.addItem(mnuReport);
+						}
+						//for(var obj:Object in mList){
+						//	trace("report menu list: " + obj.reportTitle);
+						//}	
+					}	
+					
+				}catch(error:Error){
+					trace("Error list report: " + error.toString());
+				}
+				
+				
+				
+				popReportMenu.display(this.stage, event.stageX, event.stageY);
+				trace("display menu...");
+				
+			}
+			
+			private function showReportsWindow(event:Event):void {
+				//trace("pop report window id: " + reportTitle);
+				
+				//trace("event: " + e.contextMenuOwner.label);
+				//trace("event: " + e.contextMenuOwner.text);
+				
+				var menuItem:NativeMenuItem = event.target as NativeMenuItem; 
+				trace(menuItem.label + " has been selected"); 
+				
+				if(!isPopReport){
+					isPopReport = true;
+					var winReports:ReportsWindow = new ReportsWindow();
+					winReports.open(this, true);
+					var obj:Object = new Object();
+					
+					trace("domain: " + rptDomain + " groupby: " + rptGroupBy + " param: " + rptParam);
+					trace("s report: " + this.strSelectedReport);
+					
+					obj.reportTitle = menuItem.label;
+					
+					obj.rptDomain = rptDomain;
+					obj.rptGroupBy = rptGroupBy;
+					obj.rptParam = rptParam;
+					
+					//add on for start/end, wards
+					if(this.rptWards!=""){
+						obj.rptWards = rptWards;
+						obj.rptStart = rptStart;
+						obj.rptEnd = rptEnd;
+					}
+					//add on for start/end, ward, profs
+					if(this.rptProfs!=""){
+						obj.rptWard = rptWard;
+						obj.rptProfs = rptProfs;
+						obj.rptStart = rptStart;
+						obj.rptEnd = rptEnd;
+					}
+					
+					obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+					
+					trace("return CID: " + obj.cid);
+					
+					obj.addReport = this.strSelectedReport;
+					obj.isExist = "1";
+					obj.selectYM = this.parentApplication.selectedYMLabel;
+					winReports.data = obj;
+					PopUpManager.centerPopUp(winReports);
+				}
+			}
+			
+			
+			private function showNewReportDialog():void {
+				if(!isPopReport){
+					isPopReport = true;
+					var winNewReport:NewReportWindow = new NewReportWindow();
+					winNewReport.open(this, true);
+					winNewReport.addEventListener('close', newReport_closeHandler);
+					PopUpManager.centerPopUp(winNewReport);
+				}
+			}
+			// Handle the close event from the SkinnablePopUpContainer.
+			protected function newReport_closeHandler(event:PopUpEvent):void {
+				// If commit is false, do data is returned.
+				if (!event.commit)
+					return;
+				
+				// Write the returned String to the TextArea control.
+				//myTA.text = event.data as String;
+				//trace(event.data as String);
+				trace(event.data.reportTitle as String);
+				trace(this.strSelectedReport);
+				
+				var winReports:ReportsWindow = new ReportsWindow();
+				winReports.open(this, true);
+				//winReports.addEventListener('close', newReport_closeHandler);
+				var obj:Object = new Object();
+				obj.reportTitle = event.data.reportTitle as String;
+				
+				obj.rptDomain = rptDomain;
+				obj.rptGroupBy = rptGroupBy;
+				obj.rptParam = rptParam;
+				
+				//add on for start/end, wards
+				if(this.rptWards!=""){
+					obj.rptWards = rptWards;
+					obj.rptStart = rptStart;
+					obj.rptEnd = rptEnd;
+				}
+				
+				obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
+				obj.addReport = this.strSelectedReport;
+				obj.selectYM = this.parentApplication.selectedYMLabel;
+				winReports.data = obj;
+				
+				PopUpManager.centerPopUp(winReports);
+				
+				//pop.addReport = this.strSelectedReport;
+			} 
+
+		]]>
+	</fx:Script>
+	
+	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
+							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
+							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
+							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
+		
+		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
+			
+			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
+				<!-- From here table 3 -->
+				<mx:Legend y="32" right="10" width="500" height="30" fontSize="12">
+					<mx:LegendItem label="Jan - Mar" fontWeight="bold">
+						<mx:fill>
+							<mx:SolidColor color="0x13a8f6"/>
+						</mx:fill>
+					</mx:LegendItem>
+					<mx:LegendItem label="Apr - Jun" fontWeight="bold">
+						<mx:fill>
+							<mx:SolidColor color="0xcbde2a"/>
+						</mx:fill>
+					</mx:LegendItem>
+					<mx:LegendItem label="Jul - Sep" fontWeight="bold">
+						<mx:fill>
+							<mx:SolidColor color="0xffcf0d"/>
+						</mx:fill>
+					</mx:LegendItem>
+					<mx:LegendItem label="Oct - Dec" fontWeight="bold">
+						<mx:fill>
+							<mx:SolidColor color="0xff69b0"/>
+						</mx:fill>
+					</mx:LegendItem>
+				</mx:Legend>
+				<mx:ColumnChart id="columnchart" y="363" left="10" right="10" height="240"
+								dataProvider="{profData}" fontSize="12" seriesFilters="[]"
+								showDataTips="false">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis1"
+									   minimum="0" 
+									   maximum="100" labelFunction="linearAxis_labelFunc" />
+					</mx:verticalAxis>	
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat"/>
+					</mx:horizontalAxis>		
+					<mx:series>
+						
+						<!--THIS IS NOT REQUIRED cant be benchmark also for benchmark line-->
+						<!--<mx:LineSeries yField="Y" xField="X"
+						lineStroke="{this.parentApplication.lineStroke}"
+						dataProvider="{this.parentApplication.lineDataProvider}">
+						<mx:horizontalAxis>
+						<mx:LinearAxis maximum="1"/>
+						</mx:horizontalAxis>
+						</mx:LineSeries>-->
+						<!--end for benchmark line-->
+						
+						<mx:ColumnSeries 
+							fills="{warmColorsArray}" labelFunction="setCustomLabel" displayName="Quarter1" yField="doc1" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray2}" labelFunction="setCustomLabel" displayName="Quarter2" yField="doc2" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray3}" labelFunction="setCustomLabel" displayName="Quarter3" yField="doc3" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray4}" labelFunction="setCustomLabel" displayName="Quarter4" yField="doc4" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+					</mx:series>
+				</mx:ColumnChart>
+				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="240"
+								dataProvider="{profData1}" fontSize="12" seriesFilters="[]"
+								showDataTips="false">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis2"
+									   minimum="0" 
+									   />
+					</mx:verticalAxis>	
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat"/>
+					</mx:horizontalAxis>		
+					<mx:series>
+						
+						<!--THIS IS NOT REQUIRED cant be benchmark also for benchmark line-->
+						<!--<mx:LineSeries yField="Y" xField="X"
+						lineStroke="{this.parentApplication.lineStroke}"
+						dataProvider="{this.parentApplication.lineDataProvider}">
+						<mx:horizontalAxis>
+						<mx:LinearAxis maximum="1"/>
+						</mx:horizontalAxis>
+						</mx:LineSeries>-->
+						<!--end for benchmark line-->
+						
+						<mx:ColumnSeries 
+							fills="{warmColorsArray}" displayName="Quarter1" yField="doc1" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray2}" displayName="Quarter2" yField="doc2" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray3}" displayName="Quarter3" yField="doc3" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						<mx:ColumnSeries 
+							fills="{warmColorsArray4}" displayName="Quarter4" yField="doc4" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+					</mx:series>
+				</mx:ColumnChart>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate By Profession"/>
+				<s:Label y="10" right="270" text="Departments :"/>
+				<s:Label y="10" right="475" text="Year :"/>
+				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
+								blendMode="darken" change="btnDepartment_changeHandler(event)"
+								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
+				
+				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+								blendMode="darken" change="btnYear_changeHandler(event)"
+								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
+							
+				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
+						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"
+						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
+
+			</s:BorderContainer>
+		</s:NavigatorContent>
+		
+	</flexlib:SuperTabNavigator>
+	
+</s:NavigatorContent>
