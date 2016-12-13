@@ -8,7 +8,7 @@ package com
 	
 	import spark.components.DataGrid;
 	import spark.components.gridClasses.GridColumn;
-
+	
 	public class DataGridDataExporter
 	{
 		public static function exportCSV(dg:DataGrid, csvSeparator:String="\t", lineSeparator:String="\n"):String

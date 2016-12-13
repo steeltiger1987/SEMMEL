@@ -562,6 +562,7 @@
 				//this.appVersion = "App version:" + appXML.ns::version;
 				trace("App version: " + appXML.ns::versionNumber);
 				Constants.appVersion = appXML.ns::versionNumber;
+//				Constants.appVersion = "1.1.7";
 			}
 			
 			//end of application auto updater
@@ -717,6 +718,7 @@
 						}
 						trace("App version: " + appXML.ns::versionNumber);
 						Constants.appVersion = appXML.ns::versionNumber;
+//						Constants.appVersion = "1.1.7";
 						
 						
 						//store constant value
@@ -1114,7 +1116,7 @@
 						//trace(Base64.encodeByteArray(kdata));
 						
 						//try{
-						var stream:FileStream = new FileStream()
+						var stream:FileStream = new FileStream();
 						stream.open(fileRaw, FileMode.READ);
 						raw = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
 						stream.close();

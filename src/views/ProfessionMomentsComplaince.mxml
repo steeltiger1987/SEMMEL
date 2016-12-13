@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		creationComplete="init()"
 		chromeColor="#DDDDDD" 
 		>
 	<fx:Declarations>
@@ -19,6 +21,14 @@
 			[Bindable]
 			public var professionCompliance:ArrayCollection;
 			
+			public function eventGrid(evt:Event){
+				var selected:int = dataGrid.selectedIndex;
+				trace("select num:"+selected);
+				trace("data:" + this.professionCompliance.getItemAt(dataGrid.selectedIndex).prof);
+			}
+			public function init(){
+				this.fetchLocalXML();
+			}
 			public function fetchLocalXML():void{
 //				if(this.parentApplication.fetchXMLData!=""){
 					//try{
@@ -34,7 +44,7 @@
 								stream.close();
 								
 								s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-								trace("decaa: " + s);
+//								trace("decaa: " + s);
 								
 							}catch(e:Error){
 								trace("e: " + e.toString());
@@ -46,7 +56,7 @@
 //						var xml:XML = new XML(s);
 						
 						var jsonRaw = JSON.parse(s);
-						trace("jsonRaw raw:"+s);
+//						trace("jsonRaw raw:"+s);
 						var who_safety:ArrayCollection = new ArrayCollection(jsonRaw["who_safety"]);
 						
 						//var oooFilter:String = "infectioncontrol_20146";
@@ -275,7 +285,7 @@
 	<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 	
 		<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{professionCompliance}"
-					fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto">
+					fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" selectionChange="eventGrid(event)">
 			<s:columns>
 				<s:ArrayList>
 					

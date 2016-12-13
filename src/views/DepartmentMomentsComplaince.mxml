@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mx="library://ns.adobe.com/flex/mx"
 		chromeColor="#DDDDDD" 
 		creationComplete="init()" xmlns:views="views.*">
 	
@@ -12,6 +13,8 @@
 		<![CDATA[
 			import com.DataGridDataExporter;
 			import com.FileUtils;
+			import com.hurlant.util.Base64;
+			import com.hurlant.util.Hex;
 			import com.security.util.AESCrypto;
 			import com.semmel.Constants;
 			
@@ -22,19 +25,33 @@
 			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
 			import mx.controls.Alert;
+			import mx.events.ListEvent;
+			import mx.formatters.NumberFormatter;
+			import mx.rpc.xml.SimpleXMLDecoder;
 			import mx.utils.ArrayUtil;
 			
 			import spark.events.PopUpEvent;
+			
+			import de.polygonal.ds.HashMap;
 			
 			//public var myCallout:CalloutFilter = new CalloutFilter();
 			
 			private var loader : URLLoader = new URLLoader();
 			
 			private var obFilter:String = "";
+
+			[Bindable]
+			public var professionCompliance:ArrayCollection;
+			public var wardArray:ArrayCollection;
 			
 			[Bindable]
 			private var xmlDatagrid : XMLListCollection;
+			public var who_safety:ArrayCollection = null;
+			public var who_safety_department:ArrayCollection = null;
+			public var acAllNodes:ArrayCollection = new ArrayCollection();
 			
+			public var orderNum=0;
+			public var orderCnt=0;
 			private function onOrientationChange( event:StageOrientationEvent ):void 
 			{ 
 				//trace("The orientation was " + event.beforeOrientation + " and is now " + event.afterOrientation );
@@ -45,10 +62,201 @@
 			
 			private var filePath:File;
 			private function init():void{
-				
+//				this.dataGrid.selectedItem.@dept;
 				fetchLocalXML();
 			}
 			
+			private function convertXMLtoArrayCollection1(file:XMLListCollection):ArrayCollection
+			{
+				var arrcol:ArrayCollection = new ArrayCollection;
+				
+				for each (var value in file)
+				{
+					arrcol.addItem(value)
+				}
+				
+				return arrcol;
+			}
+			
+			private function gridEvent(evt:Event):void {
+//				trace("selected num: "+ dataGrid.selectedIndex);
+//				trace("data:" + this.xmlDatagrid.getItemAt(dataGrid.selectedIndex).@dept);
+				var flag:Number = 0;
+				var dataPoint:String = this.acAllNodes.getItemAt(dataGrid.selectedIndex).dept;
+				var raw:String = "";
+				var s:String = "";
+				var file:File = File.applicationStorageDirectory.resolvePath("rawdata_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+				trace("data point"+dataPoint);
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
+						
+						s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						trace("decaa: " + s);
+						
+					}catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
+				var jsonRaw = JSON.parse(s);
+				this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+				this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+				var queryYM = this.parentApplication.selectedYM;
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var prof:Object=new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+
+				var acSurveyID:ArrayCollection = new ArrayCollection();
+				for(var index:Number=0; index<this.who_safety_department.length; index++){
+					if(this.who_safety_department[index].dept == dataPoint){flag=1;}
+				}
+				if(flag==1){
+					var strXML:String = xmlDatagrid.toXMLString();
+					strXML = "<root>" + strXML + "</root>";
+					var xmlTemp:XML = new XML(strXML);							
+					var xmlDoc:XMLDocument = new XMLDocument(xmlTemp);
+					var decoder:SimpleXMLDecoder = new SimpleXMLDecoder(true);
+					var resultObj:Object = decoder.decodeXML(xmlDoc);
+					if(resultObj.root.deptc is ArrayCollection)
+					{
+						acAllNodes = resultObj.root.deptc;
+					}
+					else if(resultObj.root.deptc is Object)
+					{
+						acAllNodes.addItem(resultObj.root.deptc);
+					}	
+
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);						
+						if(obj.dept==dataPoint && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							if(!acSurveyID.contains(obj.survey_id)){
+								acSurveyID.addItem(obj.survey_id);
+							}
+						}
+					}
+					
+					trace("start doing iterate...");
+					//for loop hash map
+					trace("Sz: " + String(acSurveyID.length));
+					var unique:Object = {};
+					var value:String;
+					var array:Array = who_safety.source;
+					var result:Array = [];
+					for each(var surveyID:Object in acSurveyID){
+	//					trace("surveyID " + surveyID);
+						for(var i:Number=0;i<this.who_safety.length;i++){
+							obj = this.who_safety.getItemAt(i);
+							if(obj.survey_id==surveyID && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+								value = array[i].prof;
+								if (!unique[value])
+								{
+									unique[value] = true;
+									
+									var profession:Object = new Object();
+									profession.dept = value;
+									
+									profession.hr1 = profession.hw1 = profession.mglove1 = profession.miss1 = 0;
+									profession.hr2 = profession.hw2 = profession.mglove2 = profession.miss2 = 0;
+									profession.hr3 = profession.hw3 = profession.mglove3 = profession.miss3 = 0;
+									profession.hr4 = profession.hw4 = profession.mglove4 = profession.miss4 = 0;
+									profession.hr5 = profession.hw5 = profession.mglove5 = profession.miss5 = 0;
+									
+									profession.totalhwhr = 0;
+									profession.totalmiss = 0;
+									profession.totalmisswithglove = 0;
+									profession.comply = 0;
+									profession.noncomply = 0;
+									
+									result.push(profession);
+								}
+								professionCompliance = new ArrayCollection(result);
+								for(var indi=1;indi<=5;indi++) {
+									for(var j=0;j<professionCompliance.length;j++) {
+										if(professionCompliance[j].dept == who_safety[i].prof && int(who_safety[i].indi) == indi) {
+											professionCompliance[j]['hr'+indi] = Number(professionCompliance[j]['hr'+indi]) + Number(who_safety[i].hr);
+											professionCompliance[j]['hw'+indi] = Number(professionCompliance[j]['hw'+indi]) + Number(who_safety[i].hw);
+											if(Number(who_safety[i].glove)==1&&Number(who_safety[i].missed)==1){
+												professionCompliance[j]['mglove'+indi] = Number(professionCompliance[j]['mglove'+indi]) + Number(who_safety[i].glove);
+											}
+											if(Number(who_safety[i].glove)==0&&Number(who_safety[i].missed)==1){
+												professionCompliance[j]['miss'+indi] = Number(professionCompliance[j]['miss'+indi]) + Number(who_safety[i].missed);
+											}
+										}
+									}
+									
+									for(var j=0;j<professionCompliance.length;j++) {
+										professionCompliance[j].totalhwhr  += Number(professionCompliance[j]['hr'+indi]) + Number(professionCompliance[j]['hw'+indi]);
+										professionCompliance[j].totalmiss += Number(professionCompliance[j]['miss'+indi]);
+										professionCompliance[j].totalmisswithglove += Number(professionCompliance[j]['mglove'+indi]);
+										
+										var comply:Number = (Number(professionCompliance[j].totalhwhr) * 100)/(Number(professionCompliance[j].totalhwhr)+Number(professionCompliance[j].totalmiss)+Number(professionCompliance[j].totalmisswithglove));
+										var noncomply:Number = 100 - comply;
+										
+										comply = Math.round(comply * 100)/100;
+										noncomply = Math.round(noncomply * 100)/100;
+										
+										professionCompliance[j].comply = comply;
+										professionCompliance[j].noncomply = noncomply;
+										
+									}
+									
+									//End Complaince
+								}					
+							}
+						}
+					}
+					if(this.orderNum+this.orderCnt<dataGrid.selectedIndex){
+						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1-this.orderCnt);
+						this.orderNum = dataGrid.selectedIndex-this.orderCnt;
+						this.orderCnt = professionCompliance.length;
+					}
+					else{
+						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1);
+						this.orderNum = dataGrid.selectedIndex;
+						this.orderCnt = professionCompliance.length;
+					}
+					dataGrid.dataProvider = this.acAllNodes;
+					for(var row:Number = this.orderNum+1; row<=orderNum+orderCnt; row++)
+					{
+						dataGrid.setSelectedIndex(this.orderNum+1);
+					}
+				}
+			}
+			
+			private function percentageFormat(value:Number):Number
+			{
+				
+				// Initialize the NumberFormatter Object
+				
+				var fmt:NumberFormatter = new NumberFormatter();
+				
+				var formattedString:String;
+				
+				// Set some of the options available
+				
+				fmt.precision = 2;
+				fmt.useThousandsSeparator = false;
+				
+				// Format our value and return a formatted string
+				
+				formattedString = fmt.format(value);
+				
+				return Number(formattedString);
+				// Do something with our newly formatted string
+				
+				//someobject.sometextfield.text = formattedString;
+				
+			}
+
 			public function fetchLocalXML():void{
 				//var applicationStorageDirectoryPath:File = File.applicationStorageDirectory;
 				//var nativePathToApplicationStorageDirectory:String = applicationStorageDirectoryPath.nativePath.toString();
@@ -77,7 +285,7 @@
 								
 								
 								s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-								trace("dec: " + s);
+//								trace("decs: " + s);
 								
 							}catch(e:Error){
 								trace("e: " + e.toString());
@@ -96,8 +304,23 @@
 						
 							//this.xmlDatagrid = new XMLListCollection(xml.deptComp.(@ob==this.obFilter).deptc);
 							this.xmlDatagrid = new XMLListCollection(xml.deptComp.(@ob==ob).deptc);
-							dataGrid.dataProvider = this.xmlDatagrid;
-	
+//							dataGrid.dataProvider = this.xmlDatagrid;
+							var strXML:String = xmlDatagrid.toXMLString();
+							strXML = "<root>" + strXML + "</root>";
+							var xmlTemp:XML = new XML(strXML);							
+							var xmlDoc:XMLDocument = new XMLDocument(xmlTemp);
+							var decoder:SimpleXMLDecoder = new SimpleXMLDecoder(true);
+							var resultObj:Object = decoder.decodeXML(xmlDoc);
+							if(resultObj.root.deptc is ArrayCollection)
+							{
+								acAllNodes = resultObj.root.deptc;
+							}
+							else if(resultObj.root.deptc is Object)
+							{
+								acAllNodes.addItem(resultObj.root.deptc);
+							}	
+							dataGrid.dataProvider = acAllNodes;
+							trace("array:"+acAllNodes);
 							//XML Output Summary Total
 							//<summ_total hw1="33" hr1="121" miss1="54" hw2="24" hr2="6" miss2="0" hw3="50" hr3="9" miss3="4" hw4="19" hr4="48" miss4="34" hw5="22" hr5="59" miss5="88" totalhwhr="391" totalmiss="90"/>
 							
@@ -289,35 +512,35 @@
 	<s:BorderContainer id="pnl" x="0" y="30" width="100%" height="100%" borderColor="#FFFFFF">
 	
 	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}"
-				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto">
+				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" selectionChange="gridEvent(event)">
 		<s:columns>
 			<s:ArrayList>
 				
-				<s:GridColumn dataField="@dept" headerText="Ward/Facility" itemRenderer="renderer.GridNumber" width="170" />
-				<s:GridColumn dataField="@hw1" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@hr1" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@miss1" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@mglove1" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn id="ward" dataField="dept" headerText="Ward/Facility" itemRenderer="renderer.GridNumber" width="170" />
+				<s:GridColumn dataField="hw1" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hr1" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="miss1" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="mglove1" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
 				
-				<s:GridColumn dataField="@hw2" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@hr2" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@miss2" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@mglove2" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hw2" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hr2" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="miss2" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="mglove2" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
 				
-				<s:GridColumn dataField="@hw3" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@hr3" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@miss3" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@mglove3" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hw3" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hr3" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="miss3" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="mglove3" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
 				
-				<s:GridColumn dataField="@hw4" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@hr4" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@miss4" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@mglove4" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hw4" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hr4" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="miss4" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="mglove4" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
 				
-				<s:GridColumn dataField="@hw5" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@hr5" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@miss5" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@mglove5" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hw5" headerText="HW" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="hr5" headerText="HR" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="miss5" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="mglove5" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
 				
 				<!--<deptc dept="A&E" hw1="0" hr1="15" miss1="10" hw2="7" hr2="0" miss2="0" hw3="11" 
 				hr3="0" miss3="0" hw4="0" hr4="7" miss4="5" hw5="1" hr5="14" miss5="7"
@@ -326,11 +549,11 @@
 				Hand Wash +   Hand Rub	Missed	Comply	Non comply
 				-->
 				
-				<s:GridColumn dataField="@totalhwhr" headerText="HW+HR" itemRenderer="renderer.GridNumber" width="65" />
-				<s:GridColumn dataField="@totalmiss" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@totalmisswithglove" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
-				<s:GridColumn dataField="@comply" headerText="COMPLY" itemRenderer="renderer.GridNumber" width="65" />
-				<s:GridColumn dataField="@noncomply" headerText="NON-COMPLY" itemRenderer="renderer.GridNumber" width="80" />
+				<s:GridColumn dataField="totalhwhr" headerText="HW+HR" itemRenderer="renderer.GridNumber" width="65" />
+				<s:GridColumn dataField="totalmiss" headerText="M" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="totalmisswithglove" headerText="M+G" itemRenderer="renderer.GridNumber" width="40" />
+				<s:GridColumn dataField="comply" headerText="COMPLY" itemRenderer="renderer.GridNumber" width="65" />
+				<s:GridColumn dataField="noncomply" headerText="NON-COMPLY" itemRenderer="renderer.GridNumber" width="80" />
 				
 			</s:ArrayList>
 		</s:columns>
