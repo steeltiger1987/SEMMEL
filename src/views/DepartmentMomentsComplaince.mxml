@@ -79,8 +79,6 @@
 			}
 			
 			private function gridEvent(evt:Event):void {
-//				trace("selected num: "+ dataGrid.selectedIndex);
-//				trace("data:" + this.xmlDatagrid.getItemAt(dataGrid.selectedIndex).@dept);
 				var flag:Number = 0;
 				var dataPoint:String = this.acAllNodes.getItemAt(dataGrid.selectedIndex).dept;
 				var raw:String = "";
@@ -120,6 +118,7 @@
 					if(this.who_safety_department[index].dept == dataPoint){flag=1;}
 				}
 				if(flag==1){
+//					dataGrid.selectedIndices = null;
 					var strXML:String = xmlDatagrid.toXMLString();
 					strXML = "<root>" + strXML + "</root>";
 					var xmlTemp:XML = new XML(strXML);							
@@ -193,7 +192,7 @@
 										}
 									}
 									
-									for(var j=0;j<professionCompliance.length;j++) {
+/*									for(var j=0;j<professionCompliance.length;j++) {
 										professionCompliance[j].totalhwhr  += Number(professionCompliance[j]['hr'+indi]) + Number(professionCompliance[j]['hw'+indi]);
 										professionCompliance[j].totalmiss += Number(professionCompliance[j]['miss'+indi]);
 										professionCompliance[j].totalmisswithglove += Number(professionCompliance[j]['mglove'+indi]);
@@ -206,29 +205,53 @@
 										
 										professionCompliance[j].comply = comply;
 										professionCompliance[j].noncomply = noncomply;
-										
-									}
 									
+									}
+									*/
 									//End Complaince
 								}					
 							}
 						}
 					}
+					for(var indi=1; indi<=5; indi++)
+					{
+						for(var j=0;j<professionCompliance.length;j++) {
+							professionCompliance[j].totalhwhr  += Number(professionCompliance[j]['hr'+indi]) + Number(professionCompliance[j]['hw'+indi]);
+							professionCompliance[j].totalmiss += Number(professionCompliance[j]['miss'+indi]);
+							professionCompliance[j].totalmisswithglove += Number(professionCompliance[j]['mglove'+indi]);
+							
+							var comply:Number = (Number(professionCompliance[j].totalhwhr) * 100)/(Number(professionCompliance[j].totalhwhr)+Number(professionCompliance[j].totalmiss)+Number(professionCompliance[j].totalmisswithglove));
+							var noncomply:Number = 100 - comply;
+							
+							comply = Math.round(comply * 100)/100;
+							noncomply = Math.round(noncomply * 100)/100;
+							
+							professionCompliance[j].comply = comply;
+							professionCompliance[j].noncomply = noncomply;
+							
+						}
+					}
 					if(this.orderNum+this.orderCnt<dataGrid.selectedIndex){
+						trace("big");
 						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1-this.orderCnt);
 						this.orderNum = dataGrid.selectedIndex-this.orderCnt;
 						this.orderCnt = professionCompliance.length;
 					}
 					else{
+						trace("small");
 						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1);
 						this.orderNum = dataGrid.selectedIndex;
 						this.orderCnt = professionCompliance.length;
 					}
 					dataGrid.dataProvider = this.acAllNodes;
+//					dataGrid.setSelectedIndex(orderNum+1);
+					var v:Vector.<int> = new Vector.<int>(orderCnt);
 					for(var row:Number = this.orderNum+1; row<=orderNum+orderCnt; row++)
 					{
-						dataGrid.setSelectedIndex(this.orderNum+1);
+						v[row-this.orderNum-1] = row;
 					}
+					trace("v:",v.toString());
+					dataGrid.selectedIndices = v;
 				}
 			}
 			
@@ -511,7 +534,7 @@
 	
 	<s:BorderContainer id="pnl" x="0" y="30" width="100%" height="100%" borderColor="#FFFFFF">
 	
-	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}"
+	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}" selectionMode="multipleRows"
 				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" selectionChange="gridEvent(event)">
 		<s:columns>
 			<s:ArrayList>

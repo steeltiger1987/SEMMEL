@@ -17,14 +17,241 @@
 			import mx.collections.ArrayCollection;
 			import mx.controls.Alert;
 			import mx.events.FlexEvent;
+			import mx.rpc.xml.SimpleXMLDecoder;
+			
+			import de.polygonal.ds.HashMap;
 			
 			[Bindable]
 			public var professionCompliance:ArrayCollection;
+			public var wardCompliance:ArrayCollection;
+			public var who_safety:ArrayCollection = null;
+			public var who_safety_department:ArrayCollection = null;
+			public var acAllNodes:ArrayCollection = new ArrayCollection();
 			
-			public function eventGrid(evt:Event){
+			public var orderNum=0;
+			public var orderCnt=0;
+			private function eventGrid(evt:Event):void{
+//				this.dataGrid.dataProvider = professionCompliance;
 				var selected:int = dataGrid.selectedIndex;
-				trace("select num:"+selected);
-				trace("data:" + this.professionCompliance.getItemAt(dataGrid.selectedIndex).prof);
+				var flag:Number = 0;
+				var dataPoint:String = this.acAllNodes.getItemAt(dataGrid.selectedIndex).prof;
+				var raw:String = "";
+				var s:String = "";
+				var file:File = File.applicationStorageDirectory.resolvePath("rawdata_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+//				trace("data point:"+dataPoint);
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
+						
+						s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						//trace("dec: " + s);
+						
+					}catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
+				var jsonRaw = JSON.parse(s);
+				this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+				this.who_safety_department = new ArrayCollection(jsonRaw["who_safety_department"]);
+				var queryYM = this.parentApplication.selectedYM;
+				
+				var acAnalytic:ArrayCollection = new ArrayCollection();
+				var hm:HashMap = new HashMap();
+				
+				var prof:Object=new Object();
+				var obj:Object;
+				
+				//for complaince rate
+				var overAllCnt:Number = 0;
+				
+				var acSurveyID:ArrayCollection = new ArrayCollection();
+				for(var index:Number=0; index<this.who_safety_department.length; index++){
+					if(this.who_safety_department[index].prof1 == dataPoint||this.who_safety_department[index].prof2 == dataPoint||this.who_safety_department[index].prof3 == dataPoint||this.who_safety_department[index].prof4 == dataPoint){flag=1;}
+				}
+//				trace("flag:"+flag);
+				if(flag==1){
+					acAllNodes = new ArrayCollection();
+//					acAllNodes = professionCompliance;
+//					this.dataGrid.dataProvider = acAllNodes;
+//					trace("acAllNodes:"+acAllNodes.toString());
+					fetchLocalXML();
+					for(var i:Number=0;i<this.who_safety_department.length;i++){
+						obj = this.who_safety_department.getItemAt(i);						
+						if((obj.prof1==dataPoint||obj.prof2==dataPoint||obj.prof3==dataPoint||obj.prof4==dataPoint) && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+							if(!acSurveyID.contains(obj.survey_id)){
+								acSurveyID.addItem(obj.survey_id);
+							}
+						}
+					}
+					
+					trace("start doing iterate...");
+					//for loop hash map
+					trace("Sz: " + String(acSurveyID.length));
+					var unique:Object = {};
+					var value:String;
+					var array:Array = who_safety_department.source;
+					var result:Array = [];
+					for each(var surveyID:Object in acSurveyID){
+						//					trace("surveyID " + surveyID);
+						for(var i:Number=0;i<this.who_safety_department.length;i++){
+							obj = this.who_safety_department.getItemAt(i);
+							if(obj.survey_id==surveyID && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
+								value = array[i].dept;
+								if (!unique[value])
+								{
+									unique[value] = true;
+									
+									var profession:Object = new Object();
+									profession.prof = value;
+									
+									profession.hr1 = profession.hw1 = profession.glove1 = profession.missed1 = 0;
+									profession.hr2 = profession.hw2 = profession.glove2 = profession.missed2 = 0;
+									profession.hr3 = profession.hw3 = profession.glove3 = profession.missed3 = 0;
+									profession.hr4 = profession.hw4 = profession.glove4 = profession.missed4 = 0;
+									profession.hr5 = profession.hw5 = profession.glove5 = profession.missed5 = 0;
+									
+									profession.totalhwhr = 0;
+									profession.totalmiss = 0;
+									profession.totalmisswithglove = 0;
+									profession.comply = 0;
+									profession.noncomply = 0;
+									
+									result.push(profession);
+								}
+								wardCompliance = new ArrayCollection(result);
+								for(var indi=1;indi<=5;indi++) {
+									for(var j=wardCompliance.length-1;j>=0;j--) {
+										for(var k=0; k<who_safety.length; k++){
+											if(dataPoint == who_safety[k].prof && int(who_safety[k].indi) == indi && who_safety[k].survey_id==surveyID) {
+												//									var j=1;
+												trace("wardcom:"+wardCompliance[j].prof+":"+dataPoint+":"+who_safety[k].prof+":"+indi+":"+surveyID);
+												wardCompliance[j]['hr'+indi] = Number(wardCompliance[j]['hr'+indi]) + Number(who_safety[k].hr);
+												wardCompliance[j]['hw'+indi] = Number(wardCompliance[j]['hw'+indi]) + Number(who_safety[k].hw);
+												if(Number(who_safety[k].glove)==1&&Number(who_safety[k].missed)==1){
+													wardCompliance[j]['glove'+indi] = Number(wardCompliance[j]['glove'+indi]) + Number(who_safety[k].glove);
+												}
+												if(Number(who_safety[k].glove)==0&&Number(who_safety[k].missed)==1){
+													wardCompliance[j]['missed'+indi] = Number(wardCompliance[j]['missed'+indi]) + Number(who_safety[k].missed);
+												}
+											}
+											//									arr[j]=false;
+										}
+									}
+									
+/*									for(var j=0;j<wardCompliance.length;j++) {
+										wardCompliance[j].totalhwhr  += Number(wardCompliance[j]['hr'+indi]) + Number(wardCompliance[j]['hw'+indi]);
+										wardCompliance[j].totalmiss += Number(wardCompliance[j]['missed'+indi]);
+										wardCompliance[j].totalmisswithglove += Number(wardCompliance[j]['glove'+indi]);
+										
+										var comply:Number = (Number(wardCompliance[j].totalhwhr) * 100)/(Number(wardCompliance[j].totalhwhr)+Number(wardCompliance[j].totalmiss)+Number(professionCompliance[j].totalmisswithglove));
+										var noncomply:Number = 100 - comply;
+										
+										comply = Math.round(comply * 100)/100;
+										noncomply = Math.round(noncomply * 100)/100;
+										
+										wardCompliance[j].comply = comply;
+										wardCompliance[j].noncomply = noncomply;
+										
+									}
+									*/
+									//End Complaince
+								}
+							}
+						}
+					}
+					var tempArray:ArrayCollection = new ArrayCollection();
+					tempArray = wardCompliance;
+					for(var j=0; j<wardCompliance.length-1; j++)
+					{
+						tempArray[j].hr1 = tempArray[j].hr1 - tempArray[j+1].hr1;
+						tempArray[j].hw1 = tempArray[j].hw1 - tempArray[j+1].hw1
+						tempArray[j].glove1 = tempArray[j].glove1 - tempArray[j+1].glove1
+						tempArray[j].missed1 = tempArray[j].missed1 - tempArray[j+1].missed1;
+						
+						tempArray[j].hr2 = tempArray[j].hr2 - tempArray[j+1].hr2;
+						tempArray[j].hw2 = tempArray[j].hw2 - tempArray[j+1].hw2;
+						tempArray[j].glove2 = tempArray[j].glove2 - tempArray[j+1].glove2;
+						tempArray[j].missed2 = tempArray[j].missed2 - tempArray[j+1].missed2;
+						
+						tempArray[j].hr3 = tempArray[j].hr3 -tempArray[j+1].hr3;
+						tempArray[j].hw3 = tempArray[j].hw3- tempArray[j+1].hw3;
+						tempArray[j].glove3 = tempArray[j].glove3 -tempArray[j+1].glove3; 
+						tempArray[j].missed3 = tempArray[j].missed3 -tempArray[j+1].missed3;
+						
+						tempArray[j].hr4 = tempArray[j].hr4- tempArray[j+1].hr4;
+						tempArray[j].hw4 = tempArray[j].hw4- tempArray[j+1].hw4;
+						tempArray[j].glove4 = tempArray[j].glove4-tempArray[j+1].glove4;
+						tempArray[j].missed4 = tempArray[j].missed4 -tempArray[j+1].missed4;
+						
+						tempArray[j].hr5 = tempArray[j].hr5 -tempArray[j+1].hr5;
+						tempArray[j].hw5 = tempArray[j].hw5- tempArray[j+1].hw5;
+						tempArray[j].glove5 = tempArray[j].glove5 -tempArray[j+1].glove5;
+						tempArray[j].missed5 = tempArray[j].missed5- tempArray[j+1].missed5;
+						
+						tempArray[j].totalhwhr = tempArray[j].totalhwhr;
+						tempArray[j].totalmiss = tempArray[j].totalmiss;
+						tempArray[j].totalmisswithglove = tempArray[j].totalmisswithglove;
+						tempArray[j].comply = tempArray[j].comply;
+						tempArray[j].noncomply = tempArray[j].noncomply;
+
+					}
+					wardCompliance = tempArray;
+					for(var indi=1; indi<=5; indi++)
+					{
+						for(var j=0;j<wardCompliance.length;j++) {
+							wardCompliance[j].totalhwhr  += Number(wardCompliance[j]['hr'+indi]) + Number(wardCompliance[j]['hw'+indi]);
+							wardCompliance[j].totalmiss += Number(wardCompliance[j]['missed'+indi]);
+							wardCompliance[j].totalmisswithglove += Number(wardCompliance[j]['glove'+indi]);
+							
+							var comply:Number = (Number(wardCompliance[j].totalhwhr) * 100)/(Number(wardCompliance[j].totalhwhr)+Number(wardCompliance[j].totalmiss)+Number(wardCompliance[j].totalmisswithglove));
+							var noncomply:Number = 100 - comply;
+							
+							comply = Math.round(comply * 100)/100;
+							noncomply = Math.round(noncomply * 100)/100;
+							
+							wardCompliance[j].comply = comply;
+							wardCompliance[j].noncomply = noncomply;
+							
+						}
+					}
+					var v:Vector.<int>;
+					if(this.orderNum+this.orderCnt<dataGrid.selectedIndex){
+						trace("big");
+						trace("index:"+dataGrid.selectedIndex);
+						this.orderNum = dataGrid.selectedIndex-this.orderCnt;
+						this.acAllNodes.addAllAt(wardCompliance,dataGrid.selectedIndex+1-this.orderCnt);
+						this.orderCnt = wardCompliance.length;
+						trace("cnt:"+orderCnt);
+						trace("num:"+orderNum);
+						v = new Vector.<int>(orderCnt);
+//						var v:Vector.<int> = new Vector.<int>(orderCnt);
+						for(var row:Number = this.orderNum; row<orderNum+orderCnt; row++)
+						{
+							v[row-this.orderNum] = row+1;
+						}
+						trace("v:",v.toString());
+					}
+					else{
+						trace("small");
+						this.orderNum = dataGrid.selectedIndex;
+						this.acAllNodes.addAllAt(wardCompliance,dataGrid.selectedIndex+1);
+						this.orderCnt = wardCompliance.length;
+						v = new Vector.<int>(orderCnt);
+						trace("index:"+dataGrid.selectedIndex);
+						trace("cnt:"+orderCnt);
+						trace("num:"+orderNum);
+						for(var row:Number = this.orderNum+1; row<=orderNum+orderCnt; row++)
+						{
+							v[row-this.orderNum-1] = row;
+						}
+						trace("v:",v.toString());
+					}
+					dataGrid.dataProvider = this.acAllNodes;
+					dataGrid.selectedIndices = v;
+				}
 			}
 			public function init(){
 				this.fetchLocalXML();
@@ -265,6 +492,8 @@
 							}			
 						
 						} 
+						acAllNodes = professionCompliance;
+						dataGrid.dataProvider = professionCompliance;
 						
 						
 //					}catch(error:Error){
@@ -284,7 +513,7 @@
 	
 	<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 	
-		<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{professionCompliance}"
+		<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" selectionMode="multipleRows"
 					fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" selectionChange="eventGrid(event)">
 			<s:columns>
 				<s:ArrayList>
