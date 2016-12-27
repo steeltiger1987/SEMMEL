@@ -49,6 +49,7 @@
 			public var who_safety:ArrayCollection = null;
 			public var who_safety_department:ArrayCollection = null;
 			public var acAllNodes:ArrayCollection = new ArrayCollection();
+			public var arrFlag:Array=[];
 			
 			public var orderNum=0;
 			public var orderCnt=0;
@@ -117,23 +118,8 @@
 				for(var index:Number=0; index<this.who_safety_department.length; index++){
 					if(this.who_safety_department[index].dept == dataPoint){flag=1;}
 				}
-				if(flag==1){
-//					dataGrid.selectedIndices = null;
-					var strXML:String = xmlDatagrid.toXMLString();
-					strXML = "<root>" + strXML + "</root>";
-					var xmlTemp:XML = new XML(strXML);							
-					var xmlDoc:XMLDocument = new XMLDocument(xmlTemp);
-					var decoder:SimpleXMLDecoder = new SimpleXMLDecoder(true);
-					var resultObj:Object = decoder.decodeXML(xmlDoc);
-					if(resultObj.root.deptc is ArrayCollection)
-					{
-						acAllNodes = resultObj.root.deptc;
-					}
-					else if(resultObj.root.deptc is Object)
-					{
-						acAllNodes.addItem(resultObj.root.deptc);
-					}	
-
+				if(flag==1&&arrFlag[dataPoint]==true){
+					dataGrid.selectedItem.contentBackgroundColor="#FF00FF";
 					for(var i:Number=0;i<this.who_safety_department.length;i++){
 						obj = this.who_safety_department.getItemAt(i);						
 						if(obj.dept==dataPoint && obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
@@ -231,28 +217,41 @@
 							
 						}
 					}
-					if(this.orderNum+this.orderCnt<dataGrid.selectedIndex){
+/*					if(this.orderNum+this.orderCnt<dataGrid.selectedIndex){
 						trace("big");
 						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1-this.orderCnt);
 						this.orderNum = dataGrid.selectedIndex-this.orderCnt;
 						this.orderCnt = professionCompliance.length;
 					}
 					else{
-						trace("small");
+						trace("small");*/
 						this.acAllNodes.addAllAt(professionCompliance,dataGrid.selectedIndex+1);
-						this.orderNum = dataGrid.selectedIndex;
-						this.orderCnt = professionCompliance.length;
-					}
+						arrFlag[dataPoint+"cnt"] = professionCompliance.length;
+//						this.orderNum = dataGrid.selectedIndex;
+//						this.orderCnt = professionCompliance.length;
+//					}
 					dataGrid.dataProvider = this.acAllNodes;
-//					dataGrid.setSelectedIndex(orderNum+1);
-					var v:Vector.<int> = new Vector.<int>(orderCnt);
-					for(var row:Number = this.orderNum+1; row<=orderNum+orderCnt; row++)
-					{
-						v[row-this.orderNum-1] = row;
-					}
-					trace("v:",v.toString());
-					dataGrid.selectedIndices = v;
+					arrFlag[dataPoint] = false;
 				}
+				else if(arrFlag[dataPoint]==false && flag==1)
+				{
+					for(var i=0; i<arrFlag[dataPoint+"cnt"]; i++){
+						this.acAllNodes.removeItemAt(dataGrid.selectedIndex+1);
+					}
+					arrFlag[dataPoint] = true;
+				}
+				dataGrid.setSelectedIndex(orderNum+1);
+				var v:Vector.<int> = new Vector.<int>(orderCnt);
+				var cnt:Number=0;
+				for(var row:Number = 0; row<acAllNodes.length; row++)
+				{
+					if(arrFlag[acAllNodes[row].dept]==true||arrFlag[acAllNodes[row].dept]==false){
+						v[cnt] = row;
+						cnt++;
+					}
+				}
+				trace("v:",v.toString());
+				dataGrid.selectedIndices = v;
 			}
 			
 			private function percentageFormat(value:Number):Number
@@ -341,8 +340,15 @@
 							else if(resultObj.root.deptc is Object)
 							{
 								acAllNodes.addItem(resultObj.root.deptc);
-							}	
+							}
+							var v:Vector.<int> = new Vector.<int>(acAllNodes.length);
+							for(var i=0; i<acAllNodes.length; i++)
+							{
+								arrFlag[acAllNodes[i].dept] = true;
+								v[i] = i;
+							}
 							dataGrid.dataProvider = acAllNodes;
+							dataGrid.selectedIndices = v;
 							trace("array:"+acAllNodes);
 							//XML Output Summary Total
 							//<summ_total hw1="33" hr1="121" miss1="54" hw2="24" hr2="6" miss2="0" hw3="50" hr3="9" miss3="4" hw4="19" hr4="48" miss4="34" hw5="22" hr5="59" miss5="88" totalhwhr="391" totalmiss="90"/>
@@ -401,38 +407,14 @@
 							//End Complaince
 							
 						}
-						
-							/*a1.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a1;
-							indi1.text = "Indic1 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi1;
-							cal1.text = xml.optional.(@ob==this.obFilter).comp.@ratio1 + " %";
-							
-							a2.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a2;
-							indi2.text = "Indic2 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi2;
-							cal2.text = xml.optional.(@ob==this.obFilter).comp.@ratio2 + " %";
-							
-							a3.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a3;
-							indi3.text = "Indic3 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi3;
-							cal3.text = xml.optional.(@ob==this.obFilter).comp.@ratio3 + " %";
-							
-							a4.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a4;
-							indi4.text = "Indic4 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi4;
-							cal4.text = xml.optional.(@ob==this.obFilter).comp.@ratio4 + " %";
-							
-							a5.text = "Act (n) = " + xml.optional.(@ob==this.obFilter).cal.@a5;
-							indi5.text = "Indic5 (n) = " + xml.optional.(@ob==this.obFilter).cal.@indi5;
-							cal5.text = xml.optional.(@ob==this.obFilter).comp.@ratio5 + " %";*/
-							
-						
-						
-					  
-						
+												
 					}catch(error:Error){
 						trace("Err: " + error.toString());
 						//ta.text += error.toString();
 					}
 					
 					if(profCompliance)
-					profCompliance.fetchLocalXML();
+						profCompliance.fetchLocalXML();
 				}
 			}
 			
@@ -535,7 +517,7 @@
 	<s:BorderContainer id="pnl" x="0" y="30" width="100%" height="100%" borderColor="#FFFFFF">
 	
 	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}" selectionMode="multipleRows"
-				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" selectionChange="gridEvent(event)">
+				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" click="gridEvent(event)" >
 		<s:columns>
 			<s:ArrayList>
 				

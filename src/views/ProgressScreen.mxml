@@ -11,23 +11,22 @@
 	
 	<fx:Script>
 		<![CDATA[
-			
-			import com.hurlant.crypto.*;
 			import com.hurlant.crypto.hash.SHA1;
-			import com.hurlant.crypto.symmetric.*;
 			import com.hurlant.util.Base64;
 			import com.hurlant.util.Hex;
-			import com.security.util.*;
 			import com.security.util.AESCrypto;
 			import com.semmel.Constants;
 			
+			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
 			import mx.controls.Alert;
-			import mx.events.*;
+			import mx.events.CloseEvent;
 			import mx.events.ResizeEvent;
 			import mx.managers.PopUpManager;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
+			import mx.rpc.xml.SimpleXMLDecoder;
+			import mx.utils.object_proxy;
 			import mx.utils.*;
 			
 			
@@ -43,6 +42,10 @@
 			[Bindable]
 			private var xmlDatagridObserverPerf : XMLListCollection;
 			
+			[Bindable]
+			private var ProgressData : ArrayCollection = new ArrayCollection();
+			public var xml:XML;
+			public var xmlcollection:XMLListCollection;
 			private function fleventReset(e:FaultEvent):void {
 				trace("fault: " + e.toString());
 				//btnAction.enabled=true;
@@ -118,69 +121,83 @@
 					
 				}
 				
-//				var fileData:File = File.applicationStorageDirectory.resolvePath("progress.data");
-				var dec:String = ""; //encrypted result data
-				var enc:String = ""; //fix
-//				if(fileData.exists && file.exists){
-					
-					
-//					try{
-//						var stream:FileStream = new FileStream()
-//						stream.open(fileData, FileMode.READ);
-//						enc = stream.readUTFBytes(stream.bytesAvailable).toString(); //legnth 16 only
-//						stream.close();
-//						
-//						
-//						dec = AESCrypto.decrypt(enc, Constants.getLicenseKey().substring(0,16));
-//						trace("read dec: " + dec);
-//						
-//					} catch(e:Error){
-//						trace("read file: " + e.toString());
-//					}
-					
-					
+				var raw:String = "";
+				var s:String = "";
+				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+				if(file.exists){
 					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
 						
-//						var s:String = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + dec;
-//						trace("dec xml: " + s);
-//						var xml:XML = new XML(s);
-//						
-//						var xml:XML = new XML(s);
-						var s:String = Constants.progressData;
-						trace("dec xml: " + s);
 						
-						if(this.parentApplication.isReset){
-							
-							var xmlListProf:XMLListCollection = new XMLListCollection(new XML(s).profprogress.profp);
-							var xmlListDept:XMLListCollection = new XMLListCollection(new XML(s).deptprogress.deptp);
-							
-							trace("isReset true");
-							
-							for each (var prof : XML in xmlListProf){
-								prof.@progress = "0";
-							}
-							
-							for each (var dept : XML in xmlListDept){
-								dept.@progress = "0";
-							}
-							
-							this.xmlDatagridProfession = xmlListProf;
-							this.xmlDatagridWardFacility = xmlListDept;
-							
-						} else {
-							
-							this.xmlDatagridProfession = new XMLListCollection(new XML(s).profprogress.profp);
-							this.xmlDatagridWardFacility = new XMLListCollection(new XML(s).deptprogress.deptp);
-							this.xmlDatagridObserverPerf = new XMLListCollection(new XML(s).obperf.perf);
-							
-						}
+						//start decrypt here
+						//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
+						//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
+						//doDecrypt
+						
+						
+						s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						trace("decs: " + s);
 						
 					}catch(e:Error){
-						trace("xml: " + e.toString());
+						trace("e: " + e.toString());
 					}
-					
-					
-//				}
+				}	
+				trace("decs: " + s);
+				var xmlData:XML = new XML(s);
+				xmlcollection = new XMLListCollection(xmlData.deptprogress.dept);
+				var strXML:String = xmlcollection.toXMLString();
+				strXML = "<root>" + strXML + "</root>";
+				xml = new XML(strXML);
+				var xmlDoc:XMLDocument = new XMLDocument(xml);
+				var decoder:SimpleXMLDecoder = new SimpleXMLDecoder(true);
+				var resultObj:Object = decoder.decodeXML(xmlDoc);
+				var acAllNodes:ArrayCollection = new ArrayCollection();
+				if(resultObj.root.dept is ArrayCollection)
+				{
+					acAllNodes = resultObj.root.dept;
+				}
+				else if(resultObj.root.dept is Object)
+				{
+					acAllNodes.addItem(resultObj.root.dept);
+				}
+				var xmlParse:String = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>";
+				for(var i=0; i<acAllNodes.length; i++)
+				{
+					xmlParse +="<node label=\""+acAllNodes[i].dept_name;
+					for(var k=0; k<(20-acAllNodes[i].dept_name.length)*2; k++)
+					{
+						xmlParse +=" ";
+					}
+					xmlParse +="Quota:"+acAllNodes[i].remaining+"       Progress("+acAllNodes[i].progress+"|"+acAllNodes[i].quota+")  "+(acAllNodes[i].progress/acAllNodes[i].quota*100).toFixed(2) +"%\">";
+					var cnt = 0;
+					trace("data:"+xmlData.deptprogress.dept[i].professionList[cnt].quota);
+					for each(var acc in xmlData.deptprogress.dept[i].professionList)
+					{
+						if(xmlData.deptprogress.dept[i].professionList[cnt].is_group == false){
+							xmlParse += "<node label=\""+xmlData.deptprogress.dept[i].professionList[cnt].prof_name+"        Quota:"+xmlData.deptprogress.dept[i].professionList[cnt].remaining+"       Progress("+xmlData.deptprogress.dept[i].professionList[cnt].progress+"|"+xmlData.deptprogress.dept[i].professionList[cnt].quota+")  "+(xmlData.deptprogress.dept[i].professionList[cnt].progress/xmlData.deptprogress.dept[i].professionList[cnt].quota*100).toFixed(2) +"%\">";
+							xmlParse += "</node>";	
+							cnt++;
+						}
+						else{
+							xmlParse += "<node label=\""+xmlData.deptprogress.dept[i].professionList[cnt].prof_group_name+"        Quota:"+xmlData.deptprogress.dept[i].professionList[cnt].remaining+"       Progress("+xmlData.deptprogress.dept[i].professionList[cnt].progress+"|"+xmlData.deptprogress.dept[i].professionList[cnt].quota+")  "+(xmlData.deptprogress.dept[i].professionList[cnt].progress/xmlData.deptprogress.dept[i].professionList[cnt].quota*100).toFixed(2) +"%\">";
+							var cnt1=0;
+							for each(var acc1 in xmlData.deptprogress.dept[i].professionList[cnt].prof_list){
+								xmlParse += "<node label=\""+xmlData.deptprogress.dept[i].professionList[cnt].prof_list[cnt1].prof_name+"        Quota:   -    "+"       Progress "+xmlData.deptprogress.dept[i].professionList[cnt].prof_list[cnt1].progress+"\">";
+								xmlParse += "</node>";	
+								cnt1++;								
+							}
+							xmlParse += "</node>";	
+							cnt++;
+						}
+					}
+					xmlParse +="</node>";
+				}
+				xmlParse +="</root>";
+				trace("xmlParse:"+xmlParse);
+				xml = new XML(xmlParse);
 			}
 			
 			protected function btnReset_clickHandler(event:MouseEvent):void
@@ -237,28 +254,11 @@
 				  borderAlpha="1.0" borderColor="#000000" borderVisible="true" cornerRadius="6"
 				  dropShadowVisible="true">
 		<s:NavigatorContent width="100%" height="100%" label="Ward/Facility">
-			<s:DataGrid x="8" top="17" bottom="8" width="550" dataProvider="{xmlDatagridWardFacility}"
-						requestedRowCount="4">
-				<s:columns>
-					<s:ArrayList>
-						<s:GridColumn dataField="@dept" headerText="Ward/Facility" width="240"></s:GridColumn>
-						<s:GridColumn dataField="@quota" headerText="Quota" width="60" itemRenderer="renderer.QuotaRenderer"></s:GridColumn>
-						<s:GridColumn dataField="@progress" headerText="Progress" itemRenderer="renderer.ProgressRender" ></s:GridColumn>
-					</s:ArrayList>
-				</s:columns>
-			</s:DataGrid>
-		</s:NavigatorContent>
-		<s:NavigatorContent width="100%" height="100%" label="Profession">
-			<s:DataGrid x="8" top="17" bottom="13" width="550" dataProvider="{xmlDatagridProfession}"
-						requestedRowCount="4">
-				<s:columns>
-					<s:ArrayList>
-						<s:GridColumn dataField="@prof" headerText="Profession" width="200"></s:GridColumn>
-						<s:GridColumn dataField="@quota" headerText="Quota" width="60" itemRenderer="renderer.QuotaRenderer"></s:GridColumn>
-						<s:GridColumn dataField="@progress" headerText="Progress" itemRenderer="renderer.ProgressRender" ></s:GridColumn>
-					</s:ArrayList>
-				</s:columns>
-			</s:DataGrid>
+			<mx:Tree id="tree" width="550" height="580"
+					 dataProvider="{xml}"
+					 showRoot="false"
+					 labelField="@label"
+					 />
 		</s:NavigatorContent>
 		<s:NavigatorContent width="100%" height="100%" label="Observer">
 			<s:DataGrid x="8" top="17" bottom="13" width="550" dataProvider="{xmlDatagridObserverPerf}"

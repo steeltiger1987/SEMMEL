@@ -23,7 +23,7 @@
 			duration="1000" 
 			direction="up"/>
 	</fx:Declarations>
-	
+
 	<fx:Script>
 		<![CDATA[
 			import com.report.bi.SemmelReport;
@@ -69,6 +69,7 @@
 			private var year:Number = 0;			
 			
 			private var iColorNumber:Number = 0;
+			private var domain:String = "department";
 			
 			//For quater percent by moment.
 			
@@ -95,8 +96,8 @@
 			private var max:Number = 0;
 			private var paragraph:Number = 0;
 			
-			private var profData : Array = [];
-			private var profData1 : Array = [];
+			public var profData : Array = [];
+			public var profData1 : Array = [];
 			public var ncnt:Number = 0;
 			private var depart:String = "";
 			[Embed(source="../../assets/document.png")]
@@ -105,9 +106,10 @@
 			[Embed(source="../../assets/home.png")]
 			private var home_icon:Class;
 			
-			private function init():void{
+			public function init():void{
 				
 				var s:String = this.parentApplication.fetchXMLData;
+				trace("s:"+s);
 				if(s!=""){
 					try{
 						var xml:XML = new XML(s);
@@ -119,7 +121,7 @@
 				var currentDate:Date = new Date();
 				this.depart = "All";
 				this.year = currentDate.getFullYear();
-				this.btnYear.prompt = String(year);
+				this.btnYear.prompt = year.toString();
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
 					this.yearDatagrid.addItem({year:i});
@@ -140,7 +142,6 @@
 				if(this.parentApplication.fetchXMLData!=""){
 					try{
 						
-						trace("year: "+year);						
 						var raw:String = "";
 						var s:String = "";
 						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
@@ -149,7 +150,7 @@
 						for(var i:Number=0;i<4;i++){
 							doc = 0; nur=0; csp=0; cst=0; mct=0; mof=0; ncl=0; dit=0; phy=0; sct=0;
 							doc1 = 0; nur1=0; csp1=0; cst1=0; mct1=0; mof1=0; ncl1=0; dit1=0; phy1=0; sct1=0;
-							
+						
 							for(var j:Number=1;j<=3;j++){
 								var month:Number = i*3 + j;
 								var MonthYear:String = year + "" + month;
@@ -339,8 +340,8 @@
 						}
 						if(depart!="")
 						{
-							columnchart.dataProvider = profData;
-							columnchart1.dataProvider = profData1;
+							this.columnchart.dataProvider = profData;
+							this.columnchart1.dataProvider = profData1;
 						}
 //						columnchart.dataProvider = profData;
 //						columnchart1.dataProvider = profData1;
@@ -367,7 +368,7 @@
 						}
 						//this.xmlColumnChart2 = new XML(s).day.dt;
 					}catch(error:Error){
-						trace("Err: " + error.toString());
+						trace("Errr: " + error.toString());
 					}
 				}
 				if(max/100>=1){paragraph = 20;}
@@ -946,7 +947,6 @@
 			
 		]]>
 	</fx:Script>
-	
 	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
 							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
 							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
@@ -1008,7 +1008,7 @@
 						</mx:fill>
 					</mx:LegendItem>
 				</mx:Legend>
-				<mx:ColumnChart id="columnchart" y="363" left="10" right="10" height="240"
+				<mx:ColumnChart id="columnchart" y="343" left="10" right="10" height="240"
 								dataProvider="{profData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
 					<mx:verticalAxis>
@@ -1105,6 +1105,6 @@
 			</s:BorderContainer>
 		</s:NavigatorContent>
 		
-	</flexlib:SuperTabNavigator>
+	</flexlib:SuperTabNavigator>	
 	
 </s:NavigatorContent>

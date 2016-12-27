@@ -124,6 +124,7 @@
 			public var countryCode:String = "MY"; //default is malaysia
 			public var hosp_id:String = "";
 			public var hosp_name:String = "";
+			public var wardGroup:String = "";
 			
 			public var who_safety:ArrayCollection = null;
 			public var who_safety_department:ArrayCollection = null;
@@ -159,6 +160,10 @@
 			public var graphQuarterReport:GraphQuarterReport = new GraphQuarterReport;
 			public var graphJobReport:GraphJobReport = new GraphJobReport;
 			public var graphMomentReport:GraphMomentReport = new GraphMomentReport;
+			public var graphHHOByWardGroup:GraphHHOByWardGroup = new GraphHHOByWardGroup;
+			public var graphHHOByProfessionGroup:GraphHHOByProfessionGroup = new GraphHHOByProfessionGroup;
+			public var graphHHOByIndicationWardGroup:GraphHHOByIndicationWardGroup = new GraphHHOByIndicationWardGroup;
+			public var graphHHOByIndicationProfessionGroup:GraphHHOByIndicationProfessionGroup = new GraphHHOByIndicationProfessionGroup;
 			
 			//new added - 2015-06-05 for procedure
 			public var graphProcedure:GraphProcedure = new GraphProcedure;
@@ -325,7 +330,7 @@
 				
 				
 				// c.color = 0x8bc441; //green
-				if(col == "opp" || col =="@opp"){
+				if(col == "oppsur" || col =="@oppsur"||col == "oppmed" || col =="@oppmed"||col == "oppout" || col =="@oppout"||col == "opp" || col =="@opp"){
 					c.color =  0x26a9e0; //blue
 					c.alpha = 0.2;
 				} else {
@@ -559,9 +564,10 @@
 			private function setApplicationVersion():void {
 				var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
 				var ns:Namespace = appXML.namespace();
+				Constants.appVersion = "1.1.8";
 				//this.appVersion = "App version:" + appXML.ns::version;
 				trace("App version: " + appXML.ns::versionNumber);
-				Constants.appVersion = appXML.ns::versionNumber;
+//				Constants.appVersion = appXML.ns::versionNumber;
 //				Constants.appVersion = "1.1.7";
 			}
 			
@@ -709,16 +715,17 @@
 						var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
 						var ns:Namespace = appXML.namespace();
 						//this.appVersion = "App version:" + appXML.ns::version;
-//					appXML.ns::versionNumber = "1.1.7";
-						if(appXML.ns::versionNumber<jsonRead.analytic_version){
+   						//appXML.ns::versionNumber = "1.1.8";
+						Constants.appVersion = "1.1.8";
+						if(appXML.ns::versionNumber>Constants.appVersion){
 							Alert.okLabel = "Update Now";
 							Alert.cancelLabel = "Update Later";
 							Alert.buttonWidth = 100;
-							var dialog_obj:Object = Alert.show("A new version of analytic app v"+jsonRead.analytic_version+" is available. Please update to latest version.", "Alert", Alert.OK | Alert.CANCEL, null, myClickHandler, null, Alert.OK);
+							var dialog_obj:Object = Alert.show("A new version of analytic app v"+appXML.ns::versionNumber+" is available. Please update to latest version.", "Alert", Alert.OK | Alert.CANCEL, null, myClickHandler, null, Alert.OK);
 						}
 						trace("App version: " + appXML.ns::versionNumber);
-						Constants.appVersion = appXML.ns::versionNumber;
-//						Constants.appVersion = "1.1.7";
+//						Constants.appVersion = appXML.ns::versionNumber;
+//						Constants.appVersion = "1.1.8";
 						
 						
 						//store constant value
@@ -3162,6 +3169,8 @@
 				acReport.addItem("Compliance By Ward");
 				acReport.addItem("Compliance By Profession");
 				acReport.addItem("Compliance By Moment");
+				acReport.addItem("Compliance By Moment Based on Ward Group");
+				acReport.addItem("Compliance By Moment Based on Profession Group");
 				acReport.addItem("Average Action by Moments");
 				acReport.addItem("Ward/Facility Compliance Summary");
 				acReport.addItem("Progress Report");
@@ -3173,6 +3182,8 @@
 				acReport.addItem("Quarter Report By Moment");
 				acReport.addItem("Quarter Report for Overall");
 				acReport.addItem("Quarter Report By Profession");
+				acReport.addItem("Quarter Report by Ward Group");
+				acReport.addItem("Quarter Report by Profession Group");
 				acReport.addItem("Overall Compliance - Quarterly");
 				acReport.addItem("Overall Compliance Report By Profession - Quarterly");
 				acReport.addItem("Overall Compliance Report By Moment - Quarterly");
@@ -4151,7 +4162,59 @@
 					graphMomentReport.fetchLocalXML();
 					
 				}
+				
+				//Graph 14
+				if(s=="graph14"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByWardGroup);
+					this.lblBg.text = "Hand Hygine Compliance Rate by Ward Group";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphHHOByWardGroup.fetchLocalXML();
+					
+				}
 
+				//Graph 15
+				if(s=="graph15"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByProfessionGroup);
+					this.lblBg.text = "Hand Hygine Compliance Rate by Profession Group";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphHHOByProfessionGroup.fetchLocalXML();
+					
+				}
+
+				//Graph 16
+				if(s=="graph16"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByIndicationWardGroup);
+					this.lblBg.text = "Compliance By Moment Based on Ward Group";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphHHOByIndicationWardGroup.fetchLocalXML();
+					
+				}
+
+				//Graph 17
+				if(s=="graph17"){
+					viewstack1.visible=true;
+					viewstack1.removeAll();
+					viewstack1.addChild(graphHHOByIndicationProfessionGroup);
+					this.lblBg.text = "Compliance By Moment Based on Ward Group";
+					//this.lblAction.text = "Opportunity vs. Adherence by Ward/Facility >";
+					//TODO: 5 moments + adherence summary calculation
+					
+					graphHHOByIndicationProfessionGroup.fetchLocalXML();
+					
+				}
+				
 				//progress screen
 				if(s=="progress"){
 					viewstack1.visible=true;
@@ -4343,38 +4406,50 @@
 						doGraphSelection("graph3");
 					} else if(btnReport.selectedIndex==4){
 						doGraphSelection("graph4");
-					} else if(btnReport.selectedIndex==5){
-						doGraphSelection("graph5");
-					} else if(btnReport.selectedIndex==6){
-						doGraphSelection("graph6");
 					} else if(btnReport.selectedIndex==7){
-						doGraphSelection("progress");
+						doGraphSelection("graph5");
 					} else if(btnReport.selectedIndex==8){
-						doGraphSelection("profname");
+						doGraphSelection("graph6");
 					} else if(btnReport.selectedIndex==9){
-						doGraphSelection("procedure");
+						doGraphSelection("progress");
 					} else if(btnReport.selectedIndex==10){
-						doGraphSelection("missedreason");
+						doGraphSelection("profname");
 					} else if(btnReport.selectedIndex==11){
-						doGraphSelection("leaderboard");
+						doGraphSelection("procedure");
 					} else if(btnReport.selectedIndex==12){
-						btnYM.visible = false;
-						doGraphSelection("graph8");
+						doGraphSelection("missedreason");
 					} else if(btnReport.selectedIndex==13){
-						btnYM.visible = false;
-						doGraphSelection("graph9");
+						doGraphSelection("leaderboard");
 					} else if(btnReport.selectedIndex==14){
 						btnYM.visible = false;
-						doGraphSelection("graph10");
+						doGraphSelection("graph8");
 					} else if(btnReport.selectedIndex==15){
 						btnYM.visible = false;
-						doGraphSelection("graph11");
+						doGraphSelection("graph9");
 					} else if(btnReport.selectedIndex==16){
 						btnYM.visible = false;
+						doGraphSelection("graph10");
+					} else if(btnReport.selectedIndex==19){
+						btnYM.visible = false;
+						doGraphSelection("graph11");
+					} else if(btnReport.selectedIndex==20){
+						btnYM.visible = false;
 						doGraphSelection("graph12");
-					} else if(btnReport.selectedIndex==17){
+					} else if(btnReport.selectedIndex==21){
 						btnYM.visible = false;
 						doGraphSelection("graph13");
+					} else if(btnReport.selectedIndex==17){
+						btnYM.visible = false;
+						doGraphSelection("graph14");
+					} else if(btnReport.selectedIndex==18){
+						btnYM.visible = false;
+						doGraphSelection("graph15");
+					} else if(btnReport.selectedIndex==5){
+						btnYM.visible = false;
+						doGraphSelection("graph16");
+					} else if(btnReport.selectedIndex==6){
+						btnYM.visible = false;
+						doGraphSelection("graph17");
 					}
 					
 				} else if(this.CURRENT_MODULE == Constants.MODULE_ENVIRONMENT) {
@@ -4387,14 +4462,14 @@
 						doGraphSelection(Constants.SCREEN_ENV_WARDFACILITY);
 					} else if(btnReport.selectedIndex==4){
 						doGraphSelection(Constants.SCREEN_ENV_NOTE);
-					} else if(btnReport.selectedIndex==5){
-						doGraphSelection(Constants.SCREEN_ENV_METHOD);
-					} else if(btnReport.selectedIndex==6){
-						doGraphSelection(Constants.SCREEN_ENV_CATEGORY);
 					} else if(btnReport.selectedIndex==7){
+						doGraphSelection(Constants.SCREEN_ENV_METHOD);
+					} else if(btnReport.selectedIndex==8){
+						doGraphSelection(Constants.SCREEN_ENV_CATEGORY);
+					} else if(btnReport.selectedIndex==9){
 						//audit area/dept for the last 12 month
 						doGraphSelection(Constants.SCREEN_ENV_AUDIT);
-					}else if(btnReport.selectedIndex==8){
+					}else if(btnReport.selectedIndex==10){
 						//audit area/dept for the last 12 month
 						doGraphSelection(Constants.SCREEN_ENV_WARDFACILITY);
 					}
