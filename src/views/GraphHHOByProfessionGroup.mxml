@@ -145,33 +145,33 @@
 								var ob:String = MonthYear;
 								var xml:XML = new XML(s);
 								this.xmlWardFacility = xml.hhoprofgrppert.(@ob==ob);
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("cnt")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("cnt"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("cnt"));
 									if(cnt){cnt_all += cnt;}
 								}
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("cnt")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("cnt"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("cnt"));
 									if(cnt){cnt_doc += cnt;}
 								}
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp"));
 									if(cnt){opp_all += cnt;}
 								}
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp"));
 									if(cnt){opp_doc += cnt;}
 								}
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp"))){
 									var cnt = 0;
 									cnt = (Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("cnt"))/Number(xml.hhoprofgrppert.profgrpahd.(@name=="Allied health").attribute("opp"))*100);
 									if(cnt){per_all += cnt;}
-									trace("per_all:"+per_all);
+//									trace("per_all:"+per_all);
 								}
-								if(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp")){
+								if(Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp"))){
 									var cnt = 0;
 									cnt = (Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("cnt"))/Number(xml.hhoprofgrppert.profgrpahd.(@name=="Doctors").attribute("opp"))*100);
 									if(cnt){per_doc += cnt;}
@@ -199,7 +199,7 @@
 					this.columnchart1.dataProvider = wardGroupData;
 					this.columnchart2.dataProvider = wardGroupData;
 				}
-				trace("wardGroupData:"+String(wardGroupData[3]['permed']));
+//				trace("wardGroupData:"+String(wardGroupData[3]['permed']));
 			}
 
 			[Bindable]
@@ -284,8 +284,10 @@
 					trace("hitData: " + e.hitData.item.@prof); //profession
 					//trace("hitData: " + e.hitData.item.@comp); //compliance
 				} else if(domain=="department"){
-					this.hitItem  = e.hitData.item.cat;
-					trace("hitData: " + e.hitData.item.cat); //department
+					var split = e.hitData.displayText.split("<");
+					var split1 = split[1].split(">");
+					this.hitItem  = split1[1];
+					trace("hitData: " + split1[1]); //department
 					//trace("hitData: " + e.hitData.item.@pert); //compliance
 				} else {
 					this.hitItem  = e.hitData.item.cat;
@@ -356,7 +358,7 @@
 				//if(obj id)
 				popUpMenu.removeAllItems();
 				//popUpMenu.addItem(popUpMenuItemByDept);
-				popUpMenu.addItem(popUpMenuItemByWard);
+//				popUpMenu.addItem(popUpMenuItemByWard);
 				popUpMenu.addItem(popUpMenuItemByMoment);
 				popUpMenu.addItem(popUpMenuItemByAction);
 				popUpMenu.addItem(popUpMenuItemByProf);
@@ -649,7 +651,6 @@
 				ca.showDataTips = true;
 				//type="stacked"
 				//ca.type="stacked";
-				ca.type="overlaid";
 				
 				var cAxis:CategoryAxis = new CategoryAxis();
 				cAxis.categoryField="cat";
@@ -773,49 +774,7 @@
 				
 				trace("domain: " + domain);
 				
-				if(domain=="moment"){
-					
-					if(groupBy=="By Action"){
-						
-						if(item=="Before patient"){
-							ca.dataProvider =  this.parentApplication.doAnalyticByAction("1");
-						} else if(item=="Before aseptic"){
-							ca.dataProvider =  this.parentApplication.doAnalyticByAction("2");
-						} else if(item=="After body fluid"){
-							ca.dataProvider =  this.parentApplication.doAnalyticByAction("3");
-						} else if(item=="After patient"){
-							ca.dataProvider =  this.parentApplication.doAnalyticByAction("4");
-						} else if(item=="After patient surrounding"){
-							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5");
-						}
-						
-					} else if(groupBy=="By Professional"){
-						if(item=="Before patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1");
-						} else if(item=="Before aseptic"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "2");
-						} else if(item=="After body fluid"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "3");
-						} else if(item=="After patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "4");
-						}  else if(item=="After patient surrounding"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5");
-						}
-					} else if(groupBy=="By Ward/Facility"){
-						if(item=="Before patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
-						} else if(item=="Before aseptic"){
-							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2");
-						} else if(item=="After body fluid"){
-							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3");
-						} else if(item=="After patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4");
-						}  else if(item=="After patient surrounding"){
-							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5");
-						}
-					}
-					
-				} else if(domain=="department"){
+				if(domain=="department"){
 					
 					//show the quota progress
 					var strProgress:String = "";
@@ -840,62 +799,36 @@
 					if(groupBy=="By Professional"){
 						//TODO: report correction
 						trace("Department '" + item + "' By Profession");
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, item);
-						
-						//list down all surcey id
-						//then group the profe vs hr+hw
+						this.parentApplication.wardGroup = item;
+						var graphHHOByProfessionGroupJob:GraphHHOByProfessionGroupJob = new GraphHHOByProfessionGroupJob();
+						graphHHOByProfessionGroupJob.label = lbl;
+						navigator.addChild(graphHHOByProfessionGroupJob);
 					} else if(groupBy=="By Moment"){
 						trace("Department " + item + " By Moment");
-						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item) //by Moment
+						var graphHHOByProfessionGroupMoment:GraphHHOByProfessionGroupMoment = new GraphHHOByProfessionGroupMoment();
+						graphHHOByProfessionGroupMoment.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByProfessionGroupMoment);
 						
 					} else if(groupBy=="By Action"){
 						trace("Department " + item + " By Action");
-						
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
+						var graphHHOByProfessionGroupAction:GraphHHOByProfessionGroupAction = new GraphHHOByProfessionGroupAction();
+						graphHHOByProfessionGroupAction.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByProfessionGroupAction);
 					} else if(groupBy=="By Reason"){
-					
+						
 						trace("Department by reason");
 						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item) //by reason
-					}
-					
-					
-					
-				} else if(domain=="profession"){
-					
-					
-					//show the quota progress
-					var strProgress:String = "";
-					try{
-						var s:String = this.parentApplication.fetchXMLData;
-						var xml:XML = new XML(s);
-						var xmlDatagridProfession:XMLListCollection = new XMLListCollection(new XML(s).profprogress.profp);
+					} else if(groupBy=="By Ward"){
 						
-						for each (var node : XML in xmlDatagridProfession){
-							if(item == node.@prof){
-								strProgress = "Profession Quota Progress: " + node.@progress + "/" + node.@quota;
-								break;
-							}
-						}
-						lblProgress.text = strProgress;
-					}catch(e:Error){
-						trace(e.toString());
+						trace("Department by Ward");
+						this.parentApplication.wardGroup = item;
+						var graphHHOByProfessionGroupJob:GraphHHOByProfessionGroupJob = new GraphHHOByProfessionGroupJob();
+						graphHHOByProfessionGroupJob.label = lbl;
+						navigator.addChild(graphHHOByProfessionGroupJob);
 					}
-					//end show the quota progress
-					
-					if(groupBy=="By Ward/Facility"){
-						trace("Profession " + item + " By Ward/Facility");
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment2(this.domain, item);
-					} else if(groupBy=="By Moment"){
-						trace("Profession " + item + " By Moment");
-						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item) //by Profession
-					} else if(groupBy=="By Action"){
-						
-						trace("Profession " + item + " By Action");
-						
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
-					}
-				}
-				
+				} 				
 				bc.addElement(ca);
 				//if(groupBy!="By Action"){	
 				
@@ -906,8 +839,6 @@
 				
 				//}
 				child.addChild(bc);
-				
-				navigator.addChild(child);
 			}
 			
 			

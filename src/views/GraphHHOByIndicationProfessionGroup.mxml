@@ -55,7 +55,7 @@
 			
 			
 			[Bindable]
-			private var xmlColumnChart : Array;
+			private var xmlColumnChart : Array = [];
 			
 			[Bindable]
 			private var xmlColumnChartOpp : Array;
@@ -64,6 +64,9 @@
 			private var xmlDatagrid : XMLListCollection;
 			
 			
+			public var who_safety:ArrayCollection = null;
+			public var who_safety_department:ArrayCollection = null;
+			public var deptArr:ArrayCollection= new ArrayCollection([]);			
 			
 			private var iColorNumber:Number = 0;
 			
@@ -82,103 +85,164 @@
 			public function fetchLocalXML():void{
 				
 				initMenu();
-				
 				iColorNumber = 0;
 				trace("fetch xml...hho by moment! / indication");
-				
-				var raw:String = "";
-				var s:String = "";
-				var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-				if(file.exists){
-					try{
-						var stream:FileStream = new FileStream()
-						stream.open(file, FileMode.READ);
-						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
-						stream.close();
-						
-						
-						//start decrypt here
-						//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
-						//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
-						//doDecrypt
-						
-						
-						s = raw;//"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-						trace("dec: " + s);
-						
-					}catch(e:Error){
-						trace("e: " + e.toString());
-					}
-				}
-				
-				if(s!=""){
-					try{
-						
-						
-						if(this.parentApplication.selectedYM!=""){
+				var deptName:Array = [];
+				deptName.push("Allied health");
+				deptName.push("Doctors");
+				for(var i:Number=0; i<deptName.length; i++){
+					deptArr.removeAll();	
+					trace("Name:"+deptName[i]);
+					var raw:String = "";
+					var s:String = "";
+					var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//trace("dec: " + s);
 							
-							//var ob:String = this.parentApplication.selectedObserver + "_" + this.parentApplication.selectedYM;
-							var ob:String = this.parentApplication.selectedYM;
-							
-						
-							//this.xmlColumnChart = new XML(s).pindication.pindi;
-							this.xmlDatagrid = new XMLListCollection(new XML(s).indication.(@ob==ob).indi);
-							//this.xmlColumnChart2 = new XML(s).day.dt;
-							
-							
-							//<cal a1="2" indi1="2" a2="2" indi2="2" a3="1" indi3="2" a4="1" indi4="2" a5="1" indi5="1"/><comp ratio1="100" ratio2="100" ratio3="50" ratio4="50" ratio5="100"/>
-							
-							
-							
-							var xml:XML = new XML(s);
-							
-							this.xmlColumnChartOpp = [{cat:"Before patient",cnt:xml.optional.(@ob==ob).cal.@indi1},
-								{cat:"Before aseptic",cnt:xml.optional.(@ob==ob).cal.@indi2},
-								{cat:"After body fluid",cnt:xml.optional.(@ob==ob).cal.@indi3},
-								{cat:"After patient",cnt:xml.optional.(@ob==ob).cal.@indi4},
-								{cat:"After patient surrounding",cnt:xml.optional.(@ob==ob).cal.@indi5}];
-							
-							this.xmlColumnChart = [{cat:"Before patient",
-										pect:xml.optional.(@ob==ob).comp.@ratio1,
-										cnt:xml.optional.(@ob==ob).comp.@cnt1,
-										opp:xml.optional.(@ob==ob).comp.@opp1
-									},
-								{cat:"Before aseptic",
-										pect:xml.optional.(@ob==ob).comp.@ratio2,
-										cnt:xml.optional.(@ob==ob).comp.@cnt2,
-										opp:xml.optional.(@ob==ob).comp.@opp2
-									},
-								{cat:"After body fluid",
-										pect:xml.optional.(@ob==ob).comp.@ratio3,
-										cnt:xml.optional.(@ob==ob).comp.@cnt3,
-										opp:xml.optional.(@ob==ob).comp.@opp3
-									},
-								{cat:"After patient",
-										pect:xml.optional.(@ob==ob).comp.@ratio4,
-										cnt:xml.optional.(@ob==ob).comp.@cnt4,
-										opp:xml.optional.(@ob==ob).comp.@opp4
-									},
-								{cat:"After patient surrounding",
-										pect:xml.optional.(@ob==ob).comp.@ratio5,
-										cnt:xml.optional.(@ob==ob).comp.@cnt5,
-										opp:xml.optional.(@ob==ob).comp.@opp5
-									}];
-							
-							
+						}catch(e:Error){
+							trace("e: " + e.toString());
 						}
-						
-						/*<pindication>
-						<pindi cnt="91" cat="Before patient"/>
-						<pindi cnt="86" cat="Before aseptic"/>
-						<pindi cnt="85" cat="After body fluid"/>
-						<pindi cnt="88" cat="After patient"/>
-						<pindi cnt="93" cat="After patient surrounding"/>
-						</pindication>*/
-						
-					}catch(error:Error){
-						trace("Err: " + error.toString());
 					}
+					if(s!=""){
+						try{
+							var ob:String = this.parentApplication.selectedYM;
+							var xml:XML = new XML(s);
+							if(xml.hhoprofgrppert.profgrpahd.(@name==deptName[i]).attribute("prof_ids")){
+								var str:String;
+								str = xml.hhoprofgrppert.profgrpahd.(@name==deptName[i]).attribute("prof_ids");
+								var tempArr = str.split(",");
+								for(var k:Number=0; k<tempArr.length; k++)
+								{
+									if((!deptArr.contains(tempArr[k]))&&tempArr[k]!="")
+									{
+										deptArr.addItem(tempArr[k]);
+										trace("tempArr:"+tempArr[k]);
+									}
+								}
+							}
+						}
+						catch(error:Error){
+							trace("Err: " + error.toString());
+						}
+					}						
+					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					if(s!="")
+					{
+						try{
+							var xml:XML = new XML(s);
+							for(var k:Number=0; k<deptArr.length; k++){
+								var arr:XMLList = xml.profs.prof;
+								//							trace("dept:"+arr.length());
+								for(var j:Number=1; j<arr.length(); j++)
+								{
+									//								trace("dept:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+									if(xml.profs.prof[j].attribute("id")==deptArr[k]){
+										//									trace("deptArr[k]:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+										deptArr[k] = xml.profs.prof[j].(@id==deptArr[k]).attribute("label");
+									}
+								}
+							}					
+						}
+						catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					file = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//trace("dec: " + s);
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					xml = new XML(s);
+					var temp:Array=[];
+					temp['cat'] = deptName[i];
+					temp['cnt'] = 0;
+					temp['opp'] = Number(xml.hhoprofgrppert.(@ob==this.parentApplication.selectedYM).profgrpahd.(@name==deptName[i]).attribute("opp"));
+					file = File.applicationStorageDirectory.resolvePath("rawdata_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					//							trace("data point"+deptArr[k]);
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							
+							s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//									trace("decaa: " + s);
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					var jsonRaw = JSON.parse(s);
+					this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+					var obj:Object = new Object();
+					trace("length:"+deptArr.length);
+					for(var index:Number=0; index<deptArr.length; index++)
+					{
+						for(var p:Number=0;p<this.who_safety.length;p++){
+							obj = this.who_safety.getItemAt(p);
+							if((obj.end_date.toString().replace("-0","").replace("-","").indexOf(this.parentApplication.selectedYM)!=-1)&&(obj.prof==deptArr[index])){
+								if(this.parentApplication.wardGroup == "Before patient"){
+									if(obj.indi=="1"){
+										temp['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "Before aseptic"){
+									if(obj.indi=="2"){
+										temp['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After body fluid"){
+									if(obj.indi=="3"){
+										temp['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After patient"){
+									if(obj.indi=="4"){
+										temp['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After patient surrounding"){
+									if(obj.indi=="5"){
+										temp['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+							}
+						}
+						trace(temp['cnt']);
+					}
+					temp['pect'] = (Number(temp['cnt'])/Number(temp['opp'])*100).toFixed(1);
+					this.xmlColumnChart.push(temp);
 				}
+				this.columnchart1.dataProvider = this.xmlColumnChart;
+				this.columnchart2.dataProvider = this.xmlColumnChart;
 			}
 			
 			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
@@ -234,7 +298,7 @@
 			
 			private var popUpMenu = new NativeMenu();
 			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
-			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward");
 			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
 			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
 			private var popUpMenuItemByReason = new NativeMenuItem("By Reason");
@@ -283,11 +347,7 @@
 				
 				//if(obj id)
 				popUpMenu.removeAllItems();
-				popUpMenu.addItem(popUpMenuItemByDept);
 				popUpMenu.addItem(popUpMenuItemByProf);
-				popUpMenu.addItem(popUpMenuItemByAction);
-				
-				popUpMenu.addItem(popUpMenuItemByReason);
 				
 				isSelected = false;
 				
@@ -721,17 +781,10 @@
 						}
 						
 					} else if(groupBy=="By Professional"){
-						if(item=="Before patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1");
-						} else if(item=="Before aseptic"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "2");
-						} else if(item=="After body fluid"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "3");
-						} else if(item=="After patient"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "4");
-						}  else if(item=="After patient surrounding"){
-							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5");
-						}
+						var graphHHOByIndicationProfessionGroupJob:GraphHHOByIndicationProfessionGroupJob = new GraphHHOByIndicationProfessionGroupJob();
+						graphHHOByIndicationProfessionGroupJob.label = lbl;
+						this.parentApplication.profGroup = item;
+						navigator.addChild(graphHHOByIndicationProfessionGroupJob);
 					} else if(groupBy=="By Ward/Facility"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
@@ -850,7 +903,7 @@
 				//}
 				child.addChild(bc);
 				
-				navigator.addChild(child);
+//				navigator.addChild(child);
 			}
 			
 			
@@ -1034,7 +1087,7 @@
 		
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 				
-			<mx:ColumnChart id="columnchart1" y="332" left="10" right="10" height="279"
+			<mx:ColumnChart id="columnchart1" y="332" left="10" right="10" height="269"
 							itemClick="myListener(event, 'moment')"
 							dataProvider="{xmlColumnChart}" seriesFilters="[]">
 				<mx:verticalAxis>
@@ -1064,9 +1117,9 @@
 					<!--labelFunction="columnSeries_labelFunc"-->
 				</mx:series>
 			</mx:ColumnChart>
-			<s:Label y="326" fontWeight="bold" horizontalCenter="-1" text="Adherence By Moments"/>
+			<s:Label y="316" fontWeight="bold" horizontalCenter="-1" text="Adherence By Moments"/>
 			<s:Label y="10" fontWeight="bold" horizontalCenter="1" text="Opportunity by Moments"/>
-			<mx:ColumnChart id="columnchart2" y="19" left="10" right="10" height="305"
+			<mx:ColumnChart id="columnchart2" y="19" left="10" right="10" height="285"
 							type="overlaid" showDataTips="true"
 							itemClick="myListener(event, 'moment')"
 							dataProvider="{xmlColumnChart}"

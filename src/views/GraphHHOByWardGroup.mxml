@@ -118,12 +118,15 @@
 					var cnt_med:Number=0;
 					var cnt_sur:Number=0;
 					var cnt_out:Number=0;
+					var cnt_oag:Number=0;
 					var opp_med:Number=0;
 					var opp_sur:Number=0;
 					var opp_out:Number=0;
+					var opp_oag:Number=0;
 					var per_med=0.0;
 					var per_sur=0.0;
 					var per_out=0.0;
+					var per_oag=0.0;
 					for(var j:Number=1; j<=3; j++){
 						var raw:String = "";
 						var s:String = "";
@@ -150,50 +153,64 @@
 								var ob:String = MonthYear;
 								var xml:XML = new XML(s);
 								this.xmlWardFacility = xml.hhoadhgrp.(@ob==ob);
-								if(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("cnt")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("cnt"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("cnt"));
 									if(cnt){cnt_med += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("cnt")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("cnt"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("cnt"));
 									if(cnt){cnt_sur += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("cnt")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("cnt"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("cnt"));
 									if(cnt){cnt_out += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("cnt"))){
+									var cnt:Number = 0;
+									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("cnt"));
+									if(cnt){cnt_oag += cnt;}
+								}
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp"));
 									if(cnt){opp_med += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp"));
 									if(cnt){opp_sur += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp"))){
 									var cnt:Number = 0;
 									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp"));
-									trace("cnt:"+cnt);
 									if(cnt){opp_out += cnt;}
 								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("opp"))){
+									var cnt:Number = 0;
+									cnt = Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("opp"));
+									if(cnt){opp_oag += cnt;}
+								}
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp"))){
 									var cnt = 0;
 									cnt = (Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("cnt"))/Number(xml.hhoadhgrp.deptagrphd.(@name=="MEDICAL").attribute("opp"))*100);
 									if(cnt){per_med += cnt;}								}
-								if(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp"))){
 									var cnt = 0;
 									cnt = (Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("cnt"))/Number(xml.hhoadhgrp.deptagrphd.(@name=="SURGICAL").attribute("opp"))*100);
 									if(cnt){per_sur += cnt;}
 								}								
-								if(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp")){
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp"))){
 									var cnt = 0;
 									cnt = (Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("cnt"))/Number(xml.hhoadhgrp.deptagrphd.(@name=="Outpatient").attribute("opp"))*100);
 									if(cnt){per_out += cnt;}
+								}
+								if(Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("opp"))){
+									var cnt = 0;
+									cnt = (Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("cnt"))/Number(xml.hhoadhgrp.deptagrphd.(@name=="O&G").attribute("opp"))*100);
+									if(cnt){per_oag += cnt;}
 								}
 								//this.xmlDataWardFacilityComp = new XML(xS);								
 								//trace("xml " + this.xmlDataWardFacilityComp.toString());
@@ -215,17 +232,17 @@
 					}
 					var syear:String = String(year).substring(2,4);
 					if(i==0){
-						wardGroupData.push({cat:"Jan "+syear+" - Mar "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2))});
+						wardGroupData.push({cat:"Jan "+syear+" - Mar "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,cntoag:cnt_oag,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,oppoag:opp_oag,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2)),peroag:((per_oag/3).toFixed(2))});
 						trace("syear"+syear);
 					}
 					else if(i==1){
-						wardGroupData.push({cat:"Apr "+syear+" - Jun "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2))});
+						wardGroupData.push({cat:"Apr "+syear+" - Jun "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,cntoag:cnt_oag,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,oppoag:opp_oag,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2)),peroag:((per_oag/3).toFixed(2))});
 					}
 					else if(i==2){
-						wardGroupData.push({cat:"Jul "+syear+" - Sep "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2))});
+						wardGroupData.push({cat:"Jul "+syear+" - Sep "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,cntoag:cnt_oag,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,oppoag:opp_oag,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2)),peroag:((per_oag/3).toFixed(2))});
 					}
 					else if(i==3){
-						wardGroupData.push({cat:"Oct "+syear+" - Dec "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2))});
+						wardGroupData.push({cat:"Oct "+syear+" - Dec "+syear,cntmed:cnt_med,cntsur:cnt_sur,cntout:cnt_out,cntoag:cnt_oag,oppmed:opp_med,oppsur:opp_sur,oppout:opp_out,oppoag:opp_oag,permed:((per_med/3).toFixed(2)),persur:((per_sur/3).toFixed(2)),perout:((per_out/3).toFixed(2)),peroag:((per_oag/3).toFixed(2))});
 					}					
 				}
 				if(syear){
@@ -389,7 +406,7 @@
 				popUpMenu.addItem(popUpMenuItemByDept);
 				popUpMenu.addItem(popUpMenuItemByMoment);
 				popUpMenu.addItem(popUpMenuItemByAction);
-				popUpMenu.addItem(popUpMenuItemByProf);
+//				popUpMenu.addItem(popUpMenuItemByProf);
 				
 				isSelected = false;
 				
@@ -835,14 +852,17 @@
 					} else if(groupBy=="By Moment"){
 						trace("Department " + item + " By Moment");
 						this.fetchXMLData = " ";
-						var graphComplianceByJob:GraphComplianceByJob = new GraphComplianceByJob();
-						graphComplianceByJob.label = lbl;
-						navigator.addChild(graphComplianceByJob);
+						var graphHHOByWardGroupMoment:GraphHHOByWardGroupMoment = new GraphHHOByWardGroupMoment();
+						graphHHOByWardGroupMoment.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByWardGroupMoment);
 						
 					} else if(groupBy=="By Action"){
 						trace("Department " + item + " By Action");
-						
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
+						var graphHHOByWardGroupAction:GraphHHOByWardGroupAction = new GraphHHOByWardGroupAction();
+						graphHHOByWardGroupAction.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByWardGroupAction);
 					} else if(groupBy=="By Reason"){
 					
 						trace("Department by reason");
@@ -1033,6 +1053,7 @@
 					return this.parentApplication.themeColor[index];
 				}
 			}
+			public var og = "O&G";
 			
 			//end new function for open tabs
 			
@@ -1049,7 +1070,7 @@
 		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 		
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-				<mx:Legend y="10" right="10" width="513" height="30" fontSize="12">
+				<mx:Legend y="10" right="20" width="513" height="30" fontSize="12">
 					<mx:LegendItem label="MEDICAL" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xcbde2a"/>
@@ -1064,7 +1085,13 @@
 						<mx:fill>
 							<mx:SolidColor color="0xff69b0"/>
 						</mx:fill>
-					</mx:LegendItem>		
+					</mx:LegendItem>	
+					<mx:LegendItem label="{og}" fontWeight="bold">
+						<mx:fill>
+							<mx:SolidColor color="0x13a8f6"/>
+						</mx:fill>
+					</mx:LegendItem>	
+					
 				</mx:Legend>
 		
 				<mx:ColumnChart id="columnchart1" y="40" left="10" right="10" height="282"
@@ -1093,6 +1120,10 @@
 
 						<mx:ColumnSeries fontSize="16"  displayName="Outpatient" yField="cntout"
 										 fills="{warmColorsArray4}"
+										 labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+
+						<mx:ColumnSeries fontSize="16"  displayName="{og}" yField="cntoag"
+										 fills="{warmColorsArray}"
 										 labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 									
@@ -1125,6 +1156,9 @@
 										 labelAlign="top" labelPosition="outside" />
 						<mx:ColumnSeries labelFunction="setCustomLabel" fontSize="16"  displayName="Outpatient" yField="perout" 
 										 fills="{warmColorsArray4}"
+										 labelAlign="top" labelPosition="outside" />
+						<mx:ColumnSeries labelFunction="setCustomLabel" fontSize="16"  displayName="{og}" yField="peroag" 
+										 fills="{warmColorsArray}"
 										 labelAlign="top" labelPosition="outside" />
 					</mx:series>
 					

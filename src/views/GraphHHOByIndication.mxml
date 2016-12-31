@@ -238,6 +238,9 @@
 			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
 			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
 			private var popUpMenuItemByReason = new NativeMenuItem("By Reason");
+			private var popUpMenuItemByWardGroup = new NativeMenuItem("By Ward Group");
+			private var popUpMenuItemByProfessionGroup = new NativeMenuItem("By Profession Group");
+			
 			private var hitItem:String = "";
 			
 			private function initMenu():void{
@@ -254,6 +257,12 @@
 					doAnalysisByDataPoint(e, hitItem);
 				});
 				popUpMenuItemByReason.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByWardGroup.addEventListener(Event.SELECT, function(e:Event):void{ 
+					doAnalysisByDataPoint(e, hitItem);
+				});
+				popUpMenuItemByProfessionGroup.addEventListener(Event.SELECT, function(e:Event):void{ 
 					doAnalysisByDataPoint(e, hitItem);
 				});
 				
@@ -288,6 +297,8 @@
 				popUpMenu.addItem(popUpMenuItemByAction);
 				
 				popUpMenu.addItem(popUpMenuItemByReason);
+				popUpMenu.addItem(popUpMenuItemByWardGroup);
+				popUpMenu.addItem(popUpMenuItemByProfessionGroup);
 				
 				isSelected = false;
 				
@@ -720,6 +731,19 @@
 							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5");
 						}
 						
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
 					} else if(groupBy=="By Professional"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1");
@@ -732,6 +756,19 @@
 						}  else if(item=="After patient surrounding"){
 							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5");
 						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
 					} else if(groupBy=="By Ward/Facility"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
@@ -744,6 +781,19 @@
 						}  else if(item=="After patient surrounding"){
 							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5");
 						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
 					} else if(groupBy=="By Reason"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByReason("1");
@@ -756,6 +806,29 @@
 						}  else if(item=="After patient surrounding"){
 							ca.dataProvider = this.parentApplication.doAnalyticByReason("5");
 						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					} else if(groupBy=="By Ward Group"){
+						var graphHHOByIndicationWardGroup:GraphHHOByIndicationWardGroup = new GraphHHOByIndicationWardGroup();
+						graphHHOByIndicationWardGroup.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByIndicationWardGroup);
+					} else if(groupBy=="By Profession Group"){
+						var graphHHOByIndicationProfessionGroup:GraphHHOByIndicationProfessionGroup = new GraphHHOByIndicationProfessionGroup();
+						graphHHOByIndicationProfessionGroup.label = lbl;
+						this.parentApplication.wardGroup = item;
+						navigator.addChild(graphHHOByIndicationProfessionGroup);
 					}
 					
 				} else if(domain=="department"){
@@ -837,20 +910,8 @@
 						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
 					}
 				}
+				this.parentApplication.actionStr = item;
 				
-				bc.addElement(ca);
-				//if(groupBy!="By Action"){	
-				
-				if(groupBy!="By Reason"){
-					
-					caComp.dataProvider = ca.dataProvider;
-					bc.addElement(caComp);
-					
-				}
-				//}
-				child.addChild(bc);
-				
-				navigator.addChild(child);
 			}
 			
 			

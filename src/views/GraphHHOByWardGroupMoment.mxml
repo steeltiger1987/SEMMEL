@@ -57,6 +57,8 @@
 			import flexlib.controls.tabBarClasses.SuperTab;
 			import flexlib.events.TabReorderEvent;
 			
+			import views.GraphHHOByWardGroupJob;
+			
 			[Bindable]
 			private var xmlColumnChart2 : XMLList;
 			
@@ -89,7 +91,9 @@
 			private var depart:String = "";
 			private var max:Number = 0;
 			private var paragraph:Number = 0;
-
+			public var wardGroup = "";
+			public var deptArr:ArrayCollection= new ArrayCollection([]);
+			private var hitItem:String = "";
 
 			[Embed(source="../../assets/document.png")]
 			private var document_icon:Class;       
@@ -125,14 +129,94 @@
 				iColorNumber = 0;
 				columnData = [];
 				columnData1 = [];
+				deptArr.removeAll();
 				max = 0;
+				for(var i:Number=0; i<4; i++){
+					for(var j:Number=1; j<=3; j++){
+						var raw:String = "";
+						var s:String = "";
+						var month:Number = i*3 + j;
+						var MonthYear:String = year + "" + month;
+						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
+						if(file.exists){
+							try{
+								var stream:FileStream = new FileStream()
+								stream.open(file, FileMode.READ);
+								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+								stream.close();
+								s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+								//trace("dec: " + s);
+								
+							}catch(e:Error){
+								trace("e: " + e.toString());
+							}
+						}
+						
+						if(s!=""){
+							try{
+								var ob:String = MonthYear;
+								var xml:XML = new XML(s);
+								if(xml.hhoadhgrp.deptagrphd.(@name==this.parentApplication.wardGroup).attribute("dept_ids")){
+									var str:String;
+									str = xml.hhoadhgrp.deptagrphd.(@name==this.parentApplication.wardGroup).attribute("dept_ids");
+									var tempArr = str.split(",");
+									for(var k:Number=0; k<tempArr.length; k++)
+									{
+										if((!deptArr.contains(tempArr[k]))&&tempArr[k]!="")
+										{
+											deptArr.addItem(tempArr[k]);
+										}
+									}
+								}
+							}
+							catch(error:Error){
+								trace("Err: " + error.toString());
+							}
+						}						
+					}
+					var syear:String = String(year).substring(2,4);
+				}
+				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
+						s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						
+					}catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
+				if(s!="")
+				{
+					try{
+						var xml:XML = new XML(s);
+						for(var k:Number=0; k<deptArr.length; k++){
+							var arr:XMLList = xml.depts.dept;
+							//							trace("dept:"+arr.length());
+							for(var i:Number=1; i<arr.length(); i++)
+							{
+								//								trace("dept:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+								if(xml.depts.dept[i].attribute("id")==deptArr[k]){
+									//									trace("deptArr[k]:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+									deptArr[k] = xml.depts.dept[i].(@id==deptArr[k]).attribute("label");
+								}
+							}
+						}					
+					}
+					catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
 				if(this.parentApplication.fetchXMLData!=""){
 					try{
 						trace("year:"+year);
 						
 						var raw:String = "";
 						var s:String = "";
-						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+//						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 //						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
 //						var year:String = this.parentApplication.selectedYM.substring(0,4);
 //						var curDate = new Date();
@@ -159,114 +243,62 @@
 											
 //-- From here you can get the Compliance Rate by Moment.
 //											depart = btnDepartment.selectedItem.@label;
-
-											if(depart=="All"||depart==""){
-												if(xml.deptComp.summ_total.(@totalhwhr!="").attribute("totalhwhr")){
+											for(var k:Number=0; k<deptArr.length; k++){
+												depart = deptArr[k];
+												if(Number(xml.deptComp.deptc.(@dept==depart).attribute("totalhwhr"))){
 													var cnt:Number = 0;
-													cnt = (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw1"))
-																+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr1")))
-															   /(Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw1"))
-																+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr1"))
-																+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("miss1"))
-																+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("misswithglove1")))*100;
-													if(cnt){total_bp += cnt; trace("cnt:"+cnt);}
+													cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1")))
+														/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss1"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove1")))*100;
+													if(cnt){total_bp+=cnt;}
+													trace("bp:"+total_bp);
+														
+													cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2")))
+														/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss2"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove2")))*100;
+													if(cnt){total_ba+=cnt;}
 													
-													cnt = (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw2"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr2")))
-														/(Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw2"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr2"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("miss2"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("misswithglove2")))*100;
-													if(cnt){total_ba += cnt;}
+													cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3")))
+														/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss3"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove3")))*100;
+													if(cnt){total_af+=cnt;}
 													
-													cnt = (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw3"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr3")))
-														/(Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw3"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr3"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("miss3"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("misswithglove3")))*100;
-													if(cnt){total_af += cnt;}
+													cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4")))
+														/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss4"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove4")))*100;
+													if(cnt){total_ap+=cnt;}
 													
-													cnt = (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw4"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr4")))
-														/(Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw4"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr4"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("miss4"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("misswithglove4")))*100;
-													if(cnt){total_ap += cnt;}
+													cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5")))
+														/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss5"))
+															+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove5")))*100;
+													if(cnt){total_as+=cnt;}
 													
-													cnt = (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw5"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr5")))
-														/(Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw5"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr5"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("miss5"))
-															+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("misswithglove5")))*100;
-													if(cnt){total_as += cnt;}
-
-													comp_bp += (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw1"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr1")));
-													comp_ba += (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw2"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr2")));
-													comp_af += (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw3"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr3")));
-													comp_ap += (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw4"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr4")));
-													comp_as += (Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hw5"))
-														+Number(xml.deptComp.summ_total.(@totalhwhr!="").attribute("hr5")));
+													comp_bp += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1")));
+													comp_ba += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2")));
+													comp_af += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3")));
+													comp_ap += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4")));
+													comp_as += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
+														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5")));													
 												}
-											}
-											else {
-												var cnt:Number = 0;
-												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1")))
-													/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss1"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove1")))*100;
-												if(cnt){total_bp+=cnt;}
-													
-												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2")))
-													/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss2"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove2")))*100;
-												if(cnt){total_ba+=cnt;}
-												
-												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3")))
-													/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss3"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove3")))*100;
-												if(cnt){total_af+=cnt;}
-												
-												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4")))
-													/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss4"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove4")))*100;
-												if(cnt){total_ap+=cnt;}
-												
-												cnt = (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5")))
-													/(Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("miss5"))
-														+Number(xml.deptComp.deptc.(@dept==depart).attribute("mglove5")))*100;
-												if(cnt){total_as+=cnt;}
-												
-												comp_bp += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw1"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr1")));
-												comp_ba += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw2"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr2")));
-												comp_af += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw3"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr3")));
-												comp_ap += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw4"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr4")));
-												comp_as += (Number(xml.deptComp.deptc.(@dept==depart).attribute("hw5"))
-													+Number(xml.deptComp.deptc.(@dept==depart).attribute("hr5")));													
 											}
 //Until here you can get the Compliance rate by 5 Moment.
 										}
@@ -284,19 +316,19 @@
 							if(comp_as>max){max=comp_as;}
 							var syear:String = String(year).substring(2,4);
 							if(i==0){
-								columnData.push({cat:"Jan "+syear+" - Mar "+syear,bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
+								columnData.push({cat:"Jan "+syear+" - Mar "+syear,bp:total_bp/(3*deptArr.length),ba:total_ba/(3*deptArr.length),af:total_af/(3*deptArr.length),ap:total_ap/(3*deptArr.length),aps:total_as/(3*deptArr.length)});
 								columnData1.push({cat:"Jan "+syear+" - Mar "+syear,bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==1){
-								columnData.push({cat:"Apr "+syear+" - Jun "+syear,bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
+								columnData.push({cat:"Apr "+syear+" - Jun "+syear,bp:total_bp/(3*deptArr.length),ba:total_ba/(3*deptArr.length),af:total_af/(3*deptArr.length),ap:total_ap/(3*deptArr.length),aps:total_as/(3*deptArr.length)});
 								columnData1.push({cat:"Apr "+syear+" - Jun "+syear,bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==2){
-								columnData.push({cat:"Jul "+syear+" - Sep "+syear,bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
+								columnData.push({cat:"Jul "+syear+" - Sep "+syear,bp:total_bp/(3*deptArr.length),ba:total_ba/(3*deptArr.length),af:total_af/(3*deptArr.length),ap:total_ap/(3*deptArr.length),aps:total_as/(3*deptArr.length)});
 								columnData1.push({cat:"Jul "+syear+" - Sep "+syear,bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 							else if(i==3){
-								columnData.push({cat:"Oct "+syear+" - Dec "+syear,bp:total_bp/3,ba:total_ba/3,af:total_af/3,ap:total_ap/3,aps:total_as/3});
+								columnData.push({cat:"Oct "+syear+" - Dec "+syear,bp:total_bp/(3*deptArr.length),ba:total_ba/(3*deptArr.length),af:total_af/(3*deptArr.length),ap:total_ap/(3*deptArr.length),aps:total_as/(3*deptArr.length)});
 								columnData1.push({cat:"Oct "+syear+" - Dec "+syear,bp:comp_bp,ba:comp_ba,af:comp_af,ap:comp_ap,aps:comp_as});
 							}
 						
@@ -344,7 +376,6 @@
 			protected function btnDepartment_changeHandler(event:IndexChangeEvent):void
 			{
 				// TODO Auto-generated method stub
-				depart = btnDepartment.selectedItem.@label;
 				columnData = [];
 				columnData1 = [];
 				fetchLocalXML();
@@ -446,18 +477,19 @@
 				//ti1.text = e.hitData.item.expenses;
 				//ti2.text = String(e.hitData.x) + ", " + String(e.hitData.y);
 				trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
-				trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
-				
+				var split = e.hitData.displayText.split("<");
+				var split1 = split[1].split(">");
+				this.hitItem  = split1[1];
+				trace("hitData: " + split1[1]); //department				
 				doPopDataPoint(e);
 				
 			}
 			
 			private var popUpMenu = new NativeMenu();
 			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
-			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward");
 			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
 			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
-			private var hitItem:String = "";
 			
 			private function initMenu():void{
 				popUpMenuItemByProf.addEventListener(Event.SELECT, function(e:Event):void{
@@ -509,7 +541,11 @@
 			
 			private function doPopDataPoint(e:ChartItemEvent):void {
 				
-				hitItem = e.hitData.item.cat;
+//				hitItem = e.hitData.item.cat;
+				var split = e.hitData.displayText.split("<");
+				var split1 = split[1].split(">");
+				hitItem  = split1[1];
+				trace("hitData: " + split1[1]); //department
 				doDynamicMenu(null);
 				popUpMenu.display(this.stage, e.stageX, e.stageY);
 				
@@ -634,43 +670,19 @@
 				
 				
 				if(groupBy=="By Action"){
-					
-					if(item=="Before patient"){
-						ca.dataProvider =  this.parentApplication.doAnalyticByAction("1", "2015-03");
-					} else if(item=="Before aseptic"){
-						ca.dataProvider =  this.parentApplication.doAnalyticByAction("2", "2015-03");
-					} else if(item=="After body fluid"){
-						ca.dataProvider =  this.parentApplication.doAnalyticByAction("3", "2015-03");
-					} else if(item=="After patient"){
-						ca.dataProvider =  this.parentApplication.doAnalyticByAction("4", "2015-03");
-					} else if(item=="After patient surrounding"){
-						ca.dataProvider =  this.parentApplication.doAnalyticByAction("5", "2015-03");
-					}
-					
+					var graphHHOByWardGroupJobAction:GraphHHOByWardGroupJobAction = new GraphHHOByWardGroupJobAction();
+					graphHHOByWardGroupJobAction.label = lbl;
+					navigator.addChild(graphHHOByWardGroupJobAction);				
 				} else if(groupBy=="By Professional"){
-					if(item=="Before patient"){
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("1", "2015-03");
-					} else if(item=="Before aseptic"){
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("2", "2015-03");
-					} else if(item=="After body fluid"){
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("3", "2015-03");
-					} else if(item=="After patient"){
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("4", "2015-03");
-					}  else if(item=="After patient surrounding"){
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional("5", "2015-03");
-					}
-				} else if(groupBy=="By Ward/Facility"){
-					if(item=="Before patient"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1", "2015-03");
-					} else if(item=="Before aseptic"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2", "2015-03");
-					} else if(item=="After body fluid"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3", "2015-03");
-					} else if(item=="After patient"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4", "2015-03");
-					}  else if(item=="After patient surrounding"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5", "2015-03");
-					}
+					var graphComplianceByJob:GraphComplianceByJob = new GraphComplianceByJob();
+					graphComplianceByJob.label = lbl;
+					navigator.addChild(graphComplianceByJob);
+				} else if(groupBy=="By Ward"){
+					this.parentApplication.wardGroup = this.wardGroup;
+					trace("wardGroup:"+this.wardGroup);
+					var graphHHOByWardGroupJob:GraphHHOByWardGroupJob = new GraphHHOByWardGroupJob();
+					graphHHOByWardGroupJob.label = lbl;
+					navigator.addChild(graphHHOByWardGroupJob);
 				}
 				
 				bc.addElement(ca);
@@ -680,7 +692,7 @@
 				//}
 				child.addChild(bc);
 				
-				navigator.addChild(child);
+//				navigator.addChild(child);
 			}
 			
 			//end new function for open tabs
@@ -719,7 +731,7 @@
 				
 				trace("domain: " + domain + " groupby: " + groupBy + " param: " + param);
 				
-				isPopReport = false;
+//				isPopReport = false;
 				
 				trace("remove all item");
 				trace("add report '" + report + "'");
@@ -915,6 +927,7 @@
 					</mx:LegendItem>		
 				</mx:Legend>
 				<mx:ColumnChart id="columnchart" y="318" left="10" right="10" height="240"
+								itemClick="myListener(event)"
 								dataProvider="{columnData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
 					<mx:verticalAxis>
@@ -950,6 +963,7 @@
 					</mx:series>
 				</mx:ColumnChart>
 				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="253"
+								itemClick="myListener(event)"
 								dataProvider="{columnData1}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
 					<mx:verticalAxis>
@@ -974,13 +988,9 @@
 					</mx:series>
 				</mx:ColumnChart>
 				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate 	(Overall)- By Moment"/>
-				<s:Label y="10" right="270" text="Departments :"/>
-				<s:Label y="10" right="475" text="Year :"/>
-				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
-								blendMode="darken" change="btnDepartment_changeHandler(event)"
-								dataProvider="{xmlDatagrid}" labelField="@label" prompt="All"></s:DropDownList>
+				<s:Label y="10" right="175" text="Year :"/>
 
-				<s:DropDownList id="btnYear" visible="true" y="0" right="365" width="100" height="32"
+				<s:DropDownList id="btnYear" visible="true" y="0" right="60" width="100" height="32"
 								blendMode="darken" change="btnYear_changeHandler(event)"
 								dataProvider="{yearDatagrid}" labelField="year" prompt="{year}"></s:DropDownList>
 

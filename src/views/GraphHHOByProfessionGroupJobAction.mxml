@@ -6,15 +6,6 @@
 	creationComplete="init()"
 	xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
 	
-		<fx:Style>
-		@namespace tab "flexlib.controls.tabBarClasses.*";
-		tab|SuperTab{ 
-			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
-		} 
-		.SuperTabButtonStyle{
-			icon: Embed(source="close.png");
-		}
-	</fx:Style>
 	
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
@@ -23,7 +14,7 @@
 			duration="1000" 
 			direction="up"/>
 	</fx:Declarations>
-
+	
 	<fx:Script>
 		<![CDATA[
 			import com.report.bi.SemmelReport;
@@ -73,29 +64,9 @@
 			
 			//For quater percent by moment.
 			
-			private var doc:Number = 0; //doctor
-			private var nur:Number = 0;
-			private var csp:Number = 0;
-			private var cst:Number = 0;
-			private var mct:Number =0;
-			private var mof:Number =0;
-			private var ncl:Number =0;
-			private var dit:Number = 0;
-			private var phy:Number = 0;
-			private var sct:Number = 0;
-			private var doc1:Number = 0;
-			private var nur1:Number = 0;
-			private var csp1:Number = 0;
-			private var cst1:Number = 0;
-			private var mct1:Number = 0;
-			private var mof1:Number = 0;
-			private var ncl1:Number = 0;
-			private var dit1:Number = 0;
-			private var phy1:Number = 0;
-			private var sct1:Number = 0;
-			private var max:Number = 0;
 			private var paragraph:Number = 0;
-			
+			private var max:Number = 0;
+
 			public var profData : Array = [];
 			public var profData1 : Array = [];
 			public var ncnt:Number = 0;
@@ -134,7 +105,6 @@
 				initMenu();
 				
 				iColorNumber = 0;
-				profData = [];
 				profData1 = [];
 				max = 0;
 				trace("fetch xml...hho by department");
@@ -142,235 +112,155 @@
 				if(this.parentApplication.fetchXMLData!=""){
 					try{
 						
-						var raw:String = "";
-						var s:String = "";
-						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-						//						trace("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-//						var year:String = this.parentApplication.selectedYM.substring(0,4);
 						for(var i:Number=0;i<4;i++){
-							doc = 0; nur=0; csp=0; cst=0; mct=0; mof=0; ncl=0; dit=0; phy=0; sct=0;
-							doc1 = 0; nur1=0; csp1=0; cst1=0; mct1=0; mof1=0; ncl1=0; dit1=0; phy1=0; sct1=0;
-						
+							profData = [];
+							profData['HW']=0; profData['HR']=0; profData['M']=0; profData['M+G']=0;
+							profData['PHW']=0; profData['PHR']=0; profData['PM']=0; profData['PM+G']=0;
 							for(var j:Number=1;j<=3;j++){
+								var raw:String = "";
+								var s:String = "";
 								var month:Number = i*3 + j;
 								var MonthYear:String = year + "" + month;
-								var file1:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
-								if(file1.exists){
+								var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
+								if(file.exists){
 									try{
 										var stream:FileStream = new FileStream()
-										stream.open(file1, FileMode.READ);
+										stream.open(file, FileMode.READ);
 										raw = stream.readUTFBytes(stream.bytesAvailable).toString();
 										stream.close();
+										s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+										//trace("dec: " + s);
 										
-										s = raw;
-										var xml:XML = new XML(s);
-										
-										ncnt = 0;
-										
-										//From here you can get the compliance times by Job Category.
+									}catch(e:Error){
+										trace("e: " + e.toString());
+									}
+								}
+								if(s!=""){
+									var ob:String = MonthYear;
+									var xml:XML = new XML(s);
+									try{
 										if(depart=="All"||depart==""){
-											if(Number(xml.hhoprofpert.(@ob==MonthYear).profahd.attribute("cnt"))){
-												doc1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Doctor").attribute("cnt"));
-												nur1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"));
-												csp1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"));
-												cst1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"));
-												mct1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"));
-												mof1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"));
-												ncl1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"));
-												dit1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Dietitian").attribute("cnt"));
-												phy1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"));
-												sct1 += Number(xml.hhoprofpert.(@ob==MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"));
-											}
-										}
-										else {
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("cnt"))){
-												doc1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("cnt"));
-												nur1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"));
-												csp1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"));
-												cst1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"));
-												mct1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"));
-												mof1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"));
-												ncl1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"));
-												dit1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("cnt"));
-												phy1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"));
-												sct1 += Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"));
-											}											
-										}
-										//From here you can get the compliance rate by Job Category.
-										if(depart=="All"||depart==""){
-											if(Number(xml.basic.profcomplaince.(@prof=="Doctor").attribute("comp"))){
-												doc += Number(xml.basic.profcomplaince.(@prof=="Doctor").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Student Nurse").attribute("comp")))
-											{
-												nur += Number(xml.basic.profcomplaince.(@prof=="Student Nurse").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Clinical Support").attribute("comp")))
-											{
-												csp += Number(xml.basic.profcomplaince.(@prof=="Clinical Support").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="CONSULTANT").attribute("comp")))
-											{
-												cst += Number(xml.basic.profcomplaince.(@prof=="CONSULTANT").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Medical Consultant").attribute("comp")))
-											{
-												mct += Number(xml.basic.profcomplaince.(@prof=="Medical Consultant").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Medical Officer").attribute("comp")))
-											{
-												mof += Number(xml.basic.profcomplaince.(@prof=="Medical Officer").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Non-Clinical").attribute("comp")))
-											{
-												ncl += Number(xml.basic.profcomplaince.(@prof=="Non-Clinical").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Dietitian").attribute("comp")))
-											{
-												dit += Number(xml.basic.profcomplaince.(@prof=="Dietitian").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Physiotherapist").attribute("comp")))
-											{
-												phy += Number(xml.basic.profcomplaince.(@prof=="Physiotherapist").attribute("comp"));
-											}
-											if(Number(xml.basic.profcomplaince.(@prof=="Surgeon Consultant").attribute("comp")))
-											{
-												sct += Number(xml.basic.profcomplaince.(@prof=="Surgeon Consultant").attribute("comp"));
+											if(Number(xml.deptComp.summ_total.attribute('totalmisswithglove'))){
+												if(!profData['HW']){
+													profData['HW']=Number(0);
+													profData['HR']=Number(0);
+													for(var k:Number=1; k<=5; k++){
+														profData['HW'] += Number(xml.deptComp.summ_total.attribute('hw'+k));
+														profData['HR'] += Number(xml.deptComp.summ_total.attribute('hr'+k));
+													}
+													trace("profData:"+depart+": "+profData['HW']);
+													profData['M'] = Number(xml.deptComp.summ_total.attribute('totalmiss'));
+													profData['M+G'] = Number(xml.deptComp.summ_total.attribute('totalmisswithglove'));
+													profData['PHW'] = profData['HW']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;
+													profData['PHR'] = profData['HR']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													profData['PM'] = profData['M']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													profData['PM+G'] = profData['M+G']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													if(j==3){
+														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
+														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
+														profData['PM'] = (profData['PM']/3).toFixed(2); 
+														profData['PM+G'] = (profData['PM+G']/3).toFixed(2); 
+													}
+												}
+												else{
+													var tempW:Number = 0;
+													var tempR:Number = 0;
+													for(var k:Number=1; k<=5; k++){
+														tempW = Number(xml.deptComp.summ_total.attribute('hw'+k));
+														tempR = Number(xml.deptComp.summ_total.attribute('hr'+k));
+													}
+													profData['HW'] += tempW;
+													profData['HR'] += tempR;
+													profData['M'] += Number(xml.deptComp.summ_total.attribute('totalmiss'));
+													profData['M+G'] += Number(xml.deptComp.summ_total.attribute('totalmisswithglove'));
+													profData['PHW'] += tempW/(tempW+tempR+Number(xml.deptComp.summ_total.attribute('totalmiss'))+Number(xml.deptComp.summ_total.attribute('totalmisswithglove')))*100;
+													profData['PHR'] += tempR/(tempW+tempR+Number(xml.deptComp.summ_total.attribute('totalmiss'))+Number(xml.deptComp.summ_total.attribute('totalmisswithglove')))*100;
+													profData['PM'] += Number(xml.deptComp.summ_total.attribute('totalmiss'))/(tempW+tempR+Number(xml.deptComp.summ_total.attribute('totalmiss'))+Number(xml.deptComp.summ_total.attribute('totalmisswithglove')))*100;
+													profData['PM+G'] += Number(xml.deptComp.summ_total.attribute('totalmisswithglove'))/(tempW+tempR+Number(xml.deptComp.summ_total.attribute('totalmiss'))+Number(xml.deptComp.summ_total.attribute('totalmisswithglove')))*100;
+													if(j==3){
+														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
+														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
+														profData['PM'] = (profData['PM']/3).toFixed(2); 
+														profData['PM+G'] = (profData['PM+G']/3).toFixed(2); 
+													}
+												}
 											}
 										}
 										else
 										{
-											var cnt:Number = 0;
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Doctor").attribute("opp"))*100;
-												if(cnt){doc+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Student Nurse").attribute("opp"))*100;
-												if(cnt){nur+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Clinical Support").attribute("opp"))*100;
-												if(cnt){csp+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="CONSULTANT").attribute("opp"))*100;
-												if(cnt){cst+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Consultant").attribute("opp"))*100;
-												if(cnt){mct+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Medical Officer").attribute("opp"))*100;
-												if(cnt){mof+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Non-Clinical").attribute("opp"))*100;
-												if(cnt){ncl+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Dietitian").attribute("opp"))*100;
-												if(cnt){dit+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Physiotherapist").attribute("opp"))*100;
-												if(cnt){phy+=cnt;}
-											}
-											if(Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.attribute("pert")))
-											{
-												cnt = Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("cnt"))
-													/Number(xml.hhoprofpert.(@ob==depart+'_'+MonthYear).profahd.(@name=="Surgeon Consultant").attribute("opp"))*100;
-												if(cnt){sct+=cnt;}
-											}																						
+											if(Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'))){
+												trace(String(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')));
+												if(!profData['HW']){
+													profData['HW']=Number(0);
+													profData['HR']=Number(0);
+													for(var k:Number=1; k<=5; k++){
+														profData['HW'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('hw'+k));
+														profData['HR'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('hr'+k));
+													}
+													profData['M'] = Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'));
+													profData['M+G'] = Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'));
+													profData['PHW'] = profData['HW']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;
+													profData['PHR'] = profData['HR']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													profData['PM'] = profData['M']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													profData['PM+G'] = profData['M+G']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
+													trace("profData:"+depart+": "+profData['PM']);
+													if(j==3){
+														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
+														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
+														profData['PM'] = (profData['PM']/3).toFixed(2); 
+														profData['PM+G'] = (profData['PM+G']/3).toFixed(2); 
+													}
+												}
+												else{
+													var tempW:Number = 0;
+													var tempR:Number = 0;
+													for(var k:Number=1; k<=5; k++){
+														tempW = Number(xml.deptComp.deptc.(@dept==depart).attribute('hw'+k));
+														tempR = Number(xml.deptComp.deptc.(@dept==depart).attribute('hr'+k));
+													}
+													profData['HW'] += tempW;
+													profData['HR'] += tempR;
+													profData['M'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'));
+													profData['M+G'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'));
+													profData['PHW'] += tempW/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
+													profData['PHR'] += tempR/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
+													profData['PM'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
+													profData['PM+G'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'))/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
+													trace("profData:"+depart+": "+profData['PM']);
+													if(j==3){
+														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
+														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
+														profData['PM'] = (profData['PM']/3).toFixed(2); 
+														profData['PM+G'] = (profData['PM+G']/3).toFixed(2); 
+													}
+												}
+												if(profData['HW']>max){max=profData['HW'];}
+												if(profData['HR']>max){max=profData['HR'];}
+												if(profData['M']>max){max=profData['M'];}
+												if(profData['M+G']>max){max=profData['M+G'];}
+
+											}											
 										}
-										//Until here you can get the Compliance rate by Job Category.
-										
 									}
-									catch(e:Error){
-										trace("e: " + e.toString());
-									} 
+									catch(error:Error){
+										trace("Err: " + error.toString());
+									}
 								}
 							}
-							if(doc1>max){max=doc1;}
-							if(nur1>max){max=nur1;}
-							if(csp1>max){max=csp1;}
-							if(cst1>max){max=cst1;}
-							if(mct1>max){max=mct1;}							
-							if(mof1>max){max=mof1;}
-							if(ncl1>max){max=ncl1;}
-							if(dit1>max){max=dit1;}
-							if(phy1>max){max=phy1;}
-							if(sct1>max){max=sct1;}
 							var syear:String = String(year).substring(2,4);
-							if(i==0){
-								profData.push({cat:"Jan "+syear+" - Mar "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:"Jan "+syear+" - Mar "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
-							}
-							else if(i==1){
-								profData.push({cat:"Apr "+syear+" - Jun "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:"Apr "+syear+" - Jun "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
-							}
-							else if(i==2){
-								profData.push({cat:"Jul "+syear+" - Sep "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:"Jul "+syear+" - Sep "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
-							}
-							else if(i==3){
-								profData.push({cat:"Oct "+syear+" - Dec "+syear,doc:doc/3,nur:nur/3,csp:csp/3,cst:cst/3,mct:mct/3,mof:mof/3,ncl:ncl/3,dit:dit/3,phy:phy/3,sct:sct/3});
-								profData1.push({cat:"Oct "+syear+" - Dec "+syear,doc:doc1,nur:nur1,csp:csp1,cst:cst1,mct:mct1,mof:mof1,ncl:ncl1,dit:dit1,phy:phy1,sct:sct1});
-							}
+							if(i==0){profData['cat']= "Jan "+syear+" - Mar "+syear;}
+							else if(i==1){profData['cat']= "Apr "+syear+" - Jun "+syear;}
+							else if(i==2){profData['cat']= "Jul "+syear+" - Sep "+syear;}
+							else if(i==3){profData['cat']= "Oct "+syear+" - Dec "+syear;}
+							profData1.push(profData);
 						}
-						if(depart!="")
-						{
-							this.columnchart.dataProvider = profData;
-							this.columnchart1.dataProvider = profData1;
-						}
-//						columnchart.dataProvider = profData;
-//						columnchart1.dataProvider = profData1;
-						if(file.exists){
-							try{
-								var stream:FileStream = new FileStream()
-								stream.open(file, FileMode.READ);
-								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
-								stream.close();
-								
-								
-								//start decrypt here
-								//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
-								//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
-								//doDecrypt
-								
-								
-								s = raw;//"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-								trace("dec: " + s);
-								
-							}catch(e:Error){
-								trace("e: " + e.toString());
-							}
-						}
-						//this.xmlColumnChart2 = new XML(s).day.dt;
-					}catch(error:Error){
-						trace("Errr: " + error.toString());
+					}
+					catch(e:Error)
+					{
 					}
 				}
+				this.columnchart.dataProvider = profData1;
+				this.columnchart1.dataProvider = profData1;
 				if(max/100>=1){paragraph = 20;}
 				else if(max/10 >=1){paragraph = 27;}
 				else if(max == 0) {paragraph = 20;}
@@ -386,7 +276,6 @@
 				// TODO Auto-generated method stub
 				depart = btnDepartment.selectedItem.@label;
 				profData = [];
-				profData1 = [];
 				fetchLocalXML();
 			}
 			
@@ -395,15 +284,14 @@
 				// TODO Auto-generated method stub
 				year = btnYear.selectedItem.year;
 				profData = [];
-				profData = [];
 				fetchLocalXML();
 				
 			}
-
+			
 			protected function setValue()
 			{
 				columnchart.dataProvider = profData;
-				columnchart1.dataProvider = profData1;
+				columnchart1.dataProvider = profData;
 			}
 			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
 				//var curItem:ColumnSeries = ColumnSeries(item);
@@ -598,7 +486,7 @@
 			}
 			
 			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
-									contentString:String=null, icon:Class=null):void
+																			 contentString:String=null, icon:Class=null):void
 			{
 				if (lbl == "")
 					lbl = "Graph";
@@ -952,64 +840,34 @@
 							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
 							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
 		
-		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
+		<s:NavigatorContent creationComplete="initTabs()">
 			
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 				<!-- From here table 3 -->
-				<mx:Legend y="32" right="10" width="1133" height="30" fontSize="12">
-					<mx:LegendItem label="Doctors" fontWeight="bold">
+				<mx:Legend y="32" right="10" width="233" height="30" fontSize="12">
+					<mx:LegendItem label="HW" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x13a8f6"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="Students Nurses" fontWeight="bold">
+					<mx:LegendItem label="HR" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xcbde2a"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="clinical support" fontWeight="bold">
+					<mx:LegendItem label="M" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xffcf0d"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="consultant" fontWeight="bold">
+					<mx:LegendItem label="M+G" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xff69b0"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="medical consultant" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0x0f69ff"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="medical officer" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0x0fad56"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="Non-Clinical" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0xff00ff"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="Dietitian" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0xffff00"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="Physiotherapist" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0xff0000"/>
-						</mx:fill>
-					</mx:LegendItem>
-					<mx:LegendItem label="Surgeon Consultant" fontWeight="bold">
-						<mx:fill>
-							<mx:SolidColor color="0x00ffff"/>
-						</mx:fill>
-					</mx:LegendItem>
 				</mx:Legend>
 				<mx:ColumnChart id="columnchart" y="318" left="10" right="10" height="240"
-								dataProvider="{profData}" fontSize="12" seriesFilters="[]"
+								dataProvider="{profData1}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
 					<mx:verticalAxis>
 						<mx:LinearAxis id="vAxis1"
@@ -1032,25 +890,13 @@
 						<!--end for benchmark line-->
 						
 						<mx:ColumnSeries 
-							fills="{warmColorsArray}" labelFunction="setCustomLabel" displayName="Doctor" yField="doc" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray}" labelFunction="setCustomLabel" displayName="HW" yField="PHW" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray2}" labelFunction="setCustomLabel" displayName="Nurse" yField="nur" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray2}" labelFunction="setCustomLabel" displayName="HR" yField="PHR" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray3}" labelFunction="setCustomLabel" displayName="clinical support" yField="csp" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray3}" labelFunction="setCustomLabel" displayName="M" yField="PM" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray4}" labelFunction="setCustomLabel" displayName="consultant" yField="cst" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray5}" labelFunction="setCustomLabel" displayName="medical consultant" yField="mct" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray6}" labelFunction="setCustomLabel" displayName="medical officer" yField="mof" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray7}" labelFunction="setCustomLabel" displayName="Non-Clinical" yField="ncl" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray8}" labelFunction="setCustomLabel" displayName="Dietitian" yField="dit" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray9}" labelFunction="setCustomLabel" displayName="Physiotherapist" yField="phy" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray10}" labelFunction="setCustomLabel" displayName="Surgeon Consultant" yField="sct" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray4}" labelFunction="setCustomLabel" displayName="M+G" yField="PM+G" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
 				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="253"
@@ -1066,25 +912,13 @@
 					</mx:horizontalAxis>			
 					<mx:series>
 						<mx:ColumnSeries 
-							fills="{warmColorsArray}"  displayName="Doctor" yField="doc" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray}"  displayName="HW" yField="HW" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray2}" displayName="Nurse" yField="nur" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray2}" displayName="HR" yField="HR" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray3}"  displayName="clinical support" yField="csp" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray3}"  displayName="M" yField="M" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 						<mx:ColumnSeries 
-							fills="{warmColorsArray4}"  displayName="consultant" yField="cst" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray5}"  displayName="medical consultant" yField="mct" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray6}"  displayName="medical officer" yField="mof" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray7}"  displayName="Non-Clinical" yField="ncl" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray8}" displayName="Dietitian" yField="dit" labelSizeLimit="9" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray9}" displayName="Physiotherapist" yField="phy" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-						<mx:ColumnSeries 
-							fills="{warmColorsArray10}" displayName="Surgeon Consultant" yField="sct" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+							fills="{warmColorsArray4}"  displayName="M+G" yField="M+G" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
 				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Profession"/>

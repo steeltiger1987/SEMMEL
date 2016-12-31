@@ -4,13 +4,14 @@
 	xmlns:fx="http://ns.adobe.com/mxml/2009" 
 					xmlns:s="library://ns.adobe.com/flex/spark" 
 					creationComplete="init()"
+					xmlns:comp="com.connectedpixel.charts.*"
 					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="660">
 	
 	<fx:Style>
 		@namespace tab "flexlib.controls.tabBarClasses.*";
-		tab|SuperTab{ 
+		tab|SuperTab{
 			tabCloseButtonStyleName:"SuperTabButtonStyle"; 
-		} 
+		}
 		.SuperTabButtonStyle{
 			icon: Embed(source="close.png"); 
 		}
@@ -24,178 +25,309 @@
 			direction="up"/>
 	</fx:Declarations>
 	
+	
 	<fx:Script>
 		<![CDATA[
+			import com.report.bi.SemmelReport;
 			import com.security.util.AESCrypto;
 			import com.semmel.Constants;
 			
-			import spark.events.PopUpEvent;
-			import mx.managers.PopUpManager;
-			import mx.collections.*;
-			import com.report.bi.*;
-			import spark.components.Image;
-			
 			import flash.display.NativeMenu;
 			import flash.display.NativeMenuItem;
+			
+			import mx.charts.CategoryAxis;
+			import mx.charts.ChartItem;
+			import mx.charts.ColumnChart;
+			import mx.charts.LinearAxis;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.chartClasses.Series;
 			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
 			import mx.containers.VBox;
+			import mx.graphics.IFill;
+			import mx.graphics.SolidColor;
+			import mx.graphics.Stroke;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.DropDownList;
+			import spark.components.Image;
+			import spark.events.PopUpEvent;
 			
 			import flexlib.containers.SuperTabNavigator;
 			import flexlib.controls.SuperTabBar;
 			import flexlib.controls.tabBarClasses.SuperTab;
 			import flexlib.events.TabReorderEvent;
 			
-			import mx.charts.ChartItem;
-			import mx.charts.chartClasses.IAxis;
-			import mx.charts.chartClasses.Series;
-			import mx.charts.series.ColumnSeries;
-			import mx.charts.series.items.ColumnSeriesItem;
-			import mx.collections.XMLListCollection;
-			import mx.graphics.IFill;
-			import mx.graphics.SolidColor;
-			import mx.utils.ObjectUtil;
-			
-			import spark.components.Group;
-			import spark.events.IndexChangeEvent;
-			
-			
 			//[Bindable]
 			//private var xmlColumnChart : XMLList;
 			
-			[Bindable]
-			private var xmlColumnChart2 : XMLList;
+			//[Bindable]
+			//private var xmlColumnChart2 : XMLList;
+			
+			//[Bindable]
+			//private var xmlDataWardFacilityCnt : XML;
 			
 			[Bindable]
-			public var xmlDepartment:XMLListCollection;
+			private var xmlDataWardFacilityComp : XML;
 			
-			private var iColorNumber:Number = 0;
+			[Bindable]
+			private var xmlWardFacility:XMLList;
 			
+			public var graphComplianceByJob:GraphComplianceByJob = new GraphComplianceByJob;
+			public var fetchXMLData:String = "";
+			public var deptArr:ArrayCollection= new ArrayCollection([]);
+			public var chart1:ColumnChart = new ColumnChart();
+			public var chart2:ColumnChart = new ColumnChart();
+			public var iColorNumber:Number = 0;
+			public var yearDatagrid : ArrayCollection = new ArrayCollection([]);	
+			public var year:Number = 0;
+			public var wardGroupData:Array = [];
+			public var arrData:Array = [];
+			public var domain:String = "department";
+			public var bc:BorderContainer = new BorderContainer();
+			private var xmlColumnChart : Array = [];
+			public var who_safety:ArrayCollection = null;
+			public var who_safety_department:ArrayCollection = null;
+
 			[Embed(source="../../assets/document.png")]
 			private var document_icon:Class;       
 			
 			[Embed(source="../../assets/home.png")]
 			private var home_icon:Class;
 			
+			import spark.components.Group;
+			import spark.events.IndexChangeEvent;
+			import mx.collections.XMLListCollection;
 			
-			
-			private function init():void{
-				var s:String = this.parentApplication.fetchXMLData;
-				if(s!=""){
-					try{
-						var xml:XML = new XML(s);
-						this.xmlDepartment = new XMLListCollection(xml.depts.dept);//.month;
-					}catch(e:Error){
-						
-					}
+			public function init():void{
+				
+				this.fetchXMLData = this.parentApplication.fetchXMLData;
+				trace("fetch:"+this.fetchXMLData);
+				var currentDate:Date = new Date();
+				this.year = currentDate.getFullYear();
+				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
+				{
+					this.yearDatagrid.addItem({year:i});
 				}
+				fetchLocalXML();
 			}
-			
 			public function fetchLocalXML():void{
 				
 				initMenu();
-				
 				iColorNumber = 0;
-				trace("fetch xml...hho by department");
-				
-				var raw:String = "";
-				var s:String = "";
-				var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
-				if(file.exists){
-					try{
-						var stream:FileStream = new FileStream()
-						stream.open(file, FileMode.READ);
-						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
-						stream.close();
-						
-						
-						//start decrypt here
-						//s = AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16));
-						//AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16))
-						//doDecrypt
-						
-						
-						s = raw;//"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-						trace("dec: " + s);
-						
-					}catch(e:Error){
-						trace("e: " + e.toString());
+				trace("fetch xml...hho by moment! / indication");
+				var deptName:Array = [];
+				arrData = [];
+				deptName.push(this.parentApplication.profGroup);
+				for(var i:Number=0; i<deptName.length; i++){
+					deptArr.removeAll();	
+					trace("Name:"+deptName[i]);
+					var raw:String = "";
+					var s:String = "";
+					var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//trace("dec: " + s);
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
 					}
-				}
-				
-				if(s!=""){
-					try{
-						
-						if(this.parentApplication.selectedYM!=""){
-							
-							//var ob:String = this.parentApplication.selectedObserver + "_" + this.parentApplication.selectedYM;
+					if(s!=""){
+						try{
 							var ob:String = this.parentApplication.selectedYM;
-							
-						
-							trace("dept selected: " + btnDepartment.selectedItem.@label);
-							
-							if(btnDepartment.selectedItem.@label!="All"){
-								ob = btnDepartment.selectedItem.@label + "_" + this.parentApplication.selectedYM;
+							var xml:XML = new XML(s);
+							if(xml.hhoprofgrppert.profgrpahd.(@name==deptName[i]).attribute("prof_ids")){
+								var str:String;
+								str = xml.hhoprofgrppert.profgrpahd.(@name==deptName[i]).attribute("prof_ids");
+								var tempArr = str.split(",");
+								for(var k:Number=0; k<tempArr.length; k++)
+								{
+									if((!deptArr.contains(tempArr[k]))&&tempArr[k]!="")
+									{
+										deptArr.addItem(tempArr[k]);
+										trace("tempArr:"+tempArr[k]);
+									}
+								}
 							}
-							
-							//cal1.text = xml.basic.comp.@cal1 + " %";
-							var xml:XML = new XML(s);
-							
-							//this.xmlColumnChart = [{name:"Nurse/Midwife",cnt:xml.hhoprof.prof[0].@cnt},{name:"Auxiliary",cnt:xml.hhoprof.prof[1].@cnt},{name:"Medical Doctor",cnt:xml.hhoprof.prof[3].@cnt},{name:"Other Healthcare Worker",cnt:xml.hhoprof.prof[2].@cnt}];
-							//this.xmlColumnChart = new XML(s).hhoprof.(@ob==ob).prof;
-							
-							//this.xmlColumnChart2 = [{name:"Nurse/Midwife",pert:xml.basic.comp.@cal1},{name:"Auxiliary",pert:xml.basic.comp.@cal2},{name:"Medical Doctor",pert:xml.basic.comp.@cal3},{name:"Other Healthcare Worker",pert:xml.basic.comp.@cal4}];
-							this.xmlColumnChart2 = new XML(s).hhoprofpert.(@ob==ob).profahd;
-
-							
 						}
-						//<hhoprofpert>
-						//<profahd name="Auxiliary" pert="94"/>
-						//<profahd name="Medical Doctor" pert="93"/>
-						//<profahd name="Other Healthcare Worker" pert="88"/>
-						//<profahd name="Nurse/Midwife" pert="85"/>
-						//<comp cal1="72" cal2="77" cal3="75" cal4="73" cal5="74"/>
-					}catch(error:Error){
-						trace("Err: " + error.toString());
-						
-						if(this.parentApplication.selectedYM!=""){
-							
-							//var ob:String = this.parentApplication.selectedObserver + "_" + this.parentApplication.selectedYM;
-							var ob:String = this.parentApplication.selectedYM;
-							
-
-							//cal1.text = xml.basic.comp.@cal1 + " %";
-							var xml:XML = new XML(s);
-							
-							//this.xmlColumnChart = [{name:"Nurse/Midwife",cnt:xml.hhoprof.prof[0].@cnt},{name:"Auxiliary",cnt:xml.hhoprof.prof[1].@cnt},{name:"Medical Doctor",cnt:xml.hhoprof.prof[3].@cnt},{name:"Other Healthcare Worker",cnt:xml.hhoprof.prof[2].@cnt}];
-							//this.xmlColumnChart = new XML(s).hhoprof.(@ob==ob).prof;
-							
-							//this.xmlColumnChart2 = [{name:"Nurse/Midwife",pert:xml.basic.comp.@cal1},{name:"Auxiliary",pert:xml.basic.comp.@cal2},{name:"Medical Doctor",pert:xml.basic.comp.@cal3},{name:"Other Healthcare Worker",pert:xml.basic.comp.@cal4}];
-							this.xmlColumnChart2 = new XML(s).hhoprofpert.(@ob==ob).profahd;
-							
-							
+						catch(error:Error){
+							trace("Err: " + error.toString());
 						}
-						
+					}						
+					var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
 					}
-					
-					
-					//graphHHOByProfession.btnDepartment.visible = false;
-					/*try {
-						if(this.parentApplication.iGraph!=3){
-							if(btnDepartment!=null){
-								btnDepartment.visible = true;
-							}
-						} else {
-							if(btnDepartment!=null){
-								btnDepartment.visible = false;
+					if(s!="")
+					{
+						try{
+							var xml:XML = new XML(s);
+							for(var k:Number=0; k<deptArr.length; k++){
+								var arr:XMLList = xml.profs.prof;
+								//							trace("dept:"+arr.length());
+								for(var j:Number=1; j<arr.length(); j++)
+								{
+									//								trace("dept:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+									if(xml.profs.prof[j].attribute("id")==deptArr[k]){
+										//									trace("deptArr[k]:"+xml.depts.dept[i].(@id==deptArr[k]).attribute("label"));
+										deptArr[k] = xml.profs.prof[j].(@id==deptArr[k]).attribute("label");
+										trace("deptArr:"+deptArr[k]);
+									}
+								}
+							}					
+						}
+						catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					file = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//trace("dec: " + s);
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					xml = new XML(s);
+					file = File.applicationStorageDirectory.resolvePath("rawdata_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+					//							trace("data point"+deptArr[k]);
+					if(file.exists){
+						try{
+							var stream:FileStream = new FileStream()
+							stream.open(file, FileMode.READ);
+							raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+							stream.close();
+							
+							s =raw;// "<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+							//									trace("decaa: " + s);
+							
+						}catch(e:Error){
+							trace("e: " + e.toString());
+						}
+					}
+					var jsonRaw = JSON.parse(s);
+					this.who_safety = new ArrayCollection(jsonRaw["who_safety"]);
+					var obj:Object = new Object();
+					trace("length:"+deptArr.length);
+					for(var index:Number=0; index<deptArr.length; index++)
+					{
+						var tempData:Array=[];
+						tempData['cnt'] = 0;
+						tempData['cat'] = deptArr[index];
+						file = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + this.parentApplication.selectedYM + ".shard");
+						if(file.exists){
+							try{
+								var stream:FileStream = new FileStream()
+								stream.open(file, FileMode.READ);
+								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+								stream.close();
+								s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+								//trace("dec: " + s);
+								
+							}catch(e:Error){
+								trace("e: " + e.toString());
 							}
 						}
-					}catch(error:Error){
-					
-					}*/
-					
+						xml = new XML(s);
+						tempData['cnt']=0;
+						tempData['opp'] = xml.hhoprofpert.(@ob==this.parentApplication.selectedYM).profahd.(@name==tempData['cat']).attribute("opp");
+						for(var p:Number=0;p<this.who_safety.length;p++){
+							obj = this.who_safety.getItemAt(p);
+							if((obj.end_date.toString().replace("-0","").replace("-","").indexOf(this.parentApplication.selectedYM)!=-1)&&(obj.prof==tempData['cat'])){
+								if(this.parentApplication.wardGroup == "Before patient"){
+									if(obj.indi=="1"){
+										tempData['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "Before aseptic"){
+									if(obj.indi=="2"){
+										tempData['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After body fluid"){
+									if(obj.indi=="3"){
+										tempData['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After patient"){
+									if(obj.indi=="4"){
+										tempData['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+								else if(this.parentApplication.wardGroup == "After patient surrounding"){
+									if(obj.indi=="5"){
+										tempData['cnt'] += Number(obj.hr)+Number(obj.hw);
+									}
+								}
+							}
+						}
+						tempData['pect'] = (Number(tempData['cnt'])/Number(tempData['opp'])*100).toFixed(1);
+						arrData.push(tempData);
+					}
+					trace(arrData[1]['opp']);
+					this.columnchart1.dataProvider = arrData;
+					this.columnchart2.dataProvider = arrData;
 				}
 			}
+
+			[Bindable]
+			private var warmColorsArray1:Array = new Array(
+				//new SolidColor(0xfd135a, 1) 
+				new SolidColor(0x13a8f6, 1)
+			);
+			[Bindable]
+			private var warmColorsArray2:Array = new Array(
+				//new SolidColor(0x25857d, 1)
+				new SolidColor(0xcbde2a, 1)
+			);
+			[Bindable]
+			private var warmColorsArray3:Array = new Array(
+				//new SolidColor(0x350d25, 1)
+				new SolidColor(0xffcf0d, 1)
+			);
+			[Bindable]
+			private var warmColorsArray4:Array = new Array(
+				//new SolidColor(0x00c088, 1)
+				new SolidColor(0xff69b0, 1)
+			);
+			[Bindable]
+			private var warmColorsArray5:Array = new Array(
+				//new SolidColor(0x00c088, 1)
+				new SolidColor(0x0f69ff, 1)
+			);
 			
+			protected function btnYear_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				wardGroupData = [];
+				fetchLocalXML();				
+			}
+
 			private function pieSeries_fillFunc(item:ChartItem, index:Number):IFill {
 				//var curItem:ColumnSeries = ColumnSeries(item);
 				/* Convert to a number between 0 and 1. */
@@ -219,19 +351,13 @@
 				//return currentSeries.yField + ":" + " $" + nf1.format(data.yNumber);
 				return Number(data.yNumber).toFixed(1).toString();
 			}
-
+			
 			private function columnSeries_labelFunc(element:ChartItem, series:Series):String {
 				var csi:ColumnSeriesItem = ColumnSeriesItem(element);
 				var ser:ColumnSeries = ColumnSeries(series);
-				return "         " + csi.item.pert + "%";
+				return "         " + csi.item.@pert + "%";
 			}
-
 			
-			protected function btnDepartment_changeHandler(event:IndexChangeEvent):void
-			{
-				// TODO Auto-generated method stub
-				fetchLocalXML();
-			}
 			
 			//new function for open tabs
 			private function initTabs():void
@@ -239,54 +365,56 @@
 				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
 			
-			public function myListener(e:ChartItemEvent, domain:String):void {
+			public function myListener(e:ChartItemEvent):void {
+				domain="department";
 				//ti1.text = e.hitData.item.expenses;
 				//ti2.text = String(e.hitData.x) + ", " + String(e.hitData.y);
 				//trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
 				//trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
-				
 				if(domain=="profession"){
-					this.hitItem  = e.hitData.item.@name;
+					this.hitItem  = e.hitData.item.@prof;
 					trace("hitData: " + e.hitData.item.@prof); //profession
 					//trace("hitData: " + e.hitData.item.@comp); //compliance
 				} else if(domain=="department"){
-					this.hitItem  = e.hitData.item.@name;
-					trace("hitData: " + e.hitData.item.@name); //department
-					trace("hitData: " + e.hitData.item.@pert); //compliance
+					var split = e.hitData.displayText.split("<");
+					var split1 = split[1].split(">");
+					this.hitItem  = split1[1];
+					trace("hitData: " + split1[1]); //department
+					//trace("hitData: " + e.hitData.item.@pert); //compliance
 				} else {
 					this.hitItem  = e.hitData.item.cat;
 					trace("hitData: " + e.hitData.item.cat); //for the 5 moments...
-					trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
+					//trace("hitData: " + e.hitData.item.cnt); //for its 5 moments count!
 				}
-				
-				doPopDataPoint(e, domain);
-				
+					doPopDataPoint(e, domain);
+
 			}
 			
 			private var popUpMenu = new NativeMenu();
 			private var popUpMenuItemByProf = new NativeMenuItem("By Professional");
-			private var popUpMenuItemByDept = new NativeMenuItem("By Ward/Facility");
+			private var popUpMenuItemByDept = new NativeMenuItem("By Ward");
 			private var popUpMenuItemByMoment = new NativeMenuItem("By Moment");
 			private var popUpMenuItemByAction = new NativeMenuItem("By Action");
 			private var popUpMenuItemByReason = new NativeMenuItem("By Reason");
+			
 			private var hitItem:String = "";
-			private var domain:String = "profession";
+			
 			
 			private function initMenu():void{
 				popUpMenuItemByProf.addEventListener(Event.SELECT, function(e:Event):void{
-					doAnalysisByDataPoint(e, hitItem, domain);
+					doAnalysisByDataPoint(e, hitItem);
 				});
 				popUpMenuItemByDept.addEventListener(Event.SELECT, function(e:Event):void{
-					doAnalysisByDataPoint(e, hitItem, domain);
+					doAnalysisByDataPoint(e, hitItem);
 				});
 				popUpMenuItemByMoment.addEventListener(Event.SELECT, function(e:Event):void{
-					doAnalysisByDataPoint(e, hitItem, domain);
+					doAnalysisByDataPoint(e, hitItem);
 				});
 				popUpMenuItemByAction.addEventListener(Event.SELECT, function(e:Event):void{ 
-					doAnalysisByDataPoint(e, hitItem, domain);
+					doAnalysisByDataPoint(e, hitItem);
 				});
 				popUpMenuItemByReason.addEventListener(Event.SELECT, function(e:Event):void{ 
-					doAnalysisByDataPoint(e, hitItem, domain);
+					doAnalysisByDataPoint(e, hitItem);
 				});
 				
 				//for add to new report
@@ -294,12 +422,11 @@
 					showNewReportDialog();
 				});
 				//end for add to new report
-				
 			}
 			
 			var isSelected:Boolean = false;
 			
-			private function doAnalysisByDataPoint(event:Event, hitItem:String, domain:String):void{
+			private function doAnalysisByDataPoint(event:Event, hitItem:String):void{
 				if(isSelected==false){
 					trace("Selected command: " + hitItem + " " + event.target.label);
 					isSelected = true;
@@ -317,7 +444,6 @@
 				//if(obj id)
 				popUpMenu.removeAllItems();
 				popUpMenu.addItem(popUpMenuItemByDept);
-				popUpMenu.addItem(popUpMenuItemByMoment);
 				popUpMenu.addItem(popUpMenuItemByAction);
 				popUpMenu.addItem(popUpMenuItemByReason);
 				
@@ -326,10 +452,8 @@
 			}
 			
 			private function doPopDataPoint(e:ChartItemEvent, domain:String):void {
-				
-				//hitItem = e.hitData.item.cat;
 				this.domain = domain;
-				
+				//hitItem = e.hitData.item.cat;
 				doDynamicMenu(null);
 				popUpMenu.display(this.stage, e.stageX, e.stageY);
 				
@@ -346,7 +470,6 @@
 				myMenu.display(this.stage, e.localX, e.localY);*/
 				
 			}
-			
 			
 			//2015-06-25 by Alfred - add to report menu function
 			private var popReportMenu = new NativeMenu();
@@ -488,7 +611,7 @@
 				obj.rptParam = rptParam;
 				
 				obj.cid = SemmelReport.getCID(this.strSelectedReport, rptDomain, rptGroupBy);
-				trace("cid: " + obj.cid + " " + this.strSelectedReport);
+				
 				obj.selectYM = this.parentApplication.selectedYMLabel;
 				winReports.data = obj;
 				
@@ -501,9 +624,8 @@
 			
 			//end by alfred 2015-06-25 dynamic add to report function
 			
-			
 			private function addTab(lbl:String, item:String, groupBy:String, navigator:SuperTabNavigator, 
-									contentString:String=null, icon:Class=null):void
+															 contentString:String=null, icon:Class=null):void
 			{
 				if (lbl == "")
 					lbl = "Graph";
@@ -514,7 +636,7 @@
 				
 				child.setStyle("closable", true);
 				
-				child.label = lbl  + " @ " + this.parentApplication.selectedYMLabel;;
+				child.label = lbl + " @ " + this.parentApplication.selectedYMLabel;
 				
 				if (icon)
 				{
@@ -549,7 +671,6 @@
 				dlstMonth.prompt = "Year/Month...";
 				//dlstMonth.selectedIndex = 0;
 				dlstMonth.addEventListener(IndexChangeEvent.CHANGE, function(event:IndexChangeEvent):void{doChangeMonthTab(event, ca, caComp, domain, groupBy, item, child)});
-				
 				
 				//new add to report function by alfred 2015-06-27
 				var imgAddReport:Image = new Image();
@@ -588,7 +709,7 @@
 				
 				
 				var lblProgress:Label = new Label();
-				lblProgress.text = "Quota Progress:";
+				lblProgress.text = "";
 				lblProgress.y=10;
 				lblProgress.right=280;
 				
@@ -754,6 +875,19 @@
 							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5");
 						}
 						
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
 					} else if(groupBy=="By Professional"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "1");
@@ -766,6 +900,19 @@
 						}  else if(item=="After patient surrounding"){
 							ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, "5");
 						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
 					} else if(groupBy=="By Ward/Facility"){
 						if(item=="Before patient"){
 							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
@@ -778,9 +925,55 @@
 						}  else if(item=="After patient surrounding"){
 							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5");
 						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					} else if(groupBy=="By Reason"){
+						if(item=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("1");
+						} else if(item=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("2");
+						} else if(item=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("3");
+						} else if(item=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("4");
+						}  else if(item=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("5");
+						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					} else if(groupBy=="By Ward Group"){
+						var graphHHOByIndicationWardGroup:GraphHHOByIndicationWardGroup = new GraphHHOByIndicationWardGroup();
+						graphHHOByIndicationWardGroup.label = lbl;
+						navigator.addChild(graphHHOByIndicationWardGroup);
+					} else if(groupBy=="By Profession Group"){
+						var graphHHOByIndicationProfessionGroup:GraphHHOByIndicationProfessionGroup = new GraphHHOByIndicationProfessionGroup();
+						graphHHOByIndicationProfessionGroup.label = lbl;
+						navigator.addChild(graphHHOByIndicationProfessionGroup);
 					}
 					
-				} else if(domain=="department"){
+				} else 	if(domain=="department"){
 					
 					//show the quota progress
 					var strProgress:String = "";
@@ -801,27 +994,110 @@
 					}
 					//end show the quota progress
 					
+					//					bc1.enabled = false;
 					
 					if(groupBy=="By Professional"){
 						//TODO: report correction
 						trace("Department '" + item + "' By Profession");
-						ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, item);
+						this.fetchXMLData = " ";
+						var graphComplianceByJob:GraphComplianceByJob = new GraphComplianceByJob();
+						graphComplianceByJob.label = lbl;
+						navigator.addChild(graphComplianceByJob);
+						navigator.depth = bc.depth+1;
+						//						this.parentApplication.graphComplianceByJob.fetchLocalXML();
+						//s						ca.dataProvider = graphComplianceByJob.profData;
+						//						ca.dataProvider = this.parentApplication.doAnalyticByProfessional(this.domain, item);
 						
-						//list down all surcey id
-						//then group the profe vs hr+hw
 					} else if(groupBy=="By Moment"){
 						trace("Department " + item + " By Moment");
-						ca.dataProvider = this.parentApplication.doAnalyticByMoment(this.domain, item) //by Moment
+						this.fetchXMLData = " ";
+						var graphComplianceByMoment:GraphComplianceByMoment = new GraphComplianceByMoment();
+						graphComplianceByMoment.label = lbl;
+						navigator.addChild(graphComplianceByMoment);
+						navigator.depth = bc.depth+1;
 						
 					} else if(groupBy=="By Action"){
-						trace("Department " + item + " By Action");
+						if(this.parentApplication.actionStr=="Before patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("1");
+						} else if(this.parentApplication.actionStr=="Before aseptic"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("2");
+						} else if(this.parentApplication.actionStr=="After body fluid"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("3");
+						} else if(this.parentApplication.actionStr=="After patient"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("4");
+						} else if(this.parentApplication.actionStr=="After patient surrounding"){
+							ca.dataProvider =  this.parentApplication.doAnalyticByAction("5");
+						}
 						
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
-					} 
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					} else if(groupBy=="By Reason"){
+						if(this.parentApplication.actionStr=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("1");
+						} else if(this.parentApplication.actionStr=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("2");
+						} else if(this.parentApplication.actionStr=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("3");
+						} else if(this.parentApplication.actionStr=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("4");
+						}  else if(this.parentApplication.actionStr=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByReason("5");
+						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					} else if(groupBy=="By Ward"){
+						if(this.parentApplication.actionStr=="Before patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("1");
+						} else if(this.parentApplication.actionStr=="Before aseptic"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("2");
+						} else if(this.parentApplication.actionStr=="After body fluid"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("3");
+						} else if(this.parentApplication.actionStr=="After patient"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("4");
+						}  else if(this.parentApplication.actionStr=="After patient surrounding"){
+							ca.dataProvider = this.parentApplication.doAnalyticByDepartment("5");
+						}
+						bc.addElement(ca);
+						//if(groupBy!="By Action"){	
+						
+						if(groupBy!="By Reason"){
+							
+							caComp.dataProvider = ca.dataProvider;
+							bc.addElement(caComp);
+							
+						}
+						//}
+						child.addChild(bc);
+						
+						navigator.addChild(child);
+					}
 					
 					
 					
-				} else if(domain=="profession"){
+				} 
+				else if(domain=="profession"){
 					
 					
 					//show the quota progress
@@ -857,29 +1133,9 @@
 						trace("Profession " + item + " By Action");
 						
 						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item) //by profession
-					} else if(groupBy=="By Reason"){
-					
-						trace("By Reason " + item + " By Reason");
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item) //by reason
-
 					}
 				}
-				
-				bc.addElement(ca);
-				//if(groupBy!="By Action"){	
-				
-				if(groupBy!="By Reason"){
-					
-					caComp.dataProvider = ca.dataProvider;
-					bc.addElement(caComp);
-					
-				}
-				//}
-				child.addChild(bc);
-				
-				navigator.addChild(child);
 			}
-			
 			
 			private function doChangeMonthTab(event:IndexChangeEvent, ca:ColumnChart, caComp:ColumnChart, domain:String, groupBy:String, item:String, tabLabel:VBox):void
 			{
@@ -891,6 +1147,9 @@
 				tabLabel.label = tabLabel.label.substr(0,tabLabel.label.indexOf("@")) + "@ " + event.target.selectedItem.@label;
 				
 				doRefreshLocalTabData(domain, ca, caComp, groupBy, item, event.target.selectedItem.@value);
+				
+				
+				
 				
 			}
 			
@@ -976,6 +1235,8 @@
 						trace("Department " + item + " By Action");
 						
 						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item, privateYM); //by profession
+					} else if(groupBy=="By Reason"){
+						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item, privateYM) //by reason
 					}
 					
 					
@@ -1013,8 +1274,6 @@
 						trace("Profession " + item + " By Action");
 						
 						ca.dataProvider = this.parentApplication.doAnalyticByDomainAction(this.domain, item, privateYM); //by profession
-					} else if(groupBy=="By Reason"){
-						ca.dataProvider = this.parentApplication.doAnalyticByDomainReason(this.domain, item, privateYM) //by reason
 					}
 				}
 				
@@ -1038,6 +1297,8 @@
 			
 			//end new function for open tabs
 			
+			//end new function for open tabs
+
 		]]>
 	</fx:Script>
 	
@@ -1047,75 +1308,74 @@
 							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
 		
 		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
-			
-			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-				
-			<mx:ColumnChart id="columnchart1" y="50" left="10" right="10" height="242"
-							itemClick="myListener(event, 'profession')"
-							type="overlaid" showDataTips="true"
-							dataProvider="{xmlColumnChart2}" seriesFilters="[]">
-				<!-- xmlColumnChart change to xmlColumnChart2 due to xmlColumnChart2 contains info of CNT/OPP-->
-				<mx:verticalAxis>
-					<mx:LinearAxis id="vAxis"
-								   minimum="0" 
-								   />
-				</mx:verticalAxis>
-				<mx:horizontalAxis>
-					<mx:CategoryAxis categoryField="@name"/>
-				</mx:horizontalAxis>
-				<mx:series>
-					
-					<mx:ColumnSeries fontSize="16"  displayName="@name" yField="@opp" 
-									 fillFunction="{this.parentApplication.stackedFillFunction}"
-									 labelAlign="top" labelPosition="outside" />
-					
-					<mx:ColumnSeries fontSize="16" fillFunction="{this.parentApplication.stackedFillFunction}"
-									 displayName="@name" yField="@cnt" labelAlign="top" 
-									 labelPosition="outside" showDataEffect="slideUp" />
-
-				</mx:series>
-			</mx:ColumnChart>
-			<mx:ColumnChart id="columnchart2" y="303" left="10" right="10" height="311"
-							itemClick="myListener(event, 'profession')"
-							dataProvider="{xmlColumnChart2}" seriesFilters="[]">
-				<mx:verticalAxis>
-					<mx:LinearAxis id="vAxis2"
-								   minimum="0"
-								   maximum="100"
-								   labelFunction="linearAxis_labelFunc" />
-				</mx:verticalAxis>		
-				<mx:horizontalAxis>
-					<mx:CategoryAxis categoryField="@name"/>
-				</mx:horizontalAxis>
-				<mx:series>
-					
-					<!--for benchmark line-->
-					<mx:LineSeries yField="Y" xField="X"
-								   lineStroke="{this.parentApplication.lineStroke}"
-								   dataProvider="{this.parentApplication.lineDataProvider}">
-						<mx:horizontalAxis>
-							<mx:LinearAxis maximum="1"/>
-						</mx:horizontalAxis>
-					</mx:LineSeries>
-					<!--end for benchmark line-->
-					<!--itemRenderer="{this.parentApplication.colorColumnRenderer}"-->
-					<mx:ColumnSeries labelFunction="setCustomLabel" fontSize="16" fills="{this.parentApplication.themeColor}" 
-									 fillFunction="{this.parentApplication.fill3ColorFunction}"
-									 displayName="@name" yField="@pert" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
-				</mx:series>
-			</mx:ColumnChart>
-			<s:Label y="29" fontWeight="bold" horizontalCenter="17" text="Opportunity by Profession"/>
-			<s:Label y="300" fontWeight="bold" horizontalCenter="12" text="Adherence by Profession"/>
-			<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"
-							blendMode="darken" change="btnDepartment_changeHandler(event)"
-							dataProvider="{xmlDepartment}" labelField="@label" prompt="Ward/Facility..."></s:DropDownList>
-				
-				<s:Image id="btnAddReport_AdProf" y="-2" right="10"
-						 click="doAddToReportMenu(event, SemmelReport.OppAdProfession)" smooth="true"
-						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
-			</s:BorderContainer>
-		</s:NavigatorContent>
-
-	</flexlib:SuperTabNavigator>
 		
+			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
+				<mx:ColumnChart id="columnchart1" y="302" left="10" right="10" height="259"
+								itemClick="myListener(event)"
+								dataProvider="{wardGroupData}" seriesFilters="[]">
+					<mx:verticalAxis>
+						<mx:LinearAxis id="vAxis2"
+									   minimum="0" 
+									   labelFunction="linearAxis_labelFunc"/>
+					</mx:verticalAxis>
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat" />
+					</mx:horizontalAxis>		
+					<mx:series>
+						
+						<!--for benchmark line-->
+						<mx:LineSeries yField="Y" xField="X"
+									   lineStroke="{this.parentApplication.lineStroke}"
+									   dataProvider="{this.parentApplication.lineDataProvider}">
+							<mx:horizontalAxis>
+								<mx:LinearAxis maximum="1"/>
+							</mx:horizontalAxis>
+						</mx:LineSeries>
+						<!--end for benchmark line-->
+						
+						
+						<mx:ColumnSeries labelFunction="setCustomLabel" fontSize="16" fills="{this.parentApplication.themeColor}" 
+										 fillFunction="{this.parentApplication.fill3ColorFunction}"
+										 displayName="cat" yField="pect" labelPosition="outside" showDataEffect="slideUp" />
+						<!--labelFunction="columnSeries_labelFunc"-->
+					</mx:series>
+				</mx:ColumnChart>
+				<s:Label y="326" fontWeight="bold" horizontalCenter="-1" text=""/>
+				<s:Label y="10" fontWeight="bold" horizontalCenter="1" text=""/>
+				<mx:ColumnChart id="columnchart2" y="19" left="10" right="10" height="285"
+								type="overlaid" showDataTips="true"
+								itemClick="myListener(event)"
+								dataProvider="{wardGroupData}"
+								seriesFilters="[]">
+					<!-- xmlColumnChartOpp -->
+					<mx:horizontalAxis>
+						<mx:CategoryAxis categoryField="cat" />
+					</mx:horizontalAxis>
+					<mx:series>
+						
+						<mx:ColumnSeries fontSize="16" displayName="cat" yField="opp" 
+										 fillFunction="{this.parentApplication.stackedFillFunction}"
+										 labelAlign="top" labelPosition="outside" />	
+						
+						<mx:ColumnSeries fontSize="16" displayName="cat" yField="cnt"
+										 fillFunction="{this.parentApplication.stackedFillFunction}"
+										 labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
+						
+					</mx:series>
+				</mx:ColumnChart>
+				<s:Label y="10" fontWeight="bold" horizontalCenter="-18" text=""/>
+				<s:Label y="300" fontWeight="bold" horizontalCenter="-13" text=""/>
+				
+				<s:Image id="btnAddReport_AdWard" y="-2" right="10"
+						 click="doAddToReportMenu(event, SemmelReport.OppAdWardFacility)" smooth="true"
+						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
+				
+				</s:BorderContainer>
+			
+		</s:NavigatorContent>
+		
+
+		
+	</flexlib:SuperTabNavigator>
+	
 </s:NavigatorContent>
