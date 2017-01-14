@@ -130,6 +130,7 @@
 			
 			public var who_safety:ArrayCollection = null;
 			public var who_safety_department:ArrayCollection = null;
+			public var serverVersion:String = "";
 			
 			[Bindable]
 			private var monitor:URLMonitor;
@@ -217,6 +218,7 @@
 			//removeChild(statusBar);
 			//}
 			public var restart:Number = 0;
+			public var selectedYear = 0;
 			
 			//for BIRT report download
 			public var documentsDirectory:File = File.desktopDirectory;// active user documents directory  
@@ -555,11 +557,14 @@
 			 * and display it in a label. 
 			 */ 
 			
-			var myClickHandler:Function = function (evt_obj:Object) {
+			public function myClickHandler(evt_obj:Object) {
 				if (evt_obj.detail == Alert.OK) {
 					navigateToURL(new URLRequest("http://semmel.raydarhealth.com/download.jsp"), "_blank");
 				} else if (evt_obj.detail == Alert.CANCEL) {
 					trace(Alert.cancelLabel);
+					Constants.appVersion = serverVersion;
+					
+					doLicenseOrLogin();
 				}
 			};
 
@@ -568,7 +573,7 @@
 				var ns:Namespace = appXML.namespace();
 				Constants.appVersion = "1.1.8";
 				//this.appVersion = "App version:" + appXML.ns::version;
-				trace("App version: " + appXML.ns::versionNumber);
+				trace("App version: " + serverVersion);
 //				Constants.appVersion = appXML.ns::versionNumber;
 //				Constants.appVersion = "1.1.7";
 			}
@@ -578,7 +583,7 @@
 			
 			protected function btnSubmit_clickHandler(event:MouseEvent):void
 			{
-				doLicenseOrLogin();
+				doLicenseOrLogin();					
 			}
 			
 			
@@ -704,93 +709,106 @@
 					var jsonRead:Object = null;
 					jsonRead = JSON.parse(evt.result.toString());
 					
+					
 					if(EncryptedLocalStore.isSupported) {
 						var va:ByteArray = new ByteArray();
 						va.writeUTFBytes(evt.result.toString());
 						EncryptedLocalStore.setItem("hospitalDetls", va);
 					}
+					serverVersion = jsonRead.analytic_version;
+					var showStr = "A new version of analytic app v"+serverVersion+" is available. Please update to latest version.\n";
+					var tempStr = jsonRead.analytic_changelog.split("|");
+//					trace("tempStr:"+tempStr[0]);
+
+					for(var p:Number=0; p<tempStr.length; p++){
+						var str = String(p+1)+". "+tempStr[p]+"\n";
+						trace("tempStr:"+str);
+						showStr += str;
+					}					
+					trace(evt.result.toString());
+					trace("versin:"+jsonRead.analytic_version);
 					
-					trace(evt.result.toString());	
-					
-					if(this.restart == 0){
-					//arrState = new ArrayCollection(jsonRead.RefState);
-						var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
-						var ns:Namespace = appXML.namespace();
-						//this.appVersion = "App version:" + appXML.ns::version;
-   						//appXML.ns::versionNumber = "1.1.8";
-						Constants.appVersion = "1.1.8";
-						if(appXML.ns::versionNumber>Constants.appVersion){
-							Alert.okLabel = "Update Now";
-							Alert.cancelLabel = "Update Later";
-							Alert.buttonWidth = 100;
-							var dialog_obj:Object = Alert.show("A new version of analytic app v"+appXML.ns::versionNumber+" is available. Please update to latest version.", "Alert", Alert.OK | Alert.CANCEL, null, myClickHandler, null, Alert.OK);
+					var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
+					var ns:Namespace = appXML.namespace();
+					//this.appVersion = "App version:" + appXML.ns::version;
+					//appXML.ns::versionNumber = "1.1.8";
+//					Constants.appVersion = "1.1.6";
+					if(serverVersion>Constants.appVersion){
+						Alert.okLabel = "Update Now";
+						Alert.cancelLabel = "Update Later";
+						Alert.buttonWidth = 100;
+						var dialog_obj:Object = Alert.show(showStr, "Alert", Alert.OK | Alert.CANCEL, null, myClickHandler, null, Alert.OK);
+					}
+					else{
+						if(this.restart == 0){
+							//arrState = new ArrayCollection(jsonRead.RefState);
+							//						Constants.appVersion = appXML.ns::versionNumber;
+							//						Constants.appVersion = "1.1.8";
+							
+							
+							//store constant value
+							Constants.hospName = jsonRead.hospital;
 						}
-						trace("App version: " + appXML.ns::versionNumber);
-//						Constants.appVersion = appXML.ns::versionNumber;
-//						Constants.appVersion = "1.1.8";
 						
 						
-						//store constant value
-						Constants.hospName = jsonRead.hospital;
+						
+						var file:File = File.applicationStorageDirectory.resolvePath("user.key");
+						var fileStream:FileStream = new FileStream();
+						fileStream.open(file, FileMode.WRITE);
+						fileStream.writeUTFBytes(enUserId + "\n"); //user id 
+						fileStream.writeUTFBytes(enPwd + "\n"); //pwd
+						fileStream.writeUTFBytes(jsonRead.uid + "\n"); //user id from db
+						fileStream.writeUTFBytes(jsonRead.hospital); //hospital name display
+						fileStream.close();
+						
+						
+						
+						
+						
+						
+						
+						//start auto fetch latest data
+						
+						file = File.applicationStorageDirectory.resolvePath("license.key");
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
+						trace("split 1:"+s.split("\n")[0]);
+						trace("split 2:"+s.split("\n")[1]);
+						
+						//trace("post doReprot + license Key " + s.split("\n")[0]);
+						
+						
+						savingAlert(); //with network!
+						
+						
+						//					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
+						//						doPostReport(s);
+						//					});
+						doPostReport(s);
+						//					timer.start();
+						
+						
+						
+						//end auto fetch latest data
+						
+						
+						//img sponser here
+						trace("sponsor image: " + jsonRead.hosp_sponsor);
+						
+						if(isConnected){
+							if(StringUtil.trim(jsonRead.hosp_sponsor) != "")
+								initDownload(jsonRead.hosp_sponsor);
+						} else {
+							
+							trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
+							imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
+						}
+						
+						//end img sponer here
 					}
-					
-					
-					
-					var file:File = File.applicationStorageDirectory.resolvePath("user.key");
-					var fileStream:FileStream = new FileStream();
-					fileStream.open(file, FileMode.WRITE);
-					fileStream.writeUTFBytes(enUserId + "\n"); //user id 
-					fileStream.writeUTFBytes(enPwd + "\n"); //pwd
-					fileStream.writeUTFBytes(jsonRead.uid + "\n"); //user id from db
-					fileStream.writeUTFBytes(jsonRead.hospital); //hospital name display
-					fileStream.close();
-					
-					
-					
-					
-					
-					
-					
-					//start auto fetch latest data
-					
-					file = File.applicationStorageDirectory.resolvePath("license.key");
-					var stream:FileStream = new FileStream()
-					stream.open(file, FileMode.READ);
-					var s:String = stream.readUTFBytes(stream.bytesAvailable).toString();
-					trace("split 1:"+s.split("\n")[0]);
-					trace("split 2:"+s.split("\n")[1]);
-					
-					//trace("post doReprot + license Key " + s.split("\n")[0]);
-					
-					
-					savingAlert(); //with network!
-					
-					
-					//					timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void {
-					//						doPostReport(s);
-					//					});
-					doPostReport(s);
-					//					timer.start();
-					
-					
-					
-					//end auto fetch latest data
-					
-					
-					//img sponser here
-					trace("sponsor image: " + jsonRead.hosp_sponsor);
-					
-					if(isConnected){
-						if(StringUtil.trim(jsonRead.hosp_sponsor) != "")
-							initDownload(jsonRead.hosp_sponsor);
-					} else {
-						
-						trace(File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath);
-						imgSponsor.source =  File.applicationStorageDirectory.resolvePath("asset/" + jsonRead.hosp_sponsor).nativePath;
-					}
-					
-					//end img sponer here
-					
+					trace("App version: " + serverVersion);					
+					Constants.appVersion = "1.1.8";
 					
 					
 				}
@@ -3171,8 +3189,6 @@
 				acReport.addItem("Compliance By Ward");
 				acReport.addItem("Compliance By Profession");
 				acReport.addItem("Compliance By Moment");
-//				acReport.addItem("Compliance By Moment Based on Ward Group");
-//				acReport.addItem("Compliance By Moment Based on Profession Group");
 				acReport.addItem("Average Action by Moments");
 				acReport.addItem("Ward/Facility Compliance Summary");
 				acReport.addItem("Progress Report");
@@ -3180,15 +3196,14 @@
 				acReport.addItem("Aseptic Procedure");
 				acReport.addItem("Missed with Reason");
 				acReport.addItem("Leaderboard");
-//				acReport.addItem("Ward Facility");
-				acReport.addItem("Quarter Report By Moment");
-				acReport.addItem("Quarter Report for Overall");
-				acReport.addItem("Quarter Report By Profession");
+				acReport.addItem("Overall Compliance - Quarterly");
+				acReport.addItem("Quarter Report by Moment (A)");
+				acReport.addItem("Quarter Report by Moment (B)");
+				acReport.addItem("Quarter Report by Profession (A)");
+				acReport.addItem("Quarter Report by Profession (B)");
+				acReport.addItem("Quarter Report : Ward Versus Hospital Wide");
 				acReport.addItem("Quarter Report by Ward Group");
 				acReport.addItem("Quarter Report by Profession Group");
-				acReport.addItem("Overall Compliance - Quarterly");
-				acReport.addItem("Overall Compliance Report By Profession - Quarterly");
-				acReport.addItem("Overall Compliance Report By Moment - Quarterly");
 				
 				btnReport.dataProvider = acReport;
 				btnReport.selectedIndex=1;
@@ -4397,28 +4412,28 @@
 						doGraphSelection("missedreason");
 					} else if(btnReport.selectedIndex==11){
 						doGraphSelection("leaderboard");
-					} else if(btnReport.selectedIndex==12){
-						btnYM.visible = false;
-						doGraphSelection("graph8");
 					} else if(btnReport.selectedIndex==13){
 						btnYM.visible = false;
-						doGraphSelection("graph9");
-					} else if(btnReport.selectedIndex==14){
-						btnYM.visible = false;
-						doGraphSelection("graph10");
+						doGraphSelection("graph8");
 					} else if(btnReport.selectedIndex==17){
 						btnYM.visible = false;
-						doGraphSelection("graph11");
-					} else if(btnReport.selectedIndex==18){
-						btnYM.visible = false;
-						doGraphSelection("graph12");
-					} else if(btnReport.selectedIndex==19){
-						btnYM.visible = false;
-						doGraphSelection("graph13");
+						doGraphSelection("graph9");
 					} else if(btnReport.selectedIndex==15){
 						btnYM.visible = false;
-						doGraphSelection("graph14");
+						doGraphSelection("graph10");
+					} else if(btnReport.selectedIndex==12){
+						btnYM.visible = false;
+						doGraphSelection("graph11");
 					} else if(btnReport.selectedIndex==16){
+						btnYM.visible = false;
+						doGraphSelection("graph12");
+					} else if(btnReport.selectedIndex==14){
+						btnYM.visible = false;
+						doGraphSelection("graph13");
+					} else if(btnReport.selectedIndex==18){
+						btnYM.visible = false;
+						doGraphSelection("graph14");
+					} else if(btnReport.selectedIndex==19){
 						btnYM.visible = false;
 						doGraphSelection("graph15");
 					} 

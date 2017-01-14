@@ -81,6 +81,7 @@
 			public var deptArr:ArrayCollection= new ArrayCollection([]);
 			public var chart1:ColumnChart = new ColumnChart();
 			public var chart2:ColumnChart = new ColumnChart();
+			public var legend:Legend = new Legend();
 			public var iColorNumber:Number = 0;
 			public var yearDatagrid : ArrayCollection = new ArrayCollection([]);	
 			public var year:Number = 0;
@@ -88,6 +89,8 @@
 			public var warmColorsArray:Array = [];
 			public var domain:String = "department";
 			public var bc:BorderContainer = new BorderContainer();
+			public var text:String = "Hand Hygiene Opportunity By Profession - "; 
+			public var text1:String = "Hand Hygiene Compliance By Profession - ";
 			
 			[Embed(source="../../assets/document.png")]
 			private var document_icon:Class;       
@@ -102,9 +105,13 @@
 			public function init():void{
 				
 				this.fetchXMLData = this.parentApplication.fetchXMLData;
+				this.text = text + this.parentApplication.wardGroup;
+				this.text1 = text1 + this.parentApplication.wardGroup;
+				lab1.text = text;
+				lab2.text = text1;
 				trace("fetch:"+this.fetchXMLData);
 				var currentDate:Date = new Date();
-				this.year = currentDate.getFullYear();
+				this.year = this.parentApplication.selectedYear;
 				this.btnYear.prompt = year.toString();
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -130,6 +137,26 @@
 					//new SolidColor(0x00c088, 1)
 					new SolidColor(0x0f69ff, 1)
 				);
+				warmColorsArray[5] = new Array(
+					//new SolidColor(0x00c088, 1)
+					new SolidColor(0x0fad56, 1)
+				);
+				warmColorsArray[6] = new Array(
+					//new SolidColor(0x00c088, 1)
+					new SolidColor(0xff00ff, 1)
+				);
+				warmColorsArray[7] = new Array(
+					//new SolidColor(0x00c088, 1)
+					new SolidColor(0xffff00, 1)
+				);
+				warmColorsArray[8] = new Array(
+					//new SolidColor(0x00c088, 1)
+					new SolidColor(0xff0000, 1)
+				);
+				warmColorsArray[9] = new Array(
+					//new SolidColor(0x00c088, 1)
+					new SolidColor(0x00ffff, 1)
+				);
 				fetchLocalXML();
 			}
 			public function fetchLocalXML():void{
@@ -142,6 +169,7 @@
 				bc.height = this.height-65;
 				bc.borderStroke = null;
 				wardGroupData = [];
+				deptArr.removeAll();
 				iColorNumber = 0;
 				chart1.seriesFilters=[]; //no shadow
 				chart1.showDataTips = true;
@@ -164,6 +192,10 @@
 				chart2.horizontalAxis = cAxis2;
 				var series1:Array = new Array();
 				var series2:Array = new Array();
+				legend.y = 35;
+				legend.right = 50;
+				legend.height = 30;
+				legend.removeAllChildren();
 				trace("fetch xml...hho by department");
 				//var s:String = this.parentApplication.fetchXMLData;
 				for(var i:Number=0; i<4; i++){
@@ -212,6 +244,7 @@
 					}
 					var syear:String = String(year).substring(2,4);
 				}
+				legend.width = deptArr.length*115;
 //				trace("deptArr:"+deptArr.length);
 				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
 				if(file.exists){
@@ -241,6 +274,43 @@
 									deptArr[k] = xml.profs.prof[i].(@id==deptArr[k]).attribute("label");
 									var cs:ColumnSeries = new ColumnSeries(); //for "cnt" => complaince count
 									var cs1:ColumnSeries = new ColumnSeries();
+									var legendItem:LegendItem = new LegendItem();
+									legendItem.label = deptArr[k];
+									//									legendItem.opaqueBackground = warmColorsArray[k];
+									var sc:SolidColor;
+									if(k==0){
+										sc = new SolidColor(0x13a8f6, 1);
+									}
+									else if(k==1){
+										sc = new SolidColor(0xcbde2a, 1);
+									}
+									else if(k==2){
+										sc = new SolidColor(0xffcf0d, 1);
+									}
+									else if(k==3){
+										sc = new SolidColor(0xff69b0, 1);
+									}
+									else if(k==4){
+										sc = new SolidColor(0x0f69ff, 1);
+									}
+									else if(k==5){
+										sc = new SolidColor(0x0fad56, 1);
+									}
+									else if(k==6){
+										sc = new SolidColor(0xff00ff, 1);
+									}
+									else if(k==7){
+										sc = new SolidColor(0xffff00, 1);
+									}
+									else if(k==8){
+										sc = new SolidColor(0xff0000, 1);
+									}
+									else if(k==9){
+										sc = new SolidColor(0x00ffff, 1);
+									}
+									legendItem.setStyle("fill", sc);
+									legendItem.setStyle("fontWeight","bold");
+									legend.addChild(legendItem);
 									//fill function
 //									cs.fillFunction=this.parentApplication.stackedFillFunction;
 									cs.setStyle("fontSize", 16);
@@ -273,14 +343,15 @@
 						trace("e: " + e.toString());
 					}
 				}
-				chart1.y=25;
+				chart1.y=80;
 				chart1.left=15;
 				chart1.right=10;
-				chart1.height=262;
-				chart2.y=313;
+				chart1.height=253;
+				chart2.y=368;
 				chart2.left=10;
 				chart2.right=10;
-				chart2.height=242;
+				chart2.height=240;
+				this.pnl.addElement(legend);
 				this.pnl.addElement(chart1);
 				this.pnl.addElement(chart2);
 //				this.addElement(bc);
@@ -424,7 +495,7 @@
 			//new function for open tabs
 			private function initTabs():void
 			{
-				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+//				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
 			
 			public function myListener(e:ChartItemEvent):void {
@@ -493,8 +564,8 @@
 					trace("Selected command: " + hitItem + " " + event.target.label);
 					isSelected = true;
 					
-					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
-					nav.selectedIndex = nav.getChildren().length-1;
+//					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+//					nav.selectedIndex = nav.getChildren().length-1;
 					
 				}
 				//mx.controls.Alert.show("i");
@@ -505,9 +576,9 @@
 				
 				//if(obj id)
 				popUpMenu.removeAllItems();
-				popUpMenu.addItem(popUpMenuItemByProf);
-				popUpMenu.addItem(popUpMenuItemByMoment);
-				popUpMenu.addItem(popUpMenuItemByAction);
+//				popUpMenu.addItem(popUpMenuItemByProf);
+//				popUpMenu.addItem(popUpMenuItemByMoment);
+//				popUpMenu.addItem(popUpMenuItemByAction);
 				
 				isSelected = false;
 				
@@ -692,7 +763,7 @@
 				if (lbl == "")
 					lbl = "Graph";
 				
-				var curNum:Number = nav.numChildren + 1;
+//				var curNum:Number = nav.numChildren + 1;
 				
 				var child:VBox = new VBox();
 				
@@ -1151,16 +1222,9 @@
 		]]>
 	</fx:Script>
 	
-	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
-							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
-							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
-							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
-		
-		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
-		
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-				<s:Label y="10" fontWeight="bold" horizontalCenter="-18" text=""/>
-				<s:Label y="300" fontWeight="bold" horizontalCenter="-13" text=""/>
+				<s:Label id="lab1" y="60" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Opportunity By Profession- [ProfGroup]"/>
+				<s:Label id="lab2" y="350" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Compliance By Profession- [ProfGroup]"/>
 				<s:Label y="10" right="175" text="Year :"/>
 				<s:DropDownList id="btnYear" visible="true" y="0" right="65" width="100" height="32"
 								blendMode="darken" change="btnYear_changeHandler(event)"
@@ -1171,11 +1235,4 @@
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
 				
 				</s:BorderContainer>
-			
-		</s:NavigatorContent>
-		
-
-		
-	</flexlib:SuperTabNavigator>
-	
 </s:NavigatorContent>

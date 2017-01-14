@@ -1170,7 +1170,8 @@
 							fills="{warmColorsArray4}" displayName="Quarter4" yField="doc4" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate By Profession"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Opportunity By Profession"/>
+				<s:Label y="340" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance By Profession"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

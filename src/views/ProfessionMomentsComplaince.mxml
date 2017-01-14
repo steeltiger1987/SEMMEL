@@ -228,8 +228,9 @@
 						cnt++;
 					}
 				}
-				trace("v:",v.toString());
+//				trace("v:",v.toString());
 				dataGrid.selectedIndices = v;
+				trace("v:",dataGrid.selectedIndex);
 			}
 			public function init(){
 				this.fetchLocalXML();

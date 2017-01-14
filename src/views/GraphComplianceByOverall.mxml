@@ -896,7 +896,8 @@
 							fills="{warmColorsArray2}" displayName="Before Aseptic" yField="total" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Ward- By Moment"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Opportunity By Ward versus Hospital Wide"/>
+				<s:Label y="340" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance By Ward versus Hospital Wide"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

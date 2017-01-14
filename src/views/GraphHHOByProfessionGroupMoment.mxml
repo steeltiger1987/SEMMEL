@@ -88,6 +88,8 @@
 			public var who_safety:ArrayCollection = null;
 			public var who_safety_department:ArrayCollection = null;
 			public var deptArr:ArrayCollection= new ArrayCollection([]);
+			public var text:String = "Hand Hygiene Opportunity By Moment - "; 
+			public var text1:String = "Hand Hygiene Compliance By Moment - ";
 
 			[Embed(source="../../assets/document.png")]
 			private var document_icon:Class;       
@@ -98,7 +100,11 @@
 			private function init():void{
 
 				var s:String = this.parentApplication.fetchXMLData;
-				trace("parent XML: "+ s);
+				this.text = text + this.parentApplication.wardGroup;
+				this.text1 = text1 + this.parentApplication.wardGroup;
+				lab1.text = text;
+				lab2.text = text1;
+				trace("parent XML: "+ this.parentApplication.wardGroup);
 				if(s!=""){
 					try{
 						var xml:XML = new XML(s);
@@ -108,7 +114,7 @@
 					}
 				}
 				var currentDate:Date = new Date();
-				this.year = currentDate.getFullYear();
+				this.year = this.parentApplication.selectedYear;
 				this.btnYear.prompt = String(year);
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -117,62 +123,50 @@
 				fetchLocalXML();
 			}
 			
-			public function fetchLocalXML():void{
-				
-				
-				initMenu();
-				
-				iColorNumber = 0;
-				profGroupData=[];
-				max = 0;
-				trace("fetch xml...hho by department");
-				
-				for(var i:Number=0; i<4; i++){
-					for(var j:Number=1; j<=3; j++){
-						var raw:String = "";
-						var s:String = "";
-						var month:Number = i*3 + j;
-						var MonthYear:String = year + "" + month;
-						var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
-						if(file.exists){
-							try{
-								var stream:FileStream = new FileStream()
-								stream.open(file, FileMode.READ);
-								raw = stream.readUTFBytes(stream.bytesAvailable).toString();
-								stream.close();
-								s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
-								//trace("dec: " + s);
-								
-							}catch(e:Error){
-								trace("e: " + e.toString());
-							}
-						}
+			public function getGroup(i:Number, j:Number):void{
+				this.deptArr.removeAll();
+				var raw:String = "";
+				var s:String = "";
+				var month:Number = i*3 + j;
+				var MonthYear:String = year + "" + month;
+				var file:File = File.applicationStorageDirectory.resolvePath("report_" + Constants.getHospitalId() + "_" + MonthYear + ".shard");
+				if(file.exists){
+					try{
+						var stream:FileStream = new FileStream()
+						stream.open(file, FileMode.READ);
+						raw = stream.readUTFBytes(stream.bytesAvailable).toString();
+						stream.close();
+						s = raw; //"<?xml version=\"1.0\" encoding=\"UTF-8\"?><report>" + AESCrypto.decrypt(raw, Constants.getLicenseKey().substring(0,16)) + "</report>";
+						//trace("dec: " + s);
 						
-						
-						if(s!=""){
-							try{
-								var ob:String = MonthYear;
-								var xml:XML = new XML(s);
-								if(xml.hhoprofgrppert.profgrpahd.(@name==this.parentApplication.wardGroup).attribute("prof_ids")){
-									var str:String;
-									str = xml.hhoprofgrppert.profgrpahd.(@name==this.parentApplication.wardGroup).attribute("prof_ids");
-									var tempArr = str.split(",");
-									for(var k:Number=0; k<tempArr.length; k++)
-									{
-										if((!deptArr.contains(tempArr[k]))&&tempArr[k]!="")
-										{
-											deptArr.addItem(tempArr[k]);
-										}
-									}
+					}catch(e:Error){
+						trace("e: " + e.toString());
+					}
+				}
+				
+				
+				if(s!=""){
+					try{
+						var ob:String = MonthYear;
+						var xml:XML = new XML(s);
+						if(xml.hhoprofgrppert.profgrpahd.(@name==this.parentApplication.wardGroup).attribute("prof_ids")){
+							var str:String;
+							str = xml.hhoprofgrppert.profgrpahd.(@name==this.parentApplication.wardGroup).attribute("prof_ids");
+							var tempArr = str.split(",");
+							for(var k:Number=0; k<tempArr.length; k++)
+							{
+								if((!this.deptArr.contains(tempArr[k]))&&tempArr[k]!="")
+								{
+									this.deptArr.addItem(tempArr[k]);
 								}
 							}
-							catch(error:Error){
-								trace("Err: " + error.toString());
-							}
-						}						
+						}
 					}
-					var syear:String = String(year).substring(2,4);
-				}
+					catch(error:Error){
+						trace("Err: " + error.toString());
+					}
+				}						
+				var syear:String = String(year).substring(2,4);
 				//				trace("deptArr:"+deptArr.length);
 				var file:File = File.applicationStorageDirectory.resolvePath("result.xml");
 				if(file.exists){
@@ -191,15 +185,15 @@
 				{
 					try{
 						var xml:XML = new XML(s);
-						for(var k:Number=0; k<deptArr.length; k++){
+						for(var k:Number=0; k<this.deptArr.length; k++){
 							var arr:XMLList = xml.profs.prof;
 							//							trace("dept:"+arr.length());
 							for(var i:Number=1; i<arr.length(); i++)
 							{
 								//								trace("dept:"+xml.profs.prof[i].(@id==deptArr[k]).attribute("label"));
-								if(xml.profs.prof[i].attribute("id")==deptArr[k]){
-									trace("deptArr[k]:"+xml.profs.prof[i].(@id==deptArr[k]).attribute("label"));
-									deptArr[k] = xml.profs.prof[i].(@id==deptArr[k]).attribute("label");
+								if(xml.profs.prof[i].attribute("id")==this.deptArr[k]){
+//									trace("deptArr[k]:"+xml.profs.prof[i].(@id==deptArr[k]).attribute("label"));
+									this.deptArr[k] = xml.profs.prof[i].(@id==this.deptArr[k]).attribute("label");
 								}
 							}
 						}					
@@ -208,6 +202,18 @@
 						trace("e: " + e.toString());
 					}
 				}
+			}
+
+			public function fetchLocalXML():void{
+				
+				
+				initMenu();
+				
+				iColorNumber = 0;
+				profGroupData=[];
+				max = 0;
+				trace("fetch xml...hho by department");
+				
 				
 				
 				for(var r:Number=0; r<4; r++)
@@ -217,10 +223,12 @@
 					temp["pbp"]=0; temp["pba"]=0; temp["paf"]=0; temp["pap"]=0; temp["paps"]=0;
 					var total:Number = 0;
 					for(var j:Number=1; j<=3; j++){
+						this.getGroup(r,j);
 						//						trace("add:"+deptArr.length);
 						for(var k:Number=0; k<deptArr.length; k++)
 						{
 							//							trace("addd:"+k);
+							trace("deptArr:"+deptArr[k]);
 							var dataPoint:String = deptArr[k];
 							var month:Number = r*3 + j;
 							var queryYM:String = year + "" + month;
@@ -257,27 +265,29 @@
 								if(obj.end_date.toString().replace("-0","").replace("-","").indexOf(queryYM)!=-1){
 									
 									if(obj.prof == dataPoint){
+										if(obj.hr=="1"||obj.hw=="1"){
 										
-										if(obj.indi=="1"){
-											temp["bp"] += 1;
-											total += 1;
-										}
-										
-										if(obj.indi=="2"){
-											temp["ba"] += 1;
-											total += 1;
-										}									
-										if(obj.indi=="3"){
-											temp["af"] += 1;
-											total += 1;
-										}
-										if(obj.indi=="4"){
-											temp["ap"] += 1;
-											total += 1;
-										}
-										if(obj.indi=="5"){
-											temp["aps"] += 1;
-											total += 1;
+											if(obj.indi=="1"){
+												temp["bp"] += 1;
+												total += 1;
+											}
+											
+											if(obj.indi=="2"){
+												temp["ba"] += 1;
+												total += 1;
+											}									
+											if(obj.indi=="3"){
+												temp["af"] += 1;
+												total += 1;
+											}
+											if(obj.indi=="4"){
+												temp["ap"] += 1;
+												total += 1;
+											}
+											if(obj.indi=="5"){
+												temp["aps"] += 1;
+												total += 1;
+											}
 										}
 									}
 								}
@@ -407,7 +417,7 @@
 			//new function for open tabs
 			private function initTabs():void
 			{
-				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+//				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
 			
 			public function myListener(e:ChartItemEvent):void {
@@ -457,8 +467,8 @@
 					trace("Selected command: " + hitItem + " " + event.target.label);
 					isSelected = true;
 					
-					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
-					nav.selectedIndex = nav.getChildren().length-1;
+//					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+//					nav.selectedIndex = nav.getChildren().length-1;
 					
 				}
 				//mx.controls.Alert.show("i");
@@ -469,9 +479,9 @@
 				
 				//if(obj id)
 				popUpMenu.removeAllItems();
-				popUpMenu.addItem(popUpMenuItemByDept);
-				popUpMenu.addItem(popUpMenuItemByProf);
-				popUpMenu.addItem(popUpMenuItemByAction);
+//				popUpMenu.addItem(popUpMenuItemByDept);
+//				popUpMenu.addItem(popUpMenuItemByProf);
+//				popUpMenu.addItem(popUpMenuItemByAction);
 				isSelected = false;
 				
 			}
@@ -506,7 +516,7 @@
 				if (lbl == "")
 					lbl = "Graph";
 				
-				var curNum:Number = nav.numChildren + 1;
+//				var curNum:Number = nav.numChildren + 1;
 				
 				var child:VBox = new VBox();
 				
@@ -827,43 +837,37 @@
 		]]>
 	</fx:Script>
 	
-	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
-							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
-							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
-							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
-		
-		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 			
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 				
 				<mx:Legend y="32" right="10" width="513" height="30" fontSize="12">
-					<mx:LegendItem label="Moment1" fontWeight="bold">
+					<mx:LegendItem label="Moment 1" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x13a8f6"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="Moment2" fontWeight="bold">
+					<mx:LegendItem label="Moment 2" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xcbde2a"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="Moment3" fontWeight="bold">
+					<mx:LegendItem label="Moment 3" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xffcf0d"/>
 						</mx:fill>
 					</mx:LegendItem>	
-					<mx:LegendItem label="Moment4" fontWeight="bold">
+					<mx:LegendItem label="Moment 4" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xff69b0"/>
 						</mx:fill>
 					</mx:LegendItem>		
-					<mx:LegendItem label="Moment5" fontWeight="bold">
+					<mx:LegendItem label="Moment 5" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x0f69ff"/>
 						</mx:fill>
 					</mx:LegendItem>		
 				</mx:Legend>
-				<mx:ColumnChart id="columnchart" y="318" left="10" right="10" height="240"
+				<mx:ColumnChart id="columnchart" y="368" left="10" right="10" height="240"
 								itemClick="myListener(event)"
 								dataProvider="{profGroupData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
@@ -878,13 +882,13 @@
 					<mx:series>
 						
 						<!--THIS IS NOT REQUIRED cant be benchmark also for benchmark line-->
-						<!--<mx:LineSeries yField="Y" xField="X"
+						<mx:LineSeries yField="Y" xField="X"
 						lineStroke="{this.parentApplication.lineStroke}"
 						dataProvider="{this.parentApplication.lineDataProvider}">
 						<mx:horizontalAxis>
 						<mx:LinearAxis maximum="1"/>
 						</mx:horizontalAxis>
-						</mx:LineSeries>-->
+						</mx:LineSeries>
 						<!--end for benchmark line-->
 						
 						<mx:ColumnSeries 
@@ -899,7 +903,7 @@
 							fills="{warmColorsArray5}" labelFunction="setCustomLabel" displayName="After Patient Surrounding" yField="paps" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="253"
+				<mx:ColumnChart id="columnchart1" y="80" left="15" right="10" height="253"
 								itemClick="myListener(event)"
 								dataProvider="{profGroupData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
@@ -924,7 +928,8 @@
 							fills="{warmColorsArray5}" displayName="After Patient Surrounding" yField="aps" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate 	(Overall)- By Moment"/>
+				<s:Label id="lab1" y="60" x="100" fontWeight="bold" fontSize="15" text="{this.text}"/>
+				<s:Label id="lab2" y="350" x="100" fontWeight="bold" fontSize="15" text="{this.text1}"/>
 				<s:Label y="10" right="175" text="Year :"/>
 
 				<s:DropDownList id="btnYear" visible="true" y="0" right="60" width="100" height="32"
@@ -936,8 +941,5 @@
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
 				
 			</s:BorderContainer>
-		</s:NavigatorContent>
-		
-	</flexlib:SuperTabNavigator>
 	
 </s:NavigatorContent>

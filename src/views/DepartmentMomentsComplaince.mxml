@@ -80,6 +80,7 @@
 			}
 			
 			private function gridEvent(evt:Event):void {
+//				trace("click");
 				var flag:Number = 0;
 				var dataPoint:String = this.acAllNodes.getItemAt(dataGrid.selectedIndex).dept;
 				var raw:String = "";
@@ -250,8 +251,12 @@
 						cnt++;
 					}
 				}
-				trace("v:",v.toString());
+//				trace("v:",v.toString());
 				dataGrid.selectedIndices = v;
+				if(dataGrid.selectedIndex.toString()==""){
+					this.gridEvent(evt);
+				}
+				trace("v:",dataGrid.selectedIndex);
 			}
 			
 			private function percentageFormat(value:Number):Number
@@ -517,7 +522,7 @@
 	<s:BorderContainer id="pnl" x="0" y="30" width="100%" height="100%" borderColor="#FFFFFF">
 	
 	<s:DataGrid id="dataGrid" x="0" y="67" width="1275" height="413" dataProvider="{xmlDatagrid}" selectionMode="multipleRows"
-				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" click="gridEvent(event)" >
+				fontSize="12" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" click="gridEvent(event)" dragEnter="gridEvent(event)" dragExit="gridEvent(event)" dragOver="gridEvent(event)" dragStart="gridEvent(event)" dragDrop="gridEvent(event)" dragComplete="gridEvent(event)">
 		<s:columns>
 			<s:ArrayList>
 				

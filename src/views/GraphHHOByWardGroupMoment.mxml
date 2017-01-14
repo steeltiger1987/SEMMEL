@@ -94,6 +94,8 @@
 			public var wardGroup = "";
 			public var deptArr:ArrayCollection= new ArrayCollection([]);
 			private var hitItem:String = "";
+			public var text:String = "Hand Hygiene Opportunity By Moment - "; 
+			public var text1:String = "Hand Hygiene Compliance By Moment - ";
 
 			[Embed(source="../../assets/document.png")]
 			private var document_icon:Class;       
@@ -104,6 +106,10 @@
 			private function init():void{
 
 				var s:String = this.parentApplication.fetchXMLData;
+				this.text = text + this.parentApplication.wardGroup;
+				this.text1 = text1 + this.parentApplication.wardGroup;
+				lab1.text = text;
+				lab2.text = text1;
 				trace("parent XML: "+ s);
 				if(s!=""){
 					try{
@@ -114,7 +120,7 @@
 					}
 				}
 				var currentDate:Date = new Date();
-				this.year = currentDate.getFullYear();
+				this.year = this.parentApplication.selectedYear;
 				this.btnYear.prompt = String(year);
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -470,7 +476,7 @@
 			//new function for open tabs
 			private function initTabs():void
 			{
-				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+//				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
 			
 			public function myListener(e:ChartItemEvent):void {
@@ -520,8 +526,8 @@
 					trace("Selected command: " + hitItem + " " + event.target.label);
 					isSelected = true;
 					
-					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
-					nav.selectedIndex = nav.getChildren().length-1;
+//					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+//					nav.selectedIndex = nav.getChildren().length-1;
 					
 				}
 				//mx.controls.Alert.show("i");
@@ -532,9 +538,9 @@
 				
 				//if(obj id)
 				popUpMenu.removeAllItems();
-				popUpMenu.addItem(popUpMenuItemByDept);
-				popUpMenu.addItem(popUpMenuItemByProf);
-				popUpMenu.addItem(popUpMenuItemByAction);
+//				popUpMenu.addItem(popUpMenuItemByDept);
+//				popUpMenu.addItem(popUpMenuItemByProf);
+//				popUpMenu.addItem(popUpMenuItemByAction);
 				isSelected = false;
 				
 			}
@@ -569,7 +575,7 @@
 				if (lbl == "")
 					lbl = "Graph";
 				
-				var curNum:Number = nav.numChildren + 1;
+//				var curNum:Number = nav.numChildren + 1;
 				
 				var child:VBox = new VBox();
 				
@@ -890,43 +896,37 @@
 		]]>
 	</fx:Script>
 	
-	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
-							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
-							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
-							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
-		
-		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 			
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 				
 				<mx:Legend y="32" right="10" width="513" height="30" fontSize="12">
-					<mx:LegendItem label="Moment1" fontWeight="bold">
+					<mx:LegendItem label="Moment 1" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x13a8f6"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="Moment2" fontWeight="bold">
+					<mx:LegendItem label="Moment 2" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xcbde2a"/>
 						</mx:fill>
 					</mx:LegendItem>
-					<mx:LegendItem label="Moment3" fontWeight="bold">
+					<mx:LegendItem label="Moment 3" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xffcf0d"/>
 						</mx:fill>
 					</mx:LegendItem>	
-					<mx:LegendItem label="Moment4" fontWeight="bold">
+					<mx:LegendItem label="Moment 4" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xff69b0"/>
 						</mx:fill>
 					</mx:LegendItem>		
-					<mx:LegendItem label="Moment5" fontWeight="bold">
+					<mx:LegendItem label="Moment 5" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0x0f69ff"/>
 						</mx:fill>
 					</mx:LegendItem>		
 				</mx:Legend>
-				<mx:ColumnChart id="columnchart" y="318" left="10" right="10" height="240"
+				<mx:ColumnChart id="columnchart" y="368" left="10" right="10" height="240"
 								itemClick="myListener(event)"
 								dataProvider="{columnData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
@@ -941,13 +941,13 @@
 					<mx:series>
 						
 						<!--THIS IS NOT REQUIRED cant be benchmark also for benchmark line-->
-						<!--<mx:LineSeries yField="Y" xField="X"
+						<mx:LineSeries yField="Y" xField="X"
 						lineStroke="{this.parentApplication.lineStroke}"
 						dataProvider="{this.parentApplication.lineDataProvider}">
 						<mx:horizontalAxis>
 						<mx:LinearAxis maximum="1"/>
 						</mx:horizontalAxis>
-						</mx:LineSeries>-->
+						</mx:LineSeries>
 						<!--end for benchmark line-->
 						
 						<mx:ColumnSeries 
@@ -962,7 +962,7 @@
 							fills="{warmColorsArray5}" labelFunction="setCustomLabel" displayName="After Patient Surrounding" yField="aps" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<mx:ColumnChart id="columnchart1" y="60" left="{paragraph}" right="10" height="253"
+				<mx:ColumnChart id="columnchart1" y="80" left="{paragraph}" right="10" height="253"
 								itemClick="myListener(event)"
 								dataProvider="{columnData1}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
@@ -987,7 +987,8 @@
 							fills="{warmColorsArray5}" displayName="After Patient Surrounding" yField="aps" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate 	(Overall)- By Moment"/>
+				<s:Label id="lab1" y="60" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Opportunity By Moment- [WardGroup]"/>
+				<s:Label id="lab2" y="350" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Compliance By Moment- [WardGroup]"/>
 				<s:Label y="10" right="175" text="Year :"/>
 
 				<s:DropDownList id="btnYear" visible="true" y="0" right="60" width="100" height="32"
@@ -999,8 +1000,5 @@
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
 				
 			</s:BorderContainer>
-		</s:NavigatorContent>
-		
-	</flexlib:SuperTabNavigator>
 	
 </s:NavigatorContent>

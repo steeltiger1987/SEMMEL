@@ -77,6 +77,8 @@
 			private var home_icon:Class;
 			
 			private var domain:String = "moment";
+			public var text:String = "Opportunity By Moment By Profession Group - ";
+			public var text1:String = "Compliance By Moment By Profession Group - ";
 			
 			import spark.components.DropDownList;
 			import spark.components.Group;
@@ -86,6 +88,33 @@
 				
 				initMenu();
 				iColorNumber = 0;
+				if(this.parentApplication.wardGroup == "Before patient")
+				{
+					text = text + "Moment 1";
+					text1 = text1 + "Moment 1";
+				}
+				else if(this.parentApplication.wardGroup == "Before aseptic")
+				{
+					text = text + "Moment 2";
+					text1 = text1 + "Moment 2";
+				}
+				else if(this.parentApplication.wardGroup == "After body fluid")
+				{
+					text = text + "Moment 3";
+					text1 = text1 + "Moment 3";
+				}
+				else if(this.parentApplication.wardGroup == "After patient")
+				{
+					text = text + "Moment 4";
+					text1 = text1 + "Moment 4";
+				}
+				else if(this.parentApplication.wardGroup == "After patient surrounding")
+				{
+					text = text + "Moment 5";
+					text1 = text1 + "Moment 5";
+				}
+				lab1.text = text;
+				lab2.text = text1;
 				trace("fetch xml...hho by moment! / indication");
 				var deptName:Array = [];
 				deptName.push("Allied health");
@@ -280,7 +309,7 @@
 			//new function for open tabs
 			private function initTabs():void
 			{
-				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
+//				nav.setClosePolicyForTab(0, SuperTab.CLOSE_NEVER);
 			}
 			
 			public function myListener(e:ChartItemEvent, domain:String):void {
@@ -336,8 +365,8 @@
 					trace("Selected command: " + hitItem + " " + event.target.label);
 					isSelected = true;
 					
-					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
-					nav.selectedIndex = nav.getChildren().length-1;
+//					addTab(hitItem + " " + event.target.label, hitItem, event.target.label, nav);
+//					nav.selectedIndex = nav.getChildren().length-1;
 					
 				}
 			}
@@ -535,7 +564,7 @@
 				if (lbl == "")
 					lbl = "Graph";
 				
-				var curNum:Number = nav.numChildren + 1;
+//				var curNum:Number = nav.numChildren + 1;
 				
 				var child:VBox = new VBox();
 				
@@ -1078,12 +1107,6 @@
 		]]>
 	</fx:Script>
 	
-	<flexlib:SuperTabNavigator id="nav" x="0" y="0" width="100%" height="100%" cornerRadius="4"
-							   closePolicy="{SuperTab.CLOSE_ROLLOVER}" horizontalGap="0"
-							   scrollSpeed="25" startScrollingEvent="{MouseEvent.MOUSE_DOWN}"
-							   stopScrollingEvent="{MouseEvent.MOUSE_UP}">
-		
-		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 		
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
 				
@@ -1117,8 +1140,8 @@
 					<!--labelFunction="columnSeries_labelFunc"-->
 				</mx:series>
 			</mx:ColumnChart>
-			<s:Label y="316" fontWeight="bold" horizontalCenter="-1" text="Adherence By Moments"/>
-			<s:Label y="10" fontWeight="bold" horizontalCenter="1" text="Opportunity by Moments"/>
+			<s:Label id="lab1" y="316" fontWeight="bold" x="100" text="Adherence By Moments"/>
+			<s:Label id="lab2" y="10" fontWeight="bold" x="100" text="Opportunity by Moments"/>
 			<mx:ColumnChart id="columnchart2" y="19" left="10" right="10" height="285"
 							type="overlaid" showDataTips="true"
 							itemClick="myListener(event, 'moment')"
@@ -1129,10 +1152,6 @@
 					<mx:CategoryAxis categoryField="cat" />
 				</mx:horizontalAxis>
 				<mx:series>
-					
-					<mx:ColumnSeries fontSize="16" displayName="cat" yField="opp" 
-									 fillFunction="{this.parentApplication.stackedFillFunction}"
-									 labelAlign="top" labelPosition="outside" />	
 					
 					<mx:ColumnSeries fontSize="16" displayName="cat" yField="cnt"
 									 fillFunction="{this.parentApplication.stackedFillFunction}"
@@ -1146,9 +1165,5 @@
 						 smoothingQuality="high" source="@Embed('asset/images/report_up.png')"/>
 				
 			</s:BorderContainer>
-	
-		</s:NavigatorContent>
-	
-	</flexlib:SuperTabNavigator>
 	
 </s:NavigatorContent>

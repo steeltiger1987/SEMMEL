@@ -99,6 +99,7 @@
 				trace("fetch:"+this.fetchXMLData);
 				var currentDate:Date = new Date();
 				this.year = currentDate.getFullYear();
+				this.parentApplication.selectedYear = this.year;
 				this.btnYear.prompt = year.toString();
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -283,6 +284,7 @@
 				// TODO Auto-generated method stub
 				wardGroupData = [];
 				year = btnYear.selectedItem.year;
+				this.parentApplication.selectedYear = year;
 				fetchLocalXML();				
 			}
 
@@ -847,12 +849,28 @@
 						trace("Department '" + item + "' By Profession");
 						this.fetchXMLData = " ";
 						var graphHHOByWardGroupJob:GraphHHOByWardGroupJob = new GraphHHOByWardGroupJob();
+						if (icon)
+						{
+							graphHHOByWardGroupJob.icon = icon;
+						}
+						else
+						{
+							graphHHOByWardGroupJob.icon = document_icon;
+						}
 						graphHHOByWardGroupJob.label = lbl;
 						navigator.addChild(graphHHOByWardGroupJob);
 					} else if(groupBy=="By Moment"){
 						trace("Department " + item + " By Moment");
 						this.fetchXMLData = " ";
 						var graphHHOByWardGroupMoment:GraphHHOByWardGroupMoment = new GraphHHOByWardGroupMoment();
+						if (icon)
+						{
+							graphHHOByWardGroupMoment.icon = icon;
+						}
+						else
+						{
+							graphHHOByWardGroupMoment.icon = document_icon;
+						}
 						graphHHOByWardGroupMoment.label = lbl;
 						this.parentApplication.wardGroup = item;
 						navigator.addChild(graphHHOByWardGroupMoment);
@@ -860,6 +878,14 @@
 					} else if(groupBy=="By Action"){
 						trace("Department " + item + " By Action");
 						var graphHHOByWardGroupAction:GraphHHOByWardGroupAction = new GraphHHOByWardGroupAction();
+						if (icon)
+						{
+							graphHHOByWardGroupAction.icon = icon;
+						}
+						else
+						{
+							graphHHOByWardGroupAction.icon = document_icon;
+						}
 						graphHHOByWardGroupAction.label = lbl;
 						this.parentApplication.wardGroup = item;
 						navigator.addChild(graphHHOByWardGroupAction);
@@ -873,6 +899,14 @@
 						this.fetchXMLData = " ";
 						this.parentApplication.wardGroup = item;
 						var graphHHOByWardGroupJob:GraphHHOByWardGroupJob = new GraphHHOByWardGroupJob();
+						if (icon)
+						{
+							graphHHOByWardGroupJob.icon = icon;
+						}
+						else
+						{
+							graphHHOByWardGroupJob.icon = document_icon;
+						}
 						graphHHOByWardGroupJob.label = lbl;
 						navigator.addChild(graphHHOByWardGroupJob);
 					}
@@ -1070,7 +1104,7 @@
 		<s:NavigatorContent width="100%" height="100%" label=" " icon="{home_icon}" creationComplete="initTabs()">
 		
 			<s:BorderContainer id="pnl" x="0" y="0" width="100%" height="100%" borderColor="#FFFFFF">
-				<mx:Legend y="10" right="20" width="513" height="30" fontSize="12">
+				<mx:Legend y="35" right="10" width="413" height="30" fontSize="12">
 					<mx:LegendItem label="MEDICAL" fontWeight="bold">
 						<mx:fill>
 							<mx:SolidColor color="0xcbde2a"/>
@@ -1094,7 +1128,7 @@
 					
 				</mx:Legend>
 		
-				<mx:ColumnChart id="columnchart1" y="40" left="10" right="10" height="282"
+				<mx:ColumnChart id="columnchart1" y="70" left="10" right="10" height="252"
 								itemClick="myListener(event, 'department')"
 								showDataTips="true" 
 								dataProvider="{wardGroupData}" seriesFilters="[]">
@@ -1129,7 +1163,7 @@
 									
 				</mx:ColumnChart>
 					
-				<mx:ColumnChart id="columnchart2" y="323" left="10" right="10" height="300"
+				<mx:ColumnChart id="columnchart2" y="363" left="10" right="10" height="260"
 								itemClick="myListener(event, 'department')"
 								dataProvider="{wardGroupData}" seriesFilters="[]">
 					
@@ -1169,8 +1203,8 @@
 					</mx:verticalAxis>		
 										
 				</mx:ColumnChart>
-				<s:Label y="10" fontWeight="bold" horizontalCenter="-18" text=""/>
-				<s:Label y="300" fontWeight="bold" horizontalCenter="-13" text=""/>
+				<s:Label y="50" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Opportunity by Ward Group"/>
+				<s:Label y="355" x="100" fontWeight="bold" fontSize="15" text="Hand Hygiene Compliance by Ward Group"/>
 				<s:Label y="10" right="175" text="Year :"/>
 				<s:DropDownList id="btnYear" visible="true" y="0" right="65" width="100" height="32"
 								blendMode="darken" change="btnYear_changeHandler(event)"

@@ -91,7 +91,7 @@
 				}
 				var currentDate:Date = new Date();
 				this.depart = "All";
-				this.year = currentDate.getFullYear();
+				this.year = this.parentApplication.selectedYear;
 				this.btnYear.prompt = year.toString();
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -142,13 +142,10 @@
 										if(depart=="All"||depart==""){
 											if(Number(xml.deptComp.summ_total.attribute('totalmisswithglove'))){
 												if(!profData['HW']){
-													profData['HW']=Number(0);
-													profData['HR']=Number(0);
 													for(var k:Number=1; k<=5; k++){
 														profData['HW'] += Number(xml.deptComp.summ_total.attribute('hw'+k));
 														profData['HR'] += Number(xml.deptComp.summ_total.attribute('hr'+k));
 													}
-													trace("profData:"+depart+": "+profData['HW']);
 													profData['M'] = Number(xml.deptComp.summ_total.attribute('totalmiss'));
 													profData['M+G'] = Number(xml.deptComp.summ_total.attribute('totalmisswithglove'));
 													profData['PHW'] = profData['HW']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;
@@ -166,8 +163,8 @@
 													var tempW:Number = 0;
 													var tempR:Number = 0;
 													for(var k:Number=1; k<=5; k++){
-														tempW = Number(xml.deptComp.summ_total.attribute('hw'+k));
-														tempR = Number(xml.deptComp.summ_total.attribute('hr'+k));
+														tempW += Number(xml.deptComp.summ_total.attribute('hw'+k));
+														tempR += Number(xml.deptComp.summ_total.attribute('hr'+k));
 													}
 													profData['HW'] += tempW;
 													profData['HR'] += tempR;
@@ -189,13 +186,14 @@
 										else
 										{
 											if(Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'))){
-												trace(String(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')));
+//												trace(String(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')));
 												if(!profData['HW']){
-													profData['HW']=Number(0);
-													profData['HR']=Number(0);
 													for(var k:Number=1; k<=5; k++){
 														profData['HW'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('hw'+k));
 														profData['HR'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('hr'+k));
+													}
+													if(i==3){
+														trace("profData:iii"+profData['HW']);
 													}
 													profData['M'] = Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'));
 													profData['M+G'] = Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'));
@@ -203,7 +201,6 @@
 													profData['PHR'] = profData['HR']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
 													profData['PM'] = profData['M']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
 													profData['PM+G'] = profData['M+G']/(profData['HW']+profData['HR']+profData['M']+profData['M+G'])*100;;
-													trace("profData:"+depart+": "+profData['PM']);
 													if(j==3){
 														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
 														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
@@ -215,10 +212,16 @@
 													var tempW:Number = 0;
 													var tempR:Number = 0;
 													for(var k:Number=1; k<=5; k++){
-														tempW = Number(xml.deptComp.deptc.(@dept==depart).attribute('hw'+k));
-														tempR = Number(xml.deptComp.deptc.(@dept==depart).attribute('hr'+k));
+														tempW += Number(xml.deptComp.deptc.(@dept==depart).attribute('hw'+k));
+														if(i==3){
+															trace("profData:ii"+tempW);
+														}
+														tempR += Number(xml.deptComp.deptc.(@dept==depart).attribute('hr'+k));
 													}
 													profData['HW'] += tempW;
+													if(i==3){
+														trace("profData:iii"+profData['HW']);
+													}
 													profData['HR'] += tempR;
 													profData['M'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'));
 													profData['M+G'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'));
@@ -226,7 +229,6 @@
 													profData['PHR'] += tempR/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
 													profData['PM'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
 													profData['PM+G'] += Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove'))/(tempW+tempR+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmiss'))+Number(xml.deptComp.deptc.(@dept==depart).attribute('totalmisswithglove')))*100;
-													trace("profData:"+depart+": "+profData['PM']);
 													if(j==3){
 														profData['PHW'] = (profData['PHW']/3).toFixed(2); 
 														profData['PHR'] = (profData['PHR']/3).toFixed(2); 
@@ -921,7 +923,7 @@
 							fills="{warmColorsArray4}"  displayName="M+G" yField="M+G" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Profession"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance By Profession"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

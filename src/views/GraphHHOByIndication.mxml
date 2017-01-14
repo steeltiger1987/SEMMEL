@@ -822,11 +822,27 @@
 					} else if(groupBy=="By Ward Group"){
 						var graphHHOByIndicationWardGroup:GraphHHOByIndicationWardGroup = new GraphHHOByIndicationWardGroup();
 						graphHHOByIndicationWardGroup.label = lbl;
+						if (icon)
+						{
+							graphHHOByIndicationWardGroup.icon = icon;
+						}
+						else
+						{
+							graphHHOByIndicationWardGroup.icon = document_icon;
+						}
 						this.parentApplication.wardGroup = item;
 						navigator.addChild(graphHHOByIndicationWardGroup);
 					} else if(groupBy=="By Profession Group"){
 						var graphHHOByIndicationProfessionGroup:GraphHHOByIndicationProfessionGroup = new GraphHHOByIndicationProfessionGroup();
 						graphHHOByIndicationProfessionGroup.label = lbl;
+						if (icon)
+						{
+							graphHHOByIndicationProfessionGroup.icon = icon;
+						}
+						else
+						{
+							graphHHOByIndicationProfessionGroup.icon = document_icon;
+						}
 						this.parentApplication.wardGroup = item;
 						navigator.addChild(graphHHOByIndicationProfessionGroup);
 					}

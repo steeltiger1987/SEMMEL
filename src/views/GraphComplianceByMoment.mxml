@@ -914,7 +914,7 @@
 						</mx:fill>
 					</mx:LegendItem>		
 				</mx:Legend>
-				<mx:ColumnChart id="columnchart" y="318" left="10" right="10" height="240"
+				<mx:ColumnChart id="columnchart" y="358" left="10" right="10" height="240"
 								dataProvider="{columnData}" fontSize="12" seriesFilters="[]"
 								showDataTips="false">
 					<mx:verticalAxis>
@@ -973,7 +973,8 @@
 							fills="{warmColorsArray5}" displayName="After Patient Surrounding" yField="aps" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate 	(Overall)- By Moment"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Opportunity By Moment"/>
+				<s:Label y="340" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance By Moment"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

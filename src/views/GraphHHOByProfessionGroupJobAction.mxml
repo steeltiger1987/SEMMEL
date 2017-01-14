@@ -91,7 +91,7 @@
 				}
 				var currentDate:Date = new Date();
 				this.depart = "All";
-				this.year = currentDate.getFullYear();
+				this.year = this.parentApplication.selectedYear;
 				this.btnYear.prompt = year.toString();
 				for(var i:Number = 2015; i<=currentDate.getFullYear(); i++)
 				{
@@ -921,7 +921,7 @@
 							fills="{warmColorsArray4}"  displayName="M+G" yField="M+G" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance Rate (Overall) By Profession"/>
+				<s:Label y="20" x="100" fontWeight="bold"  fontSize="15" text="Hand Hygiene Compliance By Profession"/>
 				<s:Label y="10" right="270" text="Departments :"/>
 				<s:Label y="10" right="475" text="Year :"/>
 				<s:DropDownList id="btnDepartment" visible="true" y="0" right="35" width="224" height="32"

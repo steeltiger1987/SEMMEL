@@ -955,7 +955,7 @@
 							fills="{warmColorsArray2}" labelFunction="setCustomLabel" displayName="Before Aseptic" yField="total" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="210" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall)-NICU"/>
+				<s:Label y="210" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance - NICU"/>
 <!-- From here table 3 -->
 				<mx:Legend y="422" right="10" width="1133" height="30" fontSize="12">
 					<mx:LegendItem label="Doctors" fontWeight="bold">
@@ -1054,7 +1054,7 @@
 							fills="{warmColorsArray10}" labelFunction="setCustomLabel" displayName="Surgeon Consultant" yField="sct" labelAlign="top" labelPosition="outside" showDataEffect="slideUp" />
 					</mx:series>
 				</mx:ColumnChart>
-				<s:Label y="410" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance Rate(Overall)-NICU"/>
+				<s:Label y="410" fontWeight="bold" horizontalCenter="42" text="Hand Hygiene Compliance - NICU"/>
 				
 				<s:Image id="btnAddReport_AvgActions" y="7" right="7"
 						 click="doAddToReportMenu(event, SemmelReport.AvgActions)" smooth="true"
